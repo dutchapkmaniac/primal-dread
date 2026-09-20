@@ -1,0 +1,207 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Primal Dread</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#05070c;font-family:'Segoe UI',system-ui,sans-serif;
+  -webkit-user-select:none;user-select:none;touch-action:none;color:#cdd3c8}
+canvas{display:block}
+#hud,#overlays{position:fixed;inset:0;pointer-events:none}
+.glass{background:linear-gradient(160deg,rgba(16,20,15,.82),rgba(8,10,8,.68));
+  border:1px solid rgba(140,150,130,.22);box-shadow:0 2px 12px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);
+  backdrop-filter:blur(3px)}
+/* ---- vitals ---- */
+#bars{position:fixed;top:14px;left:14px;padding:10px 12px;border-radius:10px}
+.bar{display:flex;align-items:center;gap:8px;margin:6px 0}
+.bar svg{width:17px;height:17px;flex:none;filter:drop-shadow(0 1px 2px #000)}
+.bar .tr{position:relative;width:172px;height:13px;background:rgba(0,0,0,.55);
+  border-radius:7px;overflow:hidden;border:1px solid rgba(255,255,255,.09)}
+.bar i{position:absolute;inset:0 auto 0 0;border-radius:7px;transition:width .25s}
+#hp i{background:linear-gradient(180deg,#d4573b,#8c2f1c)}
+#en i{background:linear-gradient(180deg,#a4c455,#5f7a2c)}
+#hu i{background:linear-gradient(180deg,#e0a748,#9a6a24)}
+#th i{background:linear-gradient(180deg,#5aa8d8,#2a5f8a)}
+#th{display:none}
+.bar b{position:absolute;inset:0;font:700 9.5px/13px 'Segoe UI',sans-serif;color:#fff;
+  text-align:center;font-style:normal;text-shadow:0 1px 2px #000;letter-spacing:.4px}
+.bar.low .tr{box-shadow:0 0 9px rgba(212,87,59,.8);border-color:#d4573b}
+/* ---- clock ---- */
+#clock{position:fixed;top:14px;right:14px;text-align:right;padding:8px 14px;border-radius:10px}
+#clock .day{font-weight:800;letter-spacing:1.2px;font-size:14px;color:#e6e9e2;text-transform:uppercase}
+#clock .tod{font-size:11.5px;color:#a8b09e;margin-top:1px}
+#clock .glyph{font-size:15px;margin-right:5px;vertical-align:-1px}
+/* ---- goal / prompt / toast ---- */
+#goal{position:fixed;top:14px;left:50%;transform:translateX(-50%);font-size:12.5px;color:#c3cab8;
+  padding:7px 18px;border-radius:18px;max-width:78vw;text-align:center}
+/* ---- the hunt HP bar (update 11) ---- */
+#hunt{position:fixed;top:52px;left:50%;transform:translateX(-50%);width:min(420px,70vw);
+  display:none;text-align:center;pointer-events:none}
+#hunt .nm{font-size:11px;letter-spacing:3px;font-weight:800;color:#e0c5a0;text-shadow:0 1px 3px #000}
+#hunt .tr{height:10px;margin-top:3px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.14);
+  border-radius:5px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+#hunt .tr i{display:block;height:100%;width:100%;background:linear-gradient(180deg,#c8452e,#7a2114);transition:width .2s}
+#hunt.enraged .nm{color:#ff9a60}
+#hunt.enraged .tr i{background:linear-gradient(180deg,#ff7838,#b03014)}
+#hunt.enraged .tr{box-shadow:0 0 12px rgba(255,110,40,.6);border-color:#d4573b}
+#cross{position:fixed;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;border-radius:50%;
+  background:rgba(230,233,226,.9);box-shadow:0 0 5px rgba(0,0,0,.9),0 0 2px #fff}
+#prompt{position:fixed;left:50%;top:57%;transform:translateX(-50%);font-size:14.5px;
+  padding:9px 18px;border-radius:9px;color:#e8ceac;display:none;white-space:nowrap;
+  border-color:rgba(192,122,52,.65)}
+#toast{position:fixed;left:50%;bottom:24%;transform:translateX(-50%);font-size:14px;color:#eef0e9;
+  text-shadow:0 1px 4px #000,0 0 12px rgba(0,0,0,.7);opacity:0;transition:opacity .4s;text-align:center;max-width:80vw;font-weight:600}
+.key{display:inline-block;min-width:15px;padding:1px 6px;margin:0 2px;border-radius:5px;
+  background:linear-gradient(180deg,#3c4438,#22271f);border:1px solid #5a6350;border-bottom-width:2.5px;
+  font:700 11.5px/16px Consolas,monospace;color:#e8e2ce;text-align:center;vertical-align:1px;
+  box-shadow:0 1px 3px rgba(0,0,0,.5)}
+/* ---- hotbar ---- */
+#hotbarWrap{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:auto}
+#hotbarWrap.invEdit{z-index:30}
+#hotbarWrap.invEdit #hotbar{box-shadow:0 0 26px rgba(232,176,96,.35);outline:1px solid rgba(232,176,96,.4)}
+#selHint{display:inline-block;font-size:12.5px;color:#d8cfb6;padding:5px 14px;margin-bottom:7px;
+  border-radius:14px;visibility:hidden}
+#hotbar{display:flex;gap:6px;padding:7px;border-radius:12px}
+.slot{width:54px;height:54px;background:linear-gradient(160deg,rgba(0,0,0,.5),rgba(30,34,26,.5));
+  border:1px solid rgba(140,150,130,.25);border-radius:8px;position:relative;
+  background-size:78% 78%;background-position:center;background-repeat:no-repeat;transition:transform .1s,box-shadow .15s}
+.slot.sel{border-color:#d18438;box-shadow:0 0 12px rgba(209,132,56,.55),inset 0 0 6px rgba(209,132,56,.25);transform:translateY(-3px)}
+.slot.grab{border:1px dashed #e8b060;box-shadow:0 0 16px rgba(232,176,96,.8),inset 0 0 8px rgba(232,176,96,.3);transform:translateY(-9px) scale(1.06)}
+.slot .n{position:absolute;right:4px;bottom:2px;font-size:11.5px;font-weight:800;text-shadow:0 1px 2px #000;color:#fff}
+.slot .k{position:absolute;left:4px;top:2px;font-size:9px;color:#98a18c;font-weight:700}
+#vig{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(140,30,10,.55) 100%)}
+#bless{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .15s;z-index:6}
+#nightvig{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity 2s;
+  background:radial-gradient(ellipse at center,transparent 62%,rgba(0,2,8,.45) 100%)}
+/* ---- night vision goggles: green phosphor wash + tube vignette ---- */
+#nvg{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .4s;
+  background:radial-gradient(ellipse at center,rgba(70,220,110,.16) 0%,rgba(40,160,80,.22) 62%,rgba(4,24,10,.72) 100%);
+  mix-blend-mode:screen}
+/* ---- screens ---- */
+.screen{position:fixed;inset:0;background:rgba(3,5,3,.9);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;pointer-events:auto;z-index:20;overflow-y:auto}
+.screen h1{font-size:40px;letter-spacing:4px;margin:0 0 6px;color:#e2e6dc;text-transform:uppercase;
+  text-shadow:0 2px 14px rgba(176,106,44,.35)}
+.screen h2{font-size:19px;margin:0 0 16px;color:#c07a34;font-weight:600}
+.screen p{max-width:540px;line-height:1.55;color:#96a08c;font-size:14px;margin:6px 20px}
+.screen button{margin-top:14px;font-size:16px;padding:11px 42px;background:linear-gradient(180deg,#c07a34,#98561e);
+  color:#14100a;border:1px solid #d89848;border-radius:7px;font-weight:800;cursor:pointer;letter-spacing:1px}
+.screen button:hover{filter:brightness(1.15)}
+.screen button:disabled{cursor:default}
+.knav{outline:2px solid #e8c07a !important;outline-offset:2px;filter:brightness(1.18)}
+.screen .sub{font-size:12px;color:#68705c;margin-top:12px}
+.ctrlRow{display:flex;justify-content:space-between;gap:14px;padding:5.5px 2px;border-bottom:1px solid #242a20;
+  font-size:13px;color:#b8c0ac;text-align:left;align-items:center}
+.ctrlRow .kk{white-space:nowrap}
+#loadbar{width:260px;height:6px;border:1px solid #3c4438;border-radius:3px;margin-top:20px;overflow:hidden}
+#loadbar>i{display:block;height:100%;width:0;background:#7d8f4e;transition:width .3s}
+#dev{position:fixed;top:4px;left:230px;color:#0f0;font:12px monospace;display:none;text-shadow:0 1px 2px #000;z-index:30}
+#helper{position:fixed;top:64px;left:190px;display:none;padding:5px 14px;border-radius:14px;
+  font-size:12px;font-weight:800;letter-spacing:1.2px;color:#cfe3b0;border-color:rgba(140,190,90,.5);text-shadow:0 1px 3px #000}
+#drunk{position:fixed;top:64px;right:190px;display:none;padding:6px 14px;border-radius:9px;
+  font-weight:800;font-size:13px;letter-spacing:1.5px;color:#e0a0c0;border-color:rgba(200,110,160,.5);
+  text-shadow:0 1px 3px #000}
+/* ---- minimap + compass ---- */
+#miniWrap{position:fixed;top:78px;right:14px;display:flex;align-items:flex-start;gap:8px}
+#compass{width:46px;height:46px;filter:drop-shadow(0 2px 5px rgba(0,0,0,.65));transition:transform .08s linear}
+#minimap{width:158px;height:158px;border-radius:50%;box-shadow:0 3px 14px rgba(0,0,0,.55)}
+@media (max-width:760px){#minimap{width:112px;height:112px}#compass{width:36px;height:36px}#miniWrap{top:70px}}
+/* ---- pause-menu map + sound controls ---- */
+#bigmap{border:1px solid rgba(58,50,38,.55);border-radius:8px;margin:10px 0 0;box-shadow:0 10px 34px rgba(0,0,0,.65)}
+.btnRow{display:flex;gap:12px;align-items:center}
+#sndRow{display:flex;align-items:center;gap:12px;margin-top:16px;pointer-events:auto}
+.miniBtn{font-size:19px;padding:8px 13px;margin:0;background:linear-gradient(180deg,#3c4438,#252b21);
+  border:1px solid #5a6350;border-radius:7px;cursor:pointer;line-height:1}
+.screen button.miniBtn{margin-top:0;padding:8px 13px;color:#e8e2ce}
+#volSlider{width:190px;accent-color:#c07a34;cursor:pointer}
+/* ---- graphics settings ---- */
+.screen button.gfxOpt{font-size:14px;padding:9px 16px;margin-top:10px;letter-spacing:.5px;
+  background:linear-gradient(180deg,#3c4438,#252b21);color:#cdd3c8;border-color:#5a6350}
+.gfxOpt .gfxPx{display:block;font-size:10.5px;font-weight:600;color:#98a18c;margin-top:2px;letter-spacing:0}
+.screen button.gfxOpt.on{background:linear-gradient(180deg,#c07a34,#98561e);color:#14100a;border-color:#d89848}
+.gfxOpt.on .gfxPx{color:#3a2610}
+/* mobile controls */
+#mob{display:none}
+body.touch #mob{display:block}
+#stick{position:fixed;left:26px;bottom:76px;width:120px;height:120px;border-radius:50%;
+  background:rgba(20,24,18,.4);border:1px solid #3c4438;pointer-events:auto}
+#knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px;border-radius:50%;
+  background:rgba(125,143,78,.45);border:1px solid #7d8f4e}
+.mbtn{position:fixed;width:62px;height:62px;border-radius:50%;background:rgba(20,24,18,.55);border:1px solid #3c4438;
+  color:#cdd3c8;font-size:11px;font-weight:700;pointer-events:auto;display:flex;align-items:center;justify-content:center;text-align:center}
+.mbtn.on{background:rgba(176,106,44,.55);border-color:#b06a2c}
+#mAct{right:26px;bottom:150px;width:74px;height:74px}
+#mJmp{right:116px;bottom:96px}
+#mSpr{right:26px;bottom:250px}
+#mSnk{right:116px;bottom:196px}
+/* update 24: the CONTEXT button — a golden CIRCLE on the right, just above
+   RUN; one word per situation (OPEN / SLEEP / COOK...), does what F does */
+#mInt{position:fixed;right:26px;bottom:326px;width:74px;height:74px;border-radius:50%;display:none;
+  pointer-events:auto;align-items:center;justify-content:center;text-align:center;
+  font:800 13px 'Segoe UI',sans-serif;letter-spacing:.6px;color:#14100a;
+  background:linear-gradient(180deg,#c07a34,#98561e);border:1px solid #d89848;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+#mInt.on{filter:brightness(1.25)}
+/* the mobile PAUSE button — same job as Esc on a keyboard */
+#mPause{position:fixed;left:12px;top:12px;width:46px;height:46px;border-radius:10px;pointer-events:auto;
+  background:rgba(20,24,18,.6);border:1px solid #3c4438;color:#cdd3c8;font:800 14px/44px 'Segoe UI',sans-serif;
+  text-align:center;letter-spacing:1px}
+body.touch #bars{left:70px}
+@media (max-height:500px){#stick{width:96px;height:96px;bottom:60px}}
+/* update 23: hold right-click — the little bar fills, then the WHOLE stack drops */
+#dropBar{position:fixed;left:50%;top:54%;transform:translateX(-50%);width:130px;height:7px;display:none;
+  background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);border-radius:4px;overflow:hidden}
+#dropBar i{display:block;height:100%;width:0;background:linear-gradient(180deg,#c07a34,#98561e)}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div id="bars" class="glass">
+    <div class="bar" id="hp"><svg viewBox="0 0 24 24" fill="#d4573b"><path d="M12 21s-8-5.5-10-11C.8 6.5 3 3 6.5 3 9 3 11 4.7 12 6c1-1.3 3-3 5.5-3C21 3 23.2 6.5 22 10c-2 5.5-10 11-10 11z"/></svg><span class="tr"><i></i><b></b></span></div>
+    <div class="bar" id="en"><svg viewBox="0 0 24 24" fill="#a4c455"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg><span class="tr"><i></i><b></b></span></div>
+    <div class="bar" id="hu"><svg viewBox="0 0 24 24" fill="#e0a748"><path d="M15.5 3c2.5 0 5.5 2 5.5 5.5 0 4-4.5 5-6.4 4.7L8 19.8c-.9.9-2.4.9-3.3 0l-.5-.5c-.9-.9-.9-2.4 0-3.3l6.6-6.6C10.5 7.5 11.5 3 15.5 3z"/></svg><span class="tr"><i></i><b></b></span></div>
+    <div class="bar" id="th"><svg viewBox="0 0 24 24" fill="#5aa8d8"><path d="M12 2.5s-6.5 7.4-6.5 12A6.5 6.5 0 0 0 18.5 14.5c0-4.6-6.5-12-6.5-12z"/></svg><span class="tr"><i></i><b></b></span></div>
+  </div>
+  <div id="clock" class="glass"><div class="day"></div><div class="tod"></div></div>
+  <div id="drunk" class="glass"></div>
+  <div id="helper" class="glass"></div>
+  <div id="miniWrap"><img id="compass" src="./assets/ui_compass.png?v=36" alt="compass"><canvas id="minimap" width="158" height="158"></canvas></div>
+  <div id="goal" class="glass"></div>
+  <div id="hunt"><div class="nm"></div><div class="tr"><i></i></div></div>
+  <div id="cross"></div>
+  <div id="dropBar"><i></i></div>
+  <div id="prompt" class="glass"></div>
+  <div id="toast"></div>
+  <div id="vig"></div>
+  <div id="bless"></div>
+  <div id="nightvig"></div>
+  <div id="nvg"></div>
+  <div id="hotbarWrap">
+    <div id="selHint" class="glass"></div>
+    <div id="hotbar" class="glass"></div>
+  </div>
+  <div id="mob">
+    <div id="stick"><div id="knob"></div></div>
+    <div class="mbtn" id="mAct"></div>
+    <div class="mbtn" id="mJmp"></div>
+    <div class="mbtn" id="mSpr"></div>
+    <div class="mbtn" id="mSnk"></div>
+    <div id="mInt"></div>
+    <div id="mPause">❚❚</div>
+  </div>
+</div>
+<div id="overlays"></div>
+<div id="dev"></div>
+<script>
+window.__errs = [];
+addEventListener("error", (e) => window.__errs.push((e.message || "?") + " @ " + (e.filename || "") + ":" + (e.lineno || 0)));
+addEventListener("unhandledrejection", (e) => window.__errs.push("rejection: " + String((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
+</script>
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.js?v=36","three/addons/loaders/GLTFLoader.js":"./vendor/GLTFLoader.js?v=36","three/addons/utils/BufferGeometryUtils.js":"./vendor/BufferGeometryUtils.js?v=36","three/addons/utils/SkeletonUtils.js":"./vendor/SkeletonUtils.js?v=36"}}
+</script>
+<script type="module" src="./src/main.js?v=36"></script>
+</body>
+</html>

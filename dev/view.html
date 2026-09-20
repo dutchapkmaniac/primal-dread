@@ -1,0 +1,105 @@
+<!doctype html><html><head><meta charset="utf-8"><title>GLB viewer</title>
+<style>body{margin:0;background:#777}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"../vendor/three.module.js","three/addons/loaders/GLTFLoader.js":"../vendor/GLTFLoader.js"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+// QA viewer: ?m=<name> loads ../assets/models/<name>.glb (or ?u=<url>) and
+// renders front/right/back/left/top/iso views into one strip. window.__strip()
+// returns a base64 JPEG of the strip; window.__info() returns size + facts.
+const q = new URLSearchParams(location.search);
+const url = q.get("u") || `../assets/models/${q.get("m") || "cow"}.glb`;
+const W = 320, H = 320, VIEWS = ["front", "right", "back", "left", "top", "iso"];
+const canvas = document.createElement("canvas"); canvas.width = W * VIEWS.length; canvas.height = H;
+document.body.appendChild(canvas);
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(W, H); r.setClearColor(0x777777);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(2, 4, 3); scene.add(sun);
+const sun2 = new THREE.DirectionalLight(0xffffff, 0.6); sun2.position.set(-3, 2, -2); scene.add(sun2);
+let info = { url };
+window.__ready = false;
+new GLTFLoader().load(url, (g) => {
+  const root = g.scene;
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  const size = new THREE.Vector3(); box.getSize(size);
+  const ctr = new THREE.Vector3(); box.getCenter(ctr);
+  let meshes = 0, tris = 0, skinned = 0; const mats = new Set(); const imgs = [];
+  root.traverse((o) => { if (o.isMesh) { meshes++; const gm = o.geometry; tris += (gm.index ? gm.index.count : gm.attributes.position.count) / 3; if (o.isSkinnedMesh) skinned++; if (o.material) { mats.add(o.material); const m = o.material; for (const k of ["map", "normalMap", "roughnessMap", "metalnessMap"]) if (m[k] && m[k].image) imgs.push(k + ":" + m[k].image.width + "x" + m[k].image.height); m.side = THREE.DoubleSide; if (m.metalness === undefined || m.metalness > 0.6) { m.metalness = 0; } } } });
+  info = { url, size: [size.x, size.y, size.z].map((v) => +v.toFixed(3)), center: [ctr.x, ctr.y, ctr.z].map((v) => +v.toFixed(3)), minY: +box.min.y.toFixed(3), meshes, tris: tris | 0, skinned, materials: mats.size, images: imgs, anims: (g.animations || []).map((a) => a.name + " " + a.duration.toFixed(2) + "s") };
+  root.position.sub(ctr);
+  scene.add(root);
+  const R = Math.max(size.x, size.y, size.z) * 1.15;
+  const cam = new THREE.OrthographicCamera(-R / 2, R / 2, R / 2, -R / 2, 0.01, R * 6);
+  const ctx = canvas.getContext("2d");
+  window.__draw = () => VIEWS.forEach((v, i) => {
+    const d = R * 2;
+    if (v === "front") cam.position.set(0, 0, d);
+    if (v === "right") cam.position.set(d, 0, 0);
+    if (v === "back") cam.position.set(0, 0, -d);
+    if (v === "left") cam.position.set(-d, 0, 0);
+    if (v === "top") cam.position.set(0, d, 0.0001);
+    if (v === "iso") cam.position.set(d * 0.7, d * 0.5, d * 0.7);
+    cam.lookAt(0, 0, 0); cam.updateProjectionMatrix();
+    r.render(scene, cam);
+    ctx.drawImage(r.domElement, i * W, 0);
+    ctx.fillStyle = "#fff"; ctx.font = "16px sans-serif"; ctx.fillText(v + " (+z toward you)".slice(0, v === "front" ? 99 : 0), i * W + 6, 18);
+  });
+  window.__draw();
+  // animation QA: __pose(clipName, t) drives the rig to time t and redraws the strip
+  if (g.animations && g.animations.length) {
+    const mixer = new THREE.AnimationMixer(root);
+    window.__clips = g.animations.map((a) => a.name + ' ' + a.duration.toFixed(2));
+    window.__pose = (name, t) => {
+      mixer.stopAllAction();
+      const clip = g.animations.find((a) => a.name.toLowerCase().includes(String(name).toLowerCase())) || g.animations[0];
+      const act = mixer.clipAction(clip);
+      act.reset().play();
+      mixer.setTime(0); mixer.setTime(t);
+      window.__draw();
+      return clip.name + ' @' + t;
+    };
+  }
+  window.__ready = true;
+}, undefined, (e) => { info.error = String(e); window.__ready = true; });
+window.__info = () => info;
+// orientation QA: min-area box angle (deg, three.js rotation.y that axis-aligns the
+// footprint) + principal axis and the higher ("head") end, all in WORLD space
+window.__orient = () => {
+  const pts = [];
+  const v = new THREE.Vector3();
+  scene.updateMatrixWorld(true);
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const pos = o.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(pos.count / 20000));
+    for (let i = 0; i < pos.count; i += step) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); pts.push([v.x, v.y, v.z]); }
+  });
+  let best = [1e9, 0];
+  for (let deg = -45; deg <= 45; deg++) {
+    const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+    for (const p of pts) { const x = p[0] * c + p[2] * s, z = -p[0] * s + p[2] * c; if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+    const area = (x1 - x0) * (z1 - z0);
+    if (area < best[0]) best = [area, deg];
+  }
+  let mx = 0, mz = 0; for (const p of pts) { mx += p[0]; mz += p[2]; } mx /= pts.length; mz /= pts.length;
+  let sxx = 0, sxz = 0, szz = 0;
+  for (const p of pts) { const dx = p[0] - mx, dz = p[2] - mz; sxx += dx * dx; sxz += dx * dz; szz += dz * dz; }
+  const ang = 0.5 * Math.atan2(2 * sxz, sxx - szz);
+  const d = [Math.cos(ang), Math.sin(ang)];
+  const proj = pts.map((p) => (p[0] - mx) * d[0] + (p[2] - mz) * d[1]);
+  const sorted = [...proj].sort((a, b) => a - b);
+  const q85 = sorted[Math.floor(sorted.length * 0.85)], q15 = sorted[Math.floor(sorted.length * 0.15)];
+  let hi = 0, hn = 0, lo = 0, ln = 0;
+  pts.forEach((p, i) => { if (proj[i] > q85) { hi += p[1]; hn++; } else if (proj[i] < q15) { lo += p[1]; ln++; } });
+  const head = (hi / Math.max(1, hn)) > (lo / Math.max(1, ln)) ? d : [-d[0], -d[1]];
+  return { minAreaDeg: best[1], principalDeg: +(Math.atan2(d[0], d[1]) * 180 / Math.PI).toFixed(1), headDeg: +(Math.atan2(head[0], head[1]) * 180 / Math.PI).toFixed(1), n: pts.length };
+};
+
+window.__strip = (q = 0.6) => canvas.toDataURL("image/jpeg", q).split(",")[1];
+window.__post = (name, q = 0.7) => fetch("http://localhost:5321/save?name=" + encodeURIComponent(name), { method: "POST", body: canvas.toDataURL("image/jpeg", q) }).then((r) => r.text());
+</script></body></html>
