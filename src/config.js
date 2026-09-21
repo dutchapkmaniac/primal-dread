@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=38";
+export const ASSET_V = "?v=39";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -12,7 +12,8 @@ export const CFG = {
 
   world: {
     boundaryR: 402,          // the old circle — still the frame the rings hang on
-    square: 1008,            // update 38: +10% — ring9 grows the frontier (916 before)
+    square: 1008,
+    extraApples: 20,           // update 39: twenty more apple trees, in the emptiest forest left            // update 38: +10% — ring9 grows the frontier (916 before)
     oldBoundaryR: 150,       // the original map stays untouched inside this
     fieldR: 52,              // open field radius around the ruin
     hutPos: [-22, -128],     // tree hut, off-axis — you have to find it
@@ -300,6 +301,8 @@ export const CFG = {
     knife: { dmg: 25, range: 2.3, arcCos: 0.45, cooldown: 0.5 },
     silver_dagger: { dmg: 30, range: 2.2, arcCos: 0.45, cooldown: 0.45 },
     trex_dagger:   { dmg: 35, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 35: Elisia's gift — a blade ground from a T-Rex tooth
+    et_dagger:     { dmg: 45, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 39: the Eternial blades — gold and green stone, sharper than iron and silver
+    et_sword:      { dmg: 65, range: 2.6, arcCos: 0.40, cooldown: 0.6 },
     imp_dagger:    { dmg: 35, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 38: the same blade from an Imperator tooth (double on Elisia)
     machete: { dmg: 40, range: 2.5, arcCos: 0.45, cooldown: 0.55 },
     axe: { dmg: 50, range: 2.9, arcCos: 0.36, cooldown: 0.6 }, // double the knife, longer AND wider swing
@@ -375,7 +378,8 @@ export const CFG = {
     outerBand: [869, 990],
     // update 38: ten more hunters, born and wandering OUTSIDE the old circle (r > boundaryR)
     // so the middle of the map is no busier than before; 20 T-Rexes in all
-    extraCount: 10, extraMinR: 440,
+    extraCount: 20, extraMinR: 440,          // update 39: twenty outside the circle — thirty in all
+    imperatorCount: 2,                       // update 39: two of the thirty, random among all
     roarRate: 1,
   },
   // ---- update 38: TYRANNOSAURUS IMPERATOR — one of the twenty hunters, chosen at random.
@@ -418,23 +422,25 @@ export const CFG = {
   },
   // ---- update 36: THE DESERT (south-west), its river, and everything in it ----
   desert: {
-    bounds: { x1: -26, z0: 383 },          // the sand heightfield's box: west edge..x1, z0..south edge (update 38: ×1.1)
+    bounds: { x1: 400, z0: 150 },          // the sand heightfield's box: west edge..x1, z0..south edge (update 38: ×1.1)
     edgePad: 260, oldSquare: 763,          // update 38: the sand runs 260 m past the edge into the mist (no 'ocean'); the desert's u36 extent for the chest split
     // the river, traced from the user's sketch and scaled to the bigger map: it enters at the
     // west edge (z ~ +355) and leaves at the south edge (x ~ -45); the desert is its south-west bank
     river: { halfW: 11, beach: 5, waterY: 0.25, bedY: -1.3,
       // update 37: the same course scaled ×1.2 with the map
       // update 38: ×1.1 again with the map
-      points: [[-1096, 396], [-924, 521], [-845, 565], [-739, 601], [-675, 623], [-620, 660], [-568, 693], [-534, 718],
-        [-462, 746], [-409, 772], [-356, 825], [-284, 865], [-216, 898], [-158, 944], [-105, 985], [-40, 1056]] },
-    bridges: [[-880, 556], [-534, 718], [-216, 898], [-121, 968]],   // ×1.1
+      // update 39: the user's red line — the same course ×1.353 (longer, same shape), entering the west
+      // edge at z ~276 and leaving the south edge at x ~248; the ends run on past the edge into the mist
+      points: [[-1180, 153], [-1128, 190], [-894, 358], [-786, 416], [-643, 464], [-556, 493], [-481, 543], [-410, 587], [-364, 620],
+        [-266, 657], [-194, 692], [-122, 763], [-24, 817], [68, 861], [147, 922], [219, 977], [308, 1072], [360, 1128]] },
+    bridges: [[-834, 405], [-364, 620], [68, 861], [197, 954]],   // update 39: moved with the river
     // update 37: arched decks (arch = the rise in the middle) with solid rails railT thick — enter only from the ends
     bridge: { halfWidth: 1.8, overhang: 7, deckY: 0.6, arch: 1.3, railT: 0.5, endY: 0.03 },   // update 38: endY — both ends meet the ground
     tent: { fromBridge: 32, along: 6, zoneR: 5 },        // Idris's tent: on the desert bank of the MIDDLE bridge
-    oasis: { x: -770, z: 890, r: 9, palmX: -756, palmZ: 878, shadeR: 5 },   // update 38: 150 m deeper into the corner
+    oasis: { x: -600, z: 792, r: 9, palmX: -586, palmZ: 780, shadeR: 5 },   // update 39: shifted with the tent (+170, -98)   // update 38: 150 m deeper into the corner
     dune: { base: 0.35, fadeIn: 30, a1: 0.9, a2: 0.8, a3: 0.9, a4: 1.4, a5: 1.3 },   // rolling ridges, 2-5 m; a4/a5 are the crests you hide behind
-    cactusCount: 36, cactusSpacing: 30, cactusFailChance: 0.2, cactusDmg: 10,   // update 37: same density over the bigger sand
-    chestCount: 8, chestCountNew: 6, chestSpacing: 60,   // update 37: six more, all in the desert's new outer part
+    cactusCount: 60, cactusSpacing: 30, cactusFailChance: 0.2, cactusDmg: 10,   // update 37: same density over the bigger sand
+    chestCount: 8, chestCountNew: 10, chestSpacing: 60,   // update 37: six more, all in the desert's new outer part
     thirst: { drainTime: 360, bottleTime: 360, drinkRate: 20 },   // 100 -> 0 in six minutes; a full bottle is six minutes of water
     thirstHungerMult: 2,                    // thirst at zero: hunger drains twice as fast
   },
@@ -565,6 +571,7 @@ export const CFG = {
     remotus: 1.8, altai: 1.8, cactus: 4.0, palm: 9.0, nomad: 1.75,   // update 36: the desert (the Alioramus stand 1.8 m, 5.5 m long)
     portal: 5.2,   // update 37: the stone portals
     imperator: 5.94, trexdagger3d: 0.4, impdagger3d: 0.4,   // update 38
+    et_male: 3.1, et_female: 2.8, et_guardspear: 3.1, et_guardsword: 3.1, et_king: 3.2, et_statue: 9,   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { trex: 0, werewolf: 0, pig: 0, chicken: 0, tree: 0, appletree: 0, chest: 0, statue: 0,
@@ -599,7 +606,8 @@ export const CFG = {
     elisia: 0, elisia_evil: 0,   // update 35: Meshy-built, already facing +z
     // update 36: Duco built new from his two photos (front + side), and the desert's models
     remotus: 0, altai: 0, cactus: 0, palm: 0, nomad: 0, portal: 0,   // the portal's medallion face is the model's +z
-    imperator: 0, trexdagger3d: 0, impdagger3d: 0 },
+    imperator: 0, trexdagger3d: 0, impdagger3d: 0,
+    et_male: 0, et_female: 0, et_guardspear: 0, et_guardsword: 0, et_king: 0, et_statue: 0 },   // update 39
   // animation clip speed: clip cycles per meter moved (tuned per creature)
   animGait: { trex: 0.22, werewolf: 0.55, chicken: 1.6, croc: 0.9, cow: 0.5, dog: 0.9, elisia: 0.9 },
 
@@ -613,7 +621,59 @@ export const CFG = {
     trexdagger3d: { s: 0.46, pos: [0.28, -0.28, -0.60], rot: [0.35, -1.75, 0.25] },   // update 38: the real tooth daggers (their long axis is x, tip at -x)
     impdagger3d:  { s: 0.46, pos: [0.28, -0.28, -0.60], rot: [0.35, -1.75, 0.25] },
     crossbow3d:{ s: 0.62, pos: [0.28, -0.30, -0.66], rot: [0.05, -1.62, 0.02] },
+    // update 39: the Eternial weapons (built in code: long axis x, tip at -x)
+    etdagger3d: { s: 0.5, pos: [0.28, -0.28, -0.60], rot: [0.35, -1.75, 0.25] },
+    etsword3d:  { s: 1.05, pos: [0.30, -0.30, -0.66], rot: [0.35, -1.75, 0.25] },
+    etspear3d:  { s: 1.7, pos: [0.30, -0.26, -0.72], rot: [0.35, -1.75, 0.25] },
   },
+
+  // ---- update 39: ETERNIUS CITY — the Eternials' golden city in the desert's south-west corner (see eternius.js) ----
+  eternius: {
+    cx: -885, cz: 885,                                   // the mountain's heart
+    ux: 0.70710678, uz: -0.70710678, vx: -0.70710678, vz: -0.70710678, grpYaw: 2.35619449,   // a: toward the north-east, b: toward the north-west
+    mountainR: 205, cliffW: 3, cliffH: 34, peakR: 40, peakH: 150,
+    wallR: 118, terraceR: 92, cavernH: 46, wallTop: 22, shaftR: 14,
+    entryA: 68, entryRampA: 56, entryTh: 60,
+    ramp: { hw: 5, r0: 82, r1: 96 },
+    riverR0: 104, riverR1: 112, riverBridgeHw: 3,
+    levels: { court: 2, plaza: -4, dais: -2, terrace: 8, lower: -14, riverBed: -19, water: -17.5 },
+    tunnel: { a0: 118, a1: 206, hw: 5, h: 9 },
+    castle: { a0: 205, a1: 250, hw: 60, wallH: 14 },
+    gate: { hw: 5, h: 10 },
+    lake: { a: 296, r: 42, depth: 3 },
+    bridge: { a0: 252, a1: 340, hw: 3, arch: 1.2 },
+    flatA: 280, flatR: 140,                              // the dunes go flat this far around the castle
+    statue: { a: 226, b: 0 },
+    chainRex: { a: 222, b: -40, reach: 15 },             // the chained beast, in the courtyard's south-east wing
+    altar: { r: 10 },
+    throne: { a0: -152, a1: -116, hw: 20, doorHw: 4 },
+    vault: { b0: 118, b1: 142, hw: 18, doorHw: 2.2 },
+    inn: { r: 104, th: 135 }, keeper: { r: 100, th: -135 },
+    innPrice: 5, fishTime: 4, vaultTasks: 3,
+    stalls: [
+      { id: "food", name: "Neferu's kitchen", kind: "female", r: 44, th: -50, color: 0x2f7a3a, wares: 0xb0402a, blurb: "foodBlurb", lines: "foodLines",
+        sells: ["apple", "egg", "blueberries", "cooked_pork", "cooked_chicken", "cooked_fish", "chocolate", "energy_drink", "fishing_rod", "fill_water"],
+        buys: { apple: 1, egg: 1, blueberries: 1, lemon: 1, raw_pork: 1, raw_chicken: 1, raw_fish: 1, raw_beef: 1, raw_goat: 1, raw_wolf: 1, cooked_pork: 2, cooked_chicken: 2, cooked_fish: 2, cooked_eggs: 2, cooked_beef: 3, cooked_goat: 3, cooked_wolf: 3, cooked_trex: 5, chocolate: 2, bowl_yogurt: 3, bowl_yogurt_blueberries: 5 } },
+      { id: "tools", name: "Khamet's tools", kind: "male", r: 44, th: -18, color: 0x8a5a2a, wares: 0x555a60, blurb: "toolsBlurb", lines: "toolsLines",
+        sells: ["knife", "hammer", "axe", "rope", "torch", "tinderbox", "bandage", "needle", "thread", "arrow", "climbing_anchor", "bowl"],
+        buys: { knife: 3, hammer: 4, axe: 10, rope: 1, torch: 1, tinderbox: 2, bandage: 1, needle: 1, thread: 1, arrow: 1, climbing_anchor: 5, pestle: 4, spear: 6, bowl: 1, crossbow: 40 } },
+      { id: "rare", name: "Sethra's rarities", kind: "female", r: 44, th: 18, color: 0x3a2a6a, wares: 0xc9a227, blurb: "rareBlurb", lines: "rareLines", rare: true, sells: [],
+        buys: { silver_dagger: 100, holy_water: 250, unholy_water: 250, trex_dagger: 25, imp_dagger: 500, fossil: 750, gold_statuette: 2500, trex_tooth: 15, imp_tooth: 60, unholy_tiara: 300, silver_bar: 40, croc_skin: 20, wolf_fur: 8, goat_horn: 6, wolf_tooth: 6 } },
+      { id: "smith", name: "Ankhu the smith", kind: "male", r: 44, th: 52, color: 0x6a2a1a, wares: 0xd9ad2e, blurb: "smithBlurb", lines: "smithLines",
+        sells: ["et_dagger", "et_sword", "et_spear"], buys: { et_dagger: 30, et_sword: 60, et_spear: 45 } },
+    ],
+    prices: { apple: 1, egg: 1, blueberries: 2, cooked_pork: 3, cooked_chicken: 3, cooked_fish: 3, chocolate: 4, energy_drink: 3, fishing_rod: 12, fill_water: 2,
+      knife: 8, hammer: 10, axe: 25, rope: 4, torch: 3, tinderbox: 5, bandage: 4, needle: 3, thread: 2, arrow: 6, climbing_anchor: 12, bowl: 3,
+      et_dagger: 60, et_sword: 120, et_spear: 90 },
+    bundles: { arrow: 5 },
+    tasks: [
+      { need: [["apple", 5]], reward: 15 }, { need: [["cookedMeat", 3]], reward: 18 }, { need: [["branch", 8]], reward: 10 },
+      { need: [["egg", 4]], reward: 10 }, { need: [["blueberries", 6]], reward: 12 }, { need: [["wolf_fur", 1]], reward: 30 },
+      { need: [["trex_tooth", 1]], reward: 60 }, { need: [["rope", 2], ["torch", 1]], reward: 14 },
+    ],
+    coinsPerChest: [3, 5], fossilChance: 1 / 256, statuetteChance: 1 / 512,
+  },
+  etSpear: { dmgMult: 1.5 },   // update 39: the Eternial spear flies like yours and cuts half as deep again
 
   // named places: labeled on the map only after you have STOOD there
   // ---- update 37: THE PORTALS — see portals.js for the rules ----
@@ -625,7 +685,7 @@ export const CFG = {
     useR: 4,                                     // stand this close to investigate / use one
     whiteScale: 0.78,                            // the cellar is low
     // the model's frame after normalizeModel (5.2 m tall, feet at 0, medallion face toward +z)
-    geo: { ringY: 2.86, ringR: 1.26, medY: 4.7, medR: 0.37, medZF: -0.25, medZB: -1.29, bowlX: 2.48, bowlY: 2.18, bowlZ: 0.27 },   // update 38: measured — the ring's top sits BEHIND the pillars (z -1.29..-0.25), the bowls' rims at y 2.18
+    geo: { ringY: 2.86, ringR: 1.26, medY: 4.7, medR: 0.37, medZF: -0.25, medZB: -1.29, bowlX: 2.48, bowlY: 2.18, bowlZ: 0.27, swirlZ: -1.5 },   // update 38: measured — the ring's top sits BEHIND the pillars (z -1.29..-0.25), the bowls' rims at y 2.18
     // the temple's cellar: the room under the ground floor, the stairs in the north-west corner
     // (top at x1, y 0 — dropping westward to x0, y), the white portal facing the stairs
     basement: { x0: -11.5, x1: 11.5, z0: -6.6, z1: 6.6, y: -4.4, stairs: { x0: -11.3, x1: -4.4, z0: -6.4, z1: -4.5 },

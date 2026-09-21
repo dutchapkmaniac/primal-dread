@@ -143,15 +143,15 @@ export class PortalSystem {
         grp.add(m); emb.push(m);
       }
       // the ring's light and the swirl inside it (shown once awake)
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(G.ringR + 0.02, 0.13, 8, 56),
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(G.ringR - 0.1, 0.13, 8, 56),
         new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
-      ring.position.y = G.ringY; grp.add(ring);
+      ring.position.set(0, G.ringY, G.swirlZ || 0); grp.add(ring);   // update 39: inside the stone wheel
       const swTex = new THREE.CanvasTexture(swirlCanvas(hex)); swTex.colorSpace = THREE.SRGBColorSpace;
       const swirl = [];
       for (const k of [0, 1]) {
         const m = new THREE.Mesh(new THREE.CircleGeometry(G.ringR - 0.04, 40),
           new THREE.MeshBasicMaterial({ map: swTex, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-        m.position.set(0, G.ringY, (k ? -1 : 1) * 0.03); grp.add(m); swirl.push(m);
+        m.position.set(0, G.ringY, (G.swirlZ || 0) + (k ? -1 : 1) * 0.03); grp.add(m); swirl.push(m);
       }
       // the bowls' fires: crossed billboards in the portal's colour
       const flTex = new THREE.CanvasTexture(flameCanvas(hex)); flTex.colorSpace = THREE.SRGBColorSpace;

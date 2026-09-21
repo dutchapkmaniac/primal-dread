@@ -88,6 +88,9 @@ export async function loadIcons() {
     ["unholy_water", "./assets/ui_unholywater.png"], ["unholy_tiara", "./assets/ui_unholytiara.png"],
     ["water_bottle", "./assets/ui_waterbottle.png"],   // update 36
     ["imp_tooth", "./assets/ui_imptooth.png"], ["imp_dagger", "./assets/ui_impdagger.png"],   // update 38
+    // update 39: Eternius City
+    ["fossil", "./assets/ui_fossil.png"], ["gold_statuette", "./assets/ui_statuette.png"], ["vault_key", "./assets/ui_vaultkey.png"],
+    ["et_dagger", "./assets/ui_etdagger.png"], ["et_sword", "./assets/ui_etsword.png"], ["et_spear", "./assets/ui_etspear.png"],
   ].map(async ([id, url]) => {
     const im = await loadImage(url);
     if (!im) { icons[id] = fallbackIcon(id); return; }
@@ -153,6 +156,7 @@ function fallbackIcon(id) {
     bowl_milk: "#e8e4d8", bowl_yogurt: "#ece6d4", bowl_yogurt_blueberries: "#8a7aa8", scroll_yogurt: "#e0d8b0",
     trex_dagger: "#e8dcc4", holy_water: "#f0e2b0", unholy_water: "#4a1018", unholy_tiara: "#3a3438",
     imp_tooth: "#3a3a3c", imp_dagger: "#2c2c30",
+    fossil: "#b09a78", gold_statuette: "#e0b230", vault_key: "#d9ad2e", et_dagger: "#e0b230", et_sword: "#e0b230", et_spear: "#e0b230",   // update 39
     water_bottle: "#5a3a22",
   };
   const cnv = document.createElement("canvas");
@@ -199,6 +203,8 @@ export class Inventory {
     return count <= 0;
   }
   has(id) { return this.slots.some((s) => s && s.id === id); }
+  count(id) { return this.slots.reduce((n, s) => n + (s && s.id === id ? s.count : 0), 0); }   // update 39
+  remove(id, n = 1) { while (n-- > 0 && this.removeOne(id)) { /* one at a time */ } }
   removeOne(id) {
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i];

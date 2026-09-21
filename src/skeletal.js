@@ -125,6 +125,9 @@ PLANS.spino = {
   gait: { freq: 1.7, legAmp: 0.55, neckAmp: 0.06, tailAmp: 0.2, lift: 0.1, kneeAmp: 0.65 },
 };
 PLANS.spinobaby = PLANS.trex;
+// update 39: the Imperator — a T-Rex whose small arms (shrunk in the mesh) stay pinned to the body:
+// the box in front of the chest is fenced off from both the neck and the legs
+PLANS.imperator = { ...PLANS.trex, armFence: { y0: 0.26, y1: 0.68, z0: 0.62, z1: 0.9 } };
 PLANS.goat = PLANS.pig; // the mountain herd: same four-legged plan
 PLANS.trike = {         // the battering ram: quadruped with a heavy tail
   legs: [[-0.24, 0.7], [0.24, 0.7], [-0.24, 0.28], [0.24, 0.28]],
@@ -334,6 +337,8 @@ export function riggedCreature(sourceGroup, type) {
     v.fromBufferAttribute(pos, i);
     let bone = 0, blend = 1;
     let bone2 = 0, w2 = 0;   // optional second influence (shin, across the ankle)
+    const af = plan.armFence;
+    const inArm = !!af && v.y > bb.min.y + size.y * af.y0 && v.y < bb.min.y + size.y * af.y1 && v.z > bb.min.z + size.z * af.z0 && v.z < bb.min.z + size.z * af.z1;
     // legs: below the hips, near a leg anchor
     if (v.y < hipY) {
       let best = -1, bd = 1e9;
@@ -362,7 +367,7 @@ export function riggedCreature(sourceGroup, type) {
         tightOk = Math.abs(v.x - anchors[best].x) < f.x * widen
           && dzz > -f.z * widen && dzz < f.z * widen * (footLvl && dzz > 0 ? 1.4 : 1);
       }
-      if (bd < legR && tightOk) {
+      if (bd < legR && tightOk && !inArm) {
         blend = Math.min(1, (hipY - v.y) / (size.y * 0.12));
         const thighB = legBase + best;
         const kneeB = knees ? bones.indexOf(knees[best]) : -1;
@@ -389,7 +394,7 @@ export function riggedCreature(sourceGroup, type) {
     }
     // neck/head: forward and high. A plan that cancels a baked-in head turn hands
     // the neck a long ramp, so 45 degrees of correction bends instead of pinching.
-    if (bone === 0 && v.z > headZ && v.y > headY - size.y * 0.1) {
+    if (bone === 0 && !inArm && v.z > headZ && v.y > headY - size.y * 0.1) {
       bone = 1;
       blend = Math.min(1, (v.z - headZ) / (size.z * (plan.autoHeadYaw ? 0.22 : 0.08)));
     }

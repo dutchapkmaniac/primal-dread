@@ -99,6 +99,7 @@ export class World {
     if (this.inJabbHut(x, z)) return true;   // the dwarf's walls hold
     if (inFarm(x, z)) return true;           // update 29: the whole farm compound
     if (this.desert.inTentZone(x, z)) return true;   // update 36: Idris's tent
+    if (this.city && this.city.isSafe(x, z, y)) return true;   // update 39: the city's walls (not the chained beast's reach)
     return this.onHut(x, z, y);
   }
   inFarm(x, z) { return inFarm(x, z); }
@@ -185,7 +186,10 @@ export class World {
       if (x > S.x0 - 0.3 && x < S.x1 + 0.3 && z > S.z0 && z < S.z1 && y < 1.0) return B.y * Math.min(1, Math.max(0, (x - S.x0) / (S.x1 - S.x0)));   // update 38: drops eastward
       if (x > B.x0 && x < B.x1 && z > B.z0 && z < B.z1 && y < -0.5) return B.y;
     }
+    // update 39: Eternius City — its floors override everything (the cavern under the mountain, the courtyard, the bridge)
+    if (this.city) { const cy = this.city.floorH(x, z, y); if (cy !== null && cy !== undefined) return cy; }
     const cands = [this.mountainH(x, z)];
+    if (this.city) cands.push(this.city.mountainH(x, z));   // update 39: the city's mountain
     this.desert.groundCand(x, z, cands);   // update 36: dunes, the oasis, the bridge decks
     // the treetop perch (update 27): while climbing, the crown holds you
     if (this.climbSpot && Math.abs(x - this.climbSpot.x) < 1.3
@@ -241,7 +245,7 @@ export class World {
       if (!overAtrium && !overStairs) cands.push(R.floor2);
       // the roof is not walkable — floors stop at the first floor
     }
-    let best = 0;
+    let best = this.desert.baseH(x, z);   // update 39: the sand is GROUND — never a ceiling you walk under
     for (const c of cands) if (c <= y + 0.7 && c > best) best = c;
     return best;
   }
@@ -386,6 +390,26 @@ export class World {
         const a = this.rng() * Math.PI * 2, r = R8.treeMinR + 8 + this.rng() * (R8.treeMaxR - R8.treeMinR - 16);
         const x = Math.cos(a) * r, z = Math.sin(a) * r;
         if (ok(x, z, 28, this.ring8Chests) && !this.ring8Apples.some(([px, pz]) => Math.hypot(px - x, pz - z) < 10)) this.ring8Chests.push([x, z]);
+      }
+    }
+    // update 39: twenty more apple trees — each one goes to the emptiest stretch of forest left
+    {
+      const all = [...CFG.world.appleTrees, ...CFG.appleTrees2, ...this.ring8Apples];
+      const sqA = CFG.world.square - 20, F = CFG.farm;
+      const okA = (x, z) => Math.hypot(x, z) > CFG.world.treeMinR + 10 && Math.abs(x) < sqA && Math.abs(z) < sqA
+        && !this.inMountain(x, z) && !this.inNewLandmark(x, z, 12) && !this.desert.inDesert(x, z) && this.desert.riverDist(x, z) > 30
+        && Math.hypot(x - CFG.lake.x, z - CFG.lake.z) > CFG.lake.r + CFG.lake.beach + 12
+        && !(Math.abs(x - F.x) < F.hw + 12 && Math.abs(z - F.z) < F.hd + 12);
+      for (let k = 0; k < (CFG.world.extraApples || 0); k++) {
+        let bx = 0, bz = 0, bd = -1;
+        for (let i = 0; i < 400; i++) {
+          const x = (this.rng() * 2 - 1) * sqA, z = (this.rng() * 2 - 1) * sqA;
+          if (!okA(x, z)) continue;
+          let d = 1e9;
+          for (const [ax, az] of all) d = Math.min(d, Math.hypot(ax - x, az - z));
+          if (d > bd) { bd = d; bx = x; bz = z; }
+        }
+        if (bd > 0) { all.push([bx, bz]); this.ring8Apples.push([bx, bz]); }
       }
     }
     this.buildRuin();
@@ -3511,6 +3535,7 @@ export class World {
       const rc = this.desert.collide(x, z, r, y);
       x = rc.x; z = rc.z;
     }
+    if (this.city) { const cc = this.city.collide(x, z, r, y); x = cc.x; z = cc.z; }   // update 39: the city's walls, rails, the lake
     // the world is a SQUARE now — clamp to its edges
     const sq = CFG.world.square - 1;
     if (x > sq) x = sq; else if (x < -sq) x = -sq;

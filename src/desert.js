@@ -17,6 +17,7 @@
 // this module where the desert is.
 import * as THREE from "three";
 import { CFG } from "./config.js";
+import { cityFlatten, cityLakeDip } from "./eternius.js";   // update 39
 import { STR } from "../strings.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
@@ -71,6 +72,8 @@ export class Desert {
     this.tent = { x: B.x + B.nx * T.fromBridge + B.tx * T.along, z: B.z + B.nz * T.fromBridge + B.tz * T.along, yaw: Math.atan2(-B.nx, -B.nz) };
     this.oasis = { x: C.oasis.x, z: C.oasis.z, r: C.oasis.r };
     this.palm = { x: C.oasis.palmX, z: C.oasis.palmZ };
+    // update 39: each deck's desert end sits ON the dune there (the forest end on the grass)
+    for (const b of this.bridges) b.endD = this.duneH(b.x + b.nx * b.half, b.z + b.nz * b.half);
     this.cacti = []; this.chests = [];
     // named places for the map / discovery — added once, before the game reads them
     if (!CFG.locations.some((l) => l.id === "tent")) {
@@ -115,12 +118,20 @@ export class Desert {
   }
   inOasisWater(x, z) { return Math.hypot(x - this.oasis.x, z - this.oasis.z) < this.oasis.r; }
   // update 37: the deck's height across the river — a hump, deckY at both ends, deckY + arch in the middle
-  deckY(across) {
+  deckY(across, b) {
     // update 38: a hump from ground level at one end to ground level at the other
+    // update 39: the desert end (across > 0) meets the SAND's height, not a flat 0.03
     const B = D().bridge, half = D().river.halfW + B.overhang;
     const u = Math.max(-1, Math.min(1, across / half));
-    const end = B.endY ?? 0.03, mid = B.deckY + (B.arch || 0);
-    return end + (mid - end) * (1 - u * u);
+    const end0 = B.endY ?? 0.03, end1 = (b && b.endD !== undefined) ? b.endD : end0, mid = B.deckY + (B.arch || 0);
+    const base = end0 + (end1 - end0) * (u + 1) / 2;
+    return base + (mid - base) * (1 - u * u);
+  }
+  // update 39: the sand as BASE ground for World.groundHeight — walking off a bridge end, you
+  // stand on the dune, you never slide under it (0 off the sand, on a deck, or in the forest)
+  baseH(x, z) {
+    if (!this.inDesert(x, z) || this.bridgeAt(x, z)) return 0;
+    return this.inOasisWater(x, z) ? D().dune.base - 0.25 : this.duneH(x, z);
   }
   // shade: the tent (also a safe zone) and the palm's crown
   inTentZone(x, z) { return Math.hypot(x - this.tent.x, z - this.tent.z) < D().tent.zoneR; }
@@ -141,12 +152,12 @@ export class Desert {
       C.a3 * (0.5 + 0.5 * Math.sin(0.045 * (x + z) + 0.7 * Math.sin(0.02 * (x - z)))) +
       C.a4 * (0.5 + 0.5 * Math.sin(0.09 * x + 0.6 * Math.sin(0.05 * z + 2.0))) +
       C.a5 * (0.5 + 0.5 * Math.sin(0.14 * z + 0.05 * x + 0.5 * Math.sin(0.06 * x - 0.8)));
-    return C.base + ridges * f * of * of;
+    return C.base + ridges * f * of * of * cityFlatten(x, z) - cityLakeDip(x, z);   // update 39: level around the city, a bowl for its lake
   }
   // a candidate for World.groundHeight
   groundCand(x, z, cands) {
     const br = this.bridgeAt(x, z);
-    if (br) { cands.push(this.deckY(br.across)); return; }   // update 37: the arch
+    if (br) { cands.push(this.deckY(br.across, br.b)); return; }   // update 37: the arch
     if (!this.inDesert(x, z)) return;
     if (this.inOasisWater(x, z)) { cands.push(D().dune.base - 0.25); return; }
     cands.push(this.duneH(x, z));
@@ -275,7 +286,7 @@ export class Desert {
       const deckW = b.hw * 2, N = 16, L = b.half * 2 + 2;
       for (let i = 0; i < N; i++) {
         const z0 = -L / 2 + (L / N) * i, z1 = z0 + L / N;
-        const y0 = this.deckY(z0) - 0.11, y1 = this.deckY(z1) - 0.11;
+        const y0 = this.deckY(z0, b) - 0.11, y1 = this.deckY(z1, b) - 0.11;
         const len = Math.hypot(z1 - z0, y1 - y0);
         const tilt = -Math.atan2(y1 - y0, z1 - z0);
         const seg = new THREE.Mesh(new THREE.BoxGeometry(deckW, 0.22, len + 0.05), plankMat);
@@ -293,7 +304,7 @@ export class Desert {
         }
       }
       for (const k of [-1, 0, 1]) {
-        const pz = k * (L / 3.2), top = this.deckY(pz) - 0.1;
+        const pz = k * (L / 3.2), top = this.deckY(pz, b) - 0.1;
         const pier = new THREE.Mesh(new THREE.BoxGeometry(0.6, top - C.river.bedY + 0.2, 0.6), railMat);
         pier.position.set(0, (top + C.river.bedY) / 2 - 0.1, pz);
         g.add(pier);
@@ -357,6 +368,7 @@ export class Desert {
         if (!this.inDesert(x, z) || this.riverDist(x, z) < 30) continue;
         if (Math.hypot(x - this.oasis.x, z - this.oasis.z) < 26) continue;
         if (Math.hypot(x - this.tent.x, z - this.tent.z) < 22) continue;
+        if (cityFlatten(x, z) < 1) continue;   // update 39: not in the city
         if (this.cacti.some((q) => Math.hypot(q.x - x, q.z - z) < C.cactusSpacing)) continue;
         const y = this.duneH(x, z);
         let mesh;
@@ -422,6 +434,7 @@ export class Desert {
         if (!this.inDesert(x, z) || this.riverDist(x, z) < 26) continue;
         if (Math.hypot(x - this.oasis.x, z - this.oasis.z) < 22) continue;
         if (Math.hypot(x - this.tent.x, z - this.tent.z) < 18) continue;
+        if (cityFlatten(x, z) < 1) continue;   // update 39
         if (spots.some(([qx, qz]) => Math.hypot(qx - x, qz - z) < C.chestSpacing)) continue;
         if (this.cacti.some((q) => Math.hypot(q.x - x, q.z - z) < 6)) continue;
         spots.push([x, z]);
@@ -440,6 +453,7 @@ export class Desert {
       if (kind === "remotus" ? (rd < 28 || rd > C.riverBand) : rd < C.riverMin) continue;
       if (Math.hypot(x - this.tent.x, z - this.tent.z) < 45) continue;
       if (Math.hypot(x - this.oasis.x, z - this.oasis.z) < 30) continue;
+      if (cityFlatten(x, z) < 1) continue;   // update 39: no hunter is born in the city
       if (out.some(([qx, qz]) => Math.hypot(qx - x, qz - z) < 40)) continue;
       out.push([x, z]);
     }

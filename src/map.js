@@ -42,8 +42,16 @@ export class GameMap {
     ring(CFG.ring5.treeMinR, CFG.ring5.treeMaxR, FOREST_DEEP);   // the +20% band (update 27)
     ring(CFG.ring6.treeMinR, CFG.ring6.treeMaxR, FOREST_DEEP);   // the ring6 band (update 29)
     ring(CFG.ring7.treeMinR, CFG.ring7.treeMaxR, FOREST_DEEP);   // the ring7 band (update 36)
+    if (mini) {   // update 39: the corner wilds outside the old circle (the full map paints them in paintPro)
+      c.beginPath();
+      c.rect(tx(-W.square), ty(-W.square), 2 * W.square * s, 2 * W.square * s);
+      c.arc(tx(0), ty(0), W.boundaryR * s, 0, Math.PI * 2, true);
+      c.fillStyle = FOREST_DEEP;
+      c.fill("evenodd");
+    }
     // update 36: the desert, its river and the three bridges
     if (this.game.desert) this.game.desert.paint(c, tx, ty, s, mini);
+    if (this.game.city) this.game.city.paint(c, tx, ty, s, mini);   // update 39: the mountain, the castle, the lake
     // the lake with its beach
     for (const l of [{ x: CFG.lake.x, z: CFG.lake.z, r: CFG.lake.r }, ...CFG.lake.lobes]) {
       c.beginPath();
@@ -315,10 +323,9 @@ export class GameMap {
     const tx = (x) => size / 2 + (x - p.pos.x) * s;
     const ty = (z) => size / 2 + (z - p.pos.z) * s;
     // ground tint inside the playable circle
-    c.beginPath();
-    c.arc(tx(0), ty(0), CFG.world.boundaryR * s, 0, Math.PI * 2);
+    // update 39: the whole SQUARE is ground — the old circle left the corners empty
     c.fillStyle = "rgba(58,66,50,.55)";
-    c.fill();
+    c.fillRect(tx(-CFG.world.square), ty(-CFG.world.square), 2 * CFG.world.square * s, 2 * CFG.world.square * s);
     this.paintWorld(c, tx, ty, s, true);
     this.paintLandmarks(c, tx, ty, s, true);
     this.paintPlayer(c, size / 2, size / 2, p.yaw, 7);

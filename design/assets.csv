@@ -173,3 +173,21 @@ a_elisia_chase,Elisia's own chase music (update 38),audio,"demonic female choir 
 a_elisia_laughloop,the dark form's laughter (update 38),audio,"continuous distorted evil female cackling, 16 s loop; replaces the singing in the mist once she has turned",16 s mp3,-,generate
 a_elisia_laughbig,her laugh over a kill (update 38),audio,"one loud triumphant demonic laugh; played when she has eaten a T-Rex and you have five seconds to run",4 s mp3,-,generate
 a_teleport,portal whoosh (update 38),audio,"rising shimmer into a deep whoosh and an echoing chime; with a white flash when a portal takes you",3 s mp3,-,generate
+et_male,model,assets/models/et_male.glb,Eternial civilian man (3.10 m) — Higgsfield nano_banana_pro image -> image_to_3d (u39)
+et_female,model,assets/models/et_female.glb,Eternial civilian woman (2.80 m) — Higgsfield image_to_3d (u39)
+et_guardspear,model,assets/models/et_guardspear.glb,Eternial guard with golden spear — Higgsfield image_to_3d (u39)
+et_guardsword,model,assets/models/et_guardsword.glb,Eternial guard with golden sword — Higgsfield image_to_3d (u39)
+et_king,model,assets/models/et_king.glb,King Anhurath of Eternius — Higgsfield image_to_3d (u39)
+et_statue,model,assets/models/et_statue.glb,"Ozrek the Spearbearer, the legend's golden statue — Higgsfield image_to_3d (u39)"
+t_sandstone,texture,assets/tex/t_sandstone_*.webp,Eternius sandstone ashlar — nano_banana_pro tile + pipeline.py (u39)
+t_goldpanel,texture,assets/tex/t_goldpanel_*.webp,Eternius engraved gold panel with green gems — nano_banana_pro tile + pipeline.py (u39)
+t_cavern,texture,assets/tex/t_cavern_*.webp,Eternius cavern rock and mountain — nano_banana_pro tile + pipeline.py (u39)
+t_flag,texture,assets/tex/t_flag_basecolor.webp,Eternius banner: golden jackal emblem on green — nano_banana_pro (u39)
+a_eternius,audio,assets/audio/a_eternius.m4a,"Eternius City theme, 90 s loop — sonilo_music (u39)"
+ui_fossil,icon,assets/ui_fossil.png,"Fossil item icon — nano_banana_pro on magenta, keyed offline (u39)"
+ui_statuette,icon,assets/ui_statuette.png,"Golden statuette item icon — nano_banana_pro, keyed offline (u39)"
+ui_coin,icon,assets/ui_coin.png,"Eternial coin icon — nano_banana_pro, keyed offline (u39, reserved)"
+ui_etdagger,icon,assets/ui_etdagger.png,"Eternial dagger icon — from the weapon render, keyed offline (u39)"
+ui_etsword,icon,assets/ui_etsword.png,"Eternial sword icon — from the weapon render, keyed offline (u39)"
+ui_etspear,icon,assets/ui_etspear.png,"Eternial spear icon — from the weapon render, keyed offline (u39)"
+ui_vaultkey,icon,assets/ui_vaultkey.png,Vault key icon — drawn in PIL (u39)

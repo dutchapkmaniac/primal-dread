@@ -15,7 +15,8 @@ import { GameMap } from "./map.js";
 import { FarmGame } from "./farmgame.js";
 import { ElisiaSystem } from "./elisia.js";   // update 35
 import { DesertSystem } from "./desert.js";
-import { PortalSystem } from "./portals.js";   // update 37: the five portals   // update 36
+import { PortalSystem } from "./portals.js";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -24,7 +25,8 @@ const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_in
   // update 30: kitchen + bathroom finishes
   "t_checker", "t_whitetile", "t_mosaic", "t_cream",
   // update 36: the desert's sand
-  "t_sand", "t_riversand"];   // update 37: the river bank
+  "t_sand", "t_riversand",   // update 37: the river bank
+  "t_sandstone", "t_goldpanel", "t_cavern", "t_flag"];   // update 39: Eternius City
 // ONE word per situation for the mobile context button, resolved from the
 // prompt label's leading constant. Built ONCE — update 26 profiling caught the
 // per-frame rebuild of this table as the main-thread's top garbage source.
@@ -86,7 +88,8 @@ const GLB_IDS = ["trex", "werewolf", "pig", "chicken", "tree", "appletree", "che
   // update 36: the desert — its two Alioramus, the cactus, the palm, Idris
   "remotus", "altai", "cactus", "palm", "nomad",
   "portal",   // update 37
-  "imperator", "trexdagger3d", "impdagger3d"];   // update 38
+  "imperator", "trexdagger3d", "impdagger3d",   // update 38
+  "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue"];   // update 39: the Eternials
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
@@ -164,6 +167,7 @@ class Game {
     this.elisia = new ElisiaSystem(this);   // update 35: the angel of the forest
     this.desert = new DesertSystem(this);   // update 36: thirst, the bottle, Idris, the wind
     this.portals = new PortalSystem(this);  // update 37: the five portals
+    this.city = new EterniusCity(this);     // update 39: Eternius City
     this.barTinderTaken = false;
     this.containerTinderTaken = false;
     this.assets = { tex: {}, texN: {}, glb: {} };
@@ -362,6 +366,7 @@ class Game {
     };
 
     this.world = new World(this.scene, this.assets, this.rng);
+    this.world.city = this.city;            // update 39: the city's floors, walls and mountain join the world's ground
     this.portals.build();                   // update 37: the portals stand once the ground exists
     this.world.fogMult = presetFx.fog;      // preset draw distance, from boot
     this.world.updateEnv(0);
@@ -370,6 +375,7 @@ class Game {
     // multi-second stutter the first time something enters the camera view
     this.renderer.compile(this.scene, this.camera);
 
+    buildEternialWeapons(this.assets);   // update 39: the gold weapons exist before the player mounts them
     const ctx = {
       scene: this.scene, world: this.world, rng: this.rng,
       audio: this.audio, ui: this.ui, assets: this.assets,
@@ -379,6 +385,7 @@ class Game {
     this.player = new Player(this.camera, ctx);
     ctx.player = this.player;
     this.ctx = ctx;
+    this.city.build();   // update 39: the city needs the creature context for its chained beast
 
     // the expedition map + HUD minimap + compass
     this.map = new GameMap(this);
@@ -398,9 +405,11 @@ class Game {
         const [x, z] = this.world.randomOutsideForest(this.rng, CFG.trex.extraMinR);
         specs.push([x, z, { zone: "outside" }]);
       }
-      const imp = Math.floor(this.rng() * specs.length);
+      // update 39: two Imperators among the thirty, each a random one
+      const imps = new Set();
+      while (imps.size < Math.min(CFG.trex.imperatorCount || 1, specs.length)) imps.add(Math.floor(this.rng() * specs.length));
       specs.forEach(([x, z, o], i) => {
-        const isImp = i === imp;
+        const isImp = imps.has(i);
         this.creatures.push(new Creature("trex", (isImp && this.assets.glb.imperator) || this.assets.glb.trex, x, z, ctx, { ...o, imperator: isImp }));
       });
     }
@@ -1078,6 +1087,7 @@ class Game {
     this.elisia.update(dt);   // update 35
     this.desert.update(dt);   // update 36
     this.portals.update(dt);  // update 37
+    this.city.update(dt);     // update 39
     this.updateHunt();
     // 20Hz is plenty for proximity prompts — profiling showed this scan was
     // the main thread's top allocator (~45 label strings/frame). A pending
@@ -1261,16 +1271,18 @@ class Game {
   }
   throwSpear(player) {
     const sel = player.inv.selected();
-    if (!sel || sel.id !== "spear") return;
+    if (!sel || (sel.id !== "spear" && sel.id !== "et_spear")) return;   // update 39: the Eternial spear too
+    const kind = sel.id;
     player.inv.consumeSelected();
     this.ui.renderHotbar(player.inv);
-    const mesh = this.buildSpearMesh();
+    let mesh = this.buildSpearMesh();
+    if (kind === "et_spear" && this.assets.glb.etspear3d) { mesh = new THREE.Group(); const m = this.assets.glb.etspear3d.model.clone(); m.rotation.y = Math.PI / 2; m.scale.setScalar(0.75); mesh.add(m); }
     const dir = new THREE.Vector3();
     this.camera.getWorldDirection(dir);
     mesh.position.copy(this.camera.position).addScaledVector(dir, 0.7);
     mesh.lookAt(mesh.position.clone().add(dir));
     this.scene.add(mesh);
-    this.spears.push({ mesh, vel: dir.multiplyScalar(CFG.spear.throwSpeed), t: 0 });
+    this.spears.push({ mesh, vel: dir.multiplyScalar(CFG.spear.throwSpeed), t: 0, kind });
     this.audio.noise(0.12, 1600, 0.25, "highpass"); // the whoosh
   }
   updateSpears(dt) {
@@ -1308,10 +1320,12 @@ class Game {
           this.scene.remove(sp.mesh);
           // it clatters off lesser prey and can be picked back up
           if (struck.type !== "mother" && struck.type !== "spino" && struck.type !== "spinobaby") {
-            this.spawnDrop("spear", 1, P.x, P.z, this.world.groundHeight(P.x, P.z, 0));
+            this.spawnDrop(sp.kind || "spear", 1, P.x, P.z, this.world.groundHeight(P.x, P.z, 0));
           }
         }
+        this.spearMult = sp.kind === "et_spear" ? CFG.etSpear.dmgMult : 1;   // update 39
         struck.spearHit(this, head);
+        this.spearMult = 1;
         this.spears.splice(i, 1);
         continue;
       }
@@ -1330,7 +1344,7 @@ class Game {
       }
       if (stop || sp.t > 8) {
         this.scene.remove(sp.mesh);
-        this.spawnDrop("spear", 1, P.x, P.z, this.world.groundHeight(P.x, P.z, 0));
+        this.spawnDrop(sp.kind || "spear", 1, P.x, P.z, this.world.groundHeight(P.x, P.z, 0));
         this.emitNoise(P.x, P.z, 25); // the clatter carries — hunters come to look
         this.spears.splice(i, 1);
       }
@@ -1608,9 +1622,11 @@ class Game {
       if (t && t.dead) this.huntTarget = null;
     }
     // update 38: the T-Rex she fights shows its own bar under hers
-    const f = this.huntFoe;
-    if (f && !f.dead && f.distToPlayer() < 90) this.ui.huntBar2(f.imperator ? STR.huntImperator : STR.huntTrex, Math.max(0, f.hp) / f.maxHp);
-    else { this.ui.huntBar2(null, null); if (f && f.dead) this.huntFoe = null; }
+    // update 39: the foe's bar lives exactly as long as the fight — when she dies (or feeds, or leaves) both bars go together
+    const f = this.huntFoe, ec = this.elisia && this.elisia.c;
+    const fightOn = !!(f && !f.dead && ec && !ec.dead && !ec.gone && this.elisia.fight && this.elisia.fight.foe === f);
+    if (fightOn && f.distToPlayer() < 90) this.ui.huntBar2(f.imperator ? STR.huntImperator : STR.huntTrex, Math.max(0, f.hp) / f.maxHp);
+    else { this.ui.huntBar2(null, null); if (f && !fightOn) this.huntFoe = null; }
   }
 
   // light the torch: tinderbox, or hold it into any burning fire.
@@ -1841,6 +1857,7 @@ class Game {
     // ...and Jabb lays a spare hammer on the stump
     if (this.world.hammerMesh) this.world.hammerMesh.visible = true;
     this.farm.onMorning();
+    this.city.onMorning();   // update 39: the king's daily task
     this.elisia.onMorning();   // update 35
     this.portals.onMorning();  // update 37
   }
@@ -2553,6 +2570,7 @@ class Game {
     this.farm.interact(consider, p);
     this.desert.interact(consider, p);   // update 36
     this.portals.interact(consider, p);  // update 37
+    this.city.interact(consider, p);     // update 39
     // update 27: the canopy — climbable once the scroll has taught you
     if (this.learned.has("treeClimb") && !this.world.climbSpot && this.world.treePoints && p.pos.y < 2) {
       let bt = null, btd = 2.5;
@@ -2601,6 +2619,14 @@ class Game {
     }
     this.portals.chestOpened(c);   // update 37
     const gained = [];
+    // update 39: the desert's chests carry Eternial coins (3-5); a fossil once in 256 chests anywhere;
+    // the golden statuette once in 512 desert chests. Both are only good for selling in Eternius.
+    {
+      const ET = CFG.eternius, inDes = !!(c.desert || (this.world.desert && this.world.desert.inDesert(c.x, c.z)));
+      if (inDes) this.city.addCoins(ET.coinsPerChest[0] + Math.floor(this.lootRng() * (ET.coinsPerChest[1] - ET.coinsPerChest[0] + 1)));
+      if (this.lootRng() < ET.fossilChance) gained.push(["fossil", 1]);
+      if (inDes && this.lootRng() < ET.statuetteChance) gained.push(["gold_statuette", 1]);
+    }
     // the silver dagger: a genuine 1-in-128 find
     if (this.lootRng() < CFG.silverChestChance && !this.player.inv.has("silver_dagger")) {
       gained.push(["silver_dagger", 1]);
@@ -2757,7 +2783,9 @@ class Game {
       || this.wolves.some((w) => !w.dead && w.state === "chase");
     // update 38: the dark form has her own chase music
     const elisiaOut = this.creatures.some((c) => c.type === "elisia" && (c.state === "evil" || c.state === "eat") && !c.dead);
-    this.audio.music(elisiaOut && this.audio.buf.elisiaChase ? "elisiaChase" : danger ? "chase" : "ambient");
+    // update 39: the city has its own music inside its walls
+    const inCity = this.city && this.city.inside(this.player.pos.x, this.player.pos.z, this.player.pos.y);
+    this.audio.music(elisiaOut && this.audio.buf.elisiaChase ? "elisiaChase" : danger ? "chase" : (inCity && this.audio.buf.eternius) ? "eternius" : "ambient");
   }
 
   spawnDrop(id, n, x, z, y, ttl = 0) {

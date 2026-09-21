@@ -45,6 +45,7 @@ const GEN = {
   elisiaLaughLoop: "./assets/audio/sfx_elisia_laughloop.mp3",   // update 38: the dark form's laughter replaces the singing
   elisiaLaughBig: "./assets/audio/sfx_elisia_laughbig.mp3",     // update 38: when she has eaten a T-Rex
   elisiaChase: "./assets/audio/a_elisia_chase.m4a",              // update 38: her own chase music
+  eternius: "./assets/audio/a_eternius.m4a",                     // update 39: the golden city's theme
   teleport: "./assets/audio/sfx_teleport.mp3",                   // update 38: a portal takes you
 };
 

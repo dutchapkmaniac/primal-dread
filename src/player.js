@@ -87,6 +87,9 @@ export class Player {
     this.dagger3dVm = this.mountHeld("dagger3d");   // the silver dagger's REAL design
     this.trexDagger3dVm = this.mountHeld("trexdagger3d");   // update 38: the generated tooth daggers
     this.impDagger3dVm = this.mountHeld("impdagger3d");
+    this.etDagger3dVm = this.mountHeld("etdagger3d");   // update 39: the Eternial weapons
+    this.etSword3dVm = this.mountHeld("etsword3d");
+    this.etSpear3dVm = this.mountHeld("etspear3d");
     this.crossbowVm = this.mountHeld("crossbow3d"); // the crossbow (update 27)
     // update 35: the T-Rex dagger — a curved tooth for a blade, brass guard, leather grip
     {
@@ -275,17 +278,19 @@ export class Player {
     // attack cooldown + viewmodel — each weapon shows its OWN design
     this.atkT -= dt;
     const sel = this.inv.selected();
-    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
+    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
     const showVm = game.carriedEgg ? null
       : weapon
         ? (weapon === "knife" && this.knife3dVm) || (weapon === "machete" && this.machete3dVm)
           || (weapon === "axe" && this.axe3dVm)
           || (weapon === "silver_dagger" && this.dagger3dVm)
           || (weapon === "trex_dagger" && (this.trexDagger3dVm || this.trexDaggerVm))
-          || (weapon === "imp_dagger" && (this.impDagger3dVm || this.trexDagger3dVm || this.trexDaggerVm)) || this.knifeVm
+          || (weapon === "imp_dagger" && (this.impDagger3dVm || this.trexDagger3dVm || this.trexDaggerVm))
+          || (weapon === "et_dagger" && this.etDagger3dVm) || (weapon === "et_sword" && this.etSword3dVm) || this.knifeVm
         : sel && sel.id === "spear" ? this.spearVm
+        : sel && sel.id === "et_spear" ? (this.etSpear3dVm || this.spearVm)
         : sel && sel.id === "crossbow" ? this.crossbowVm : null;
-    for (const vm of [this.knifeVm, this.knife3dVm, this.machete3dVm, this.axe3dVm, this.dagger3dVm, this.trexDaggerVm, this.trexDagger3dVm, this.impDagger3dVm, this.spearVm, this.crossbowVm]) {
+    for (const vm of [this.knifeVm, this.knife3dVm, this.machete3dVm, this.axe3dVm, this.dagger3dVm, this.trexDaggerVm, this.trexDagger3dVm, this.impDagger3dVm, this.etDagger3dVm, this.etSword3dVm, this.etSpear3dVm, this.spearVm, this.crossbowVm]) {
       if (vm) vm.visible = vm === showVm;
     }
     if (this.eggVm) this.eggVm.visible = !!game.carriedEgg;
@@ -327,13 +332,13 @@ export class Player {
     if (sel && (sel.id === "arrow" || sel.id === "silver_arrow")
         && this.inv.slots.some((s) => s && s.id === "crossbow")) return;
     // the bound spear is THROWN, not swung
-    if (sel && sel.id === "spear") {
+    if (sel && (sel.id === "spear" || sel.id === "et_spear")) {   // update 39: the Eternial spear is thrown too
       this.atkT = CFG.spear.cooldown;
       this.swingT = 0.28;
       game.throwSpear(this);
       return;
     }
-    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
+    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
     // an ITEM in hand gets used; an EMPTY hand throws a punch
     if (!weapon && sel) return this.useSelected(game);
     const K = weapon ? CFG.player[weapon] : CFG.player.fists;

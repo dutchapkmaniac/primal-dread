@@ -24,6 +24,7 @@ export class Creature {
     this.wild = !!opts.wild;   // wild chickens roam free (not pen-bound)
     this.outer = !!opts.outer; // update 28: frontier T-Rexes patrol the outer ring
     this.zone = opts.zone || null;   // update 38: "outside" — the extra hunters keep to the frontier beyond the old circle
+    this.chain = opts.chained || null;   // update 39: {x, z, r} — the city's beast is held to its post
     // update 38: the Imperator — a T-Rex in every rule, with its own numbers
     this.imperator = !!opts.imperator;
     if (this.imperator) {
@@ -61,7 +62,7 @@ export class Creature {
       this.anim = new ClipAnimator(this.body, asset.anims);
     } else if (asset) {
       // non-humanoids: procedural bone chain (legs, neck, tail) driven in code
-      const rig = riggedCreature(asset.model, type);
+      const rig = riggedCreature(asset.model, this.imperator ? "imperator" : type);   // update 39: the Imperator's own plan
       this.body = rig || asset.model.clone();
       this.rigged = rig;
     } else {
@@ -273,6 +274,7 @@ export class Creature {
 
   pickWanderTarget() {
     const rng = this.ctx.rng;
+    if (this.chain) { const a = rng() * Math.PI * 2, d = rng() * this.chain.r * 0.8; return [this.chain.x + Math.cos(a) * d, this.chain.z + Math.sin(a) * d]; }   // update 39
     // update 29: cows graze their own pasture, nothing else aims INTO the farm
     if (this.type === "cow") {
       const P = CFG.farm.pasture, SH = CFG.farm.shed;
@@ -484,7 +486,7 @@ export class Creature {
       if (this.state !== "eat") { this.state = "chase"; this.lostT = 0; }
       return;
     }
-    if (this.type !== "trex") { this.hit(S.dmg, game, "spear"); return; }
+    if (this.type !== "trex") { this.hit(S.dmg * (game.spearMult || 1), game, "spear"); return; }   // update 39: the Eternial spear cuts deeper
     // update 36: the T-Rex cannot be killed by the player any more. The spear
     // snaps off its hide like it does on the mother's — and it KNOWS you now.
     game.audio.sHit();
@@ -626,6 +628,11 @@ export class Creature {
       default: this.updatePrey(dt, game); break;
     }
 
+    // update 39: the chain holds — a step past its length is pulled back
+    if (this.chain) {
+      const dx = this.pos.x - this.chain.x, dz = this.pos.z - this.chain.z, d = Math.hypot(dx, dz);
+      if (d > this.chain.r) { this.pos.x = this.chain.x + dx / d * this.chain.r; this.pos.z = this.chain.z + dz / d * this.chain.r; }
+    }
     // place + orient — probe from the CURRENT height, not sea level, or every
     // creature on the mountain sinks inside it (the swimming-in-rock bug)
     const groundY = this.ctx.world.groundHeight(this.pos.x, this.pos.z, this.group.position.y + 1.6);

@@ -287,6 +287,13 @@ export class UI {
     el.querySelector(".nm").textContent = name;
     el.querySelector(".tr i").style.width = `${Math.max(0, Math.min(100, frac * 100))}%`;
   }
+  // update 39: the purse of Eternial coins (shown once you have any)
+  coins(n) {
+    const el = $("#coins");
+    if (!el) return;
+    el.hidden = !(n > 0);
+    el.textContent = `\u25c8 ${n}`;
+  }
   // update 38: the second bar — the hunter Elisia's dark form is fighting
   huntBar2(name, frac) {
     const el = $("#hunt2");
