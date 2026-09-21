@@ -179,6 +179,12 @@ export class World {
     // standing on the rock ABOVE the tunnels must not fall through.
     if (this.dungeon && this.inDungeon(x, z) &&
         (y < this.dungeon.y + 7 || y > 900)) return this.dungeon.y;
+    // update 37: the temple's cellar — its stairs (dropping westward) and its floor
+    {
+      const B = CFG.portals.basement, S = B.stairs;
+      if (x > S.x0 - 0.3 && x < S.x1 + 0.3 && z > S.z0 && z < S.z1 && y < 1.0) return B.y * Math.min(1, Math.max(0, (S.x1 - x) / (S.x1 - S.x0)));
+      if (x > B.x0 && x < B.x1 && z > B.z0 && z < B.z1 && y < -0.5) return B.y;
+    }
     const cands = [this.mountainH(x, z)];
     this.desert.groundCand(x, z, cands);   // update 36: dunes, the oasis, the bridge decks
     // the treetop perch (update 27): while climbing, the crown holds you
@@ -259,9 +265,17 @@ export class World {
     const mat = this.mat;
 
     // ground — sized for the map plus the frontier ring
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600), mat("t_grass", 280, 280, 0x4a5540));   // update 36: sized for the 763 m square
-    ground.rotation.x = -Math.PI / 2;
-    this.scene.add(ground);
+    // update 37: sized for the 916 m square, with a hole where the temple's cellar stairs go down
+    {
+      const H = 1000, S = CFG.portals.basement.stairs;
+      const shape = new THREE.Shape(); shape.moveTo(-H, -H); shape.lineTo(H, -H); shape.lineTo(H, H); shape.lineTo(-H, H); shape.closePath();
+      const hole = new THREE.Path(); hole.moveTo(S.x0, -S.z1); hole.lineTo(S.x1, -S.z1); hole.lineTo(S.x1, -S.z0); hole.lineTo(S.x0, -S.z0); hole.closePath();
+      shape.holes.push(hole);
+      // ShapeGeometry's UVs are metres: one tile per 5.7 m, as the old 280-over-1600 plane had
+      const ground = new THREE.Mesh(new THREE.ShapeGeometry(shape, 1), mat("t_grass", 0.175, 0.175, 0x4a5540));
+      ground.rotation.x = -Math.PI / 2;
+      this.scene.add(ground);
+    }
 
     // winding sandy path: one quad per segment
     const sandMat = mat("t_sandpath", 1.4, 7, 0x8a7a5c);
@@ -319,6 +333,34 @@ export class World {
         p.rotation.x = -Math.PI / 2;
         p.position.set(px, 0.01, pz);
         this.scene.add(p);
+      }
+    }
+    // update 37: ring8 — a fifth rank of forest floor along the newest frontier
+    for (let a = -880; a <= 880; a += 176) {
+      for (const [px, pz] of [[a, -880], [a, 880], [-880, a], [880, a]]) {
+        if (this.desert.inDesert(px, pz)) continue;
+        const p = new THREE.Mesh(new THREE.PlaneGeometry(180, 180), ffMat);
+        p.rotation.x = -Math.PI / 2;
+        p.position.set(px, 0.01, pz);
+        this.scene.add(p);
+      }
+    }
+    // update 37: the new band's 30 apple trees and 40 chests — seeded once, clear of everything
+    this.ring8Apples = []; this.ring8Chests = [];
+    {
+      const R8 = CFG.ring8, sq = CFG.world.square - 14;
+      const ok = (x, z, minOwn, list) => Math.abs(x) < sq && Math.abs(z) < sq && !this.inMountain(x, z) && !this.inNewLandmark(x, z, 8)
+        && !this.desert.inDesert(x, z) && this.desert.riverDist(x, z) > 26 && !list.some(([px, pz]) => Math.hypot(px - x, pz - z) < minOwn);
+      let g8 = 0;
+      while (this.ring8Apples.length < R8.appleCount && g8++ < 200000) {
+        const a = this.rng() * Math.PI * 2, r = R8.treeMinR + 10 + this.rng() * (R8.treeMaxR - R8.treeMinR - 20);
+        const x = Math.cos(a) * r, z = Math.sin(a) * r;
+        if (ok(x, z, 36, this.ring8Apples)) this.ring8Apples.push([x, z]);
+      }
+      while (this.ring8Chests.length < R8.chestCount && g8++ < 500000) {
+        const a = this.rng() * Math.PI * 2, r = R8.treeMinR + 8 + this.rng() * (R8.treeMaxR - R8.treeMinR - 16);
+        const x = Math.cos(a) * r, z = Math.sin(a) * r;
+        if (ok(x, z, 28, this.ring8Chests) && !this.ring8Apples.some(([px, pz]) => Math.hypot(px - x, pz - z) < 10)) this.ring8Chests.push([x, z]);
       }
     }
     this.buildRuin();
@@ -402,6 +444,8 @@ export class World {
     if (Math.hypot(x - CFG.ruins.x, z - CFG.ruins.z) < 32 + pad) return true;
     // update 29: the farm compound — house, garden, field and pasture stay clear
     if (Math.abs(x - CFG.farm.x) < CFG.farm.hw + pad && Math.abs(z - CFG.farm.z) < CFG.farm.hd + pad) return true;
+    // update 37: the four portals' clearings
+    for (const [px, pz] of Object.values(CFG.portals.spots)) if (Math.hypot(x - px, z - pz) < CFG.portals.clearR + pad) return true;
     return false;
   }
 
@@ -2126,9 +2170,12 @@ export class World {
     // the roof: covers the WHOLE first floor now — no more open sky upstairs
     plate(-R.halfX + 0.3, R.halfX, -R.halfZ, R.halfZ, F3);
     // ground floor stone slab
-    const fg = new THREE.BoxGeometry(R.halfX * 2 + 0.7, 0.12, R.halfZ * 2 + 0.7);
-    fg.translate(0, 0.06, 0);
-    stoneGeos.push(fg);
+    // update 37: the ground slab has a hole where the cellar stairs go down (north-west corner)
+    {
+      const S = CFG.portals.basement.stairs, X = R.halfX + 0.35, Z = R.halfZ + 0.35;
+      const slab = (x0, x1, z0, z1) => { const g2 = new THREE.BoxGeometry(x1 - x0, 0.12, z1 - z0); g2.translate((x0 + x1) / 2, 0.06, (z0 + z1) / 2); stoneGeos.push(g2); };
+      slab(-X, X, -Z, S.z0); slab(-X, X, S.z1, Z); slab(-X, S.x0, S.z0, S.z1); slab(S.x1, X, S.z0, S.z1);
+    }
 
     // ---- ramps (visual; walkable via groundHeight) ----
     const rampGeo = (cx, topZ, botZ, y0, y1) => {
@@ -2328,6 +2375,45 @@ export class World {
     this.scene.add(this.fireLight);
     this.campfire = { x: cx, z: cz, y: 0 };
     this.addBox(cx - 0.5, cx + 0.5, 0, 0.4, cz - 0.5, cz + 0.5);
+    this.buildBasement();   // update 37
+  }
+
+  // update 37: a small stone cellar under the temple, reached by stairs in the
+  // north-west corner of the ground floor. Nothing lives here but the white portal.
+  buildBasement() {
+    const B = CFG.portals.basement, S = B.stairs;
+    const geos = [];
+    const box = (cx, cy, cz, sx, sy, sz, collide = true) => {
+      const g = new THREE.BoxGeometry(sx, sy, sz); g.translate(cx, cy, cz); geos.push(g);
+      if (collide) this.addBox(cx - sx / 2, cx + sx / 2, cy - sy / 2, cy + sy / 2, cz - sz / 2, cz + sz / 2);
+    };
+    const H = -B.y, T = 0.5;
+    // the floor and four walls (the ground slab above is the ceiling)
+    box(0, B.y - 0.15, 0, B.x1 - B.x0 + 2, 0.3, B.z1 - B.z0 + 2, false);
+    box((B.x0 + B.x1) / 2, B.y + H / 2, B.z0 - T / 2, B.x1 - B.x0 + 2 * T, H, T);
+    box((B.x0 + B.x1) / 2, B.y + H / 2, B.z1 + T / 2, B.x1 - B.x0 + 2 * T, H, T);
+    box(B.x0 - T / 2, B.y + H / 2, 0, T, H, B.z1 - B.z0);
+    box(B.x1 + T / 2, B.y + H / 2, 0, T, H, B.z1 - B.z0);
+    // the stairs: from the top (x1, floor level) down to the bottom (x0, the cellar floor), along the north wall
+    const n = 16, run = S.x1 - S.x0, rise = H / n;
+    for (let i = 0; i < n; i++) {
+      const x1 = S.x1 - (run / n) * i, x0 = x1 - run / n, top = -rise * (i + 1);
+      const g = new THREE.BoxGeometry(run / n + 0.04, rise + 0.02, S.z1 - S.z0);
+      g.translate((x0 + x1) / 2, top - rise / 2 + 0.01, (S.z0 + S.z1) / 2);
+      geos.push(g);
+    }
+    const m = new THREE.Mesh(mergeGeometries(geos), this.mat("t_romanstone", 3.4, 1.7, 0x7a7f74));
+    m.receiveShadow = true;
+    this.scene.add(m);
+    // three wall torches — lights that exist from frame one (a new light mid-game recompiles every shader)
+    const torchMat = new THREE.MeshStandardMaterial({ color: 0x3a2a18, roughness: 1 });
+    const flameMat = new THREE.MeshBasicMaterial({ color: 0xffb060 });
+    for (const [lx, lz] of [[B.x0 + 1, 0], [B.x1 - 1, 0], [0, B.z1 - 1]]) {
+      const l = new THREE.PointLight(0xd07a30, 5, 12, 2); l.position.set(lx, B.y + 2.4, lz); this.scene.add(l);
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.5, 6), torchMat); t.position.set(lx, B.y + 2.0, lz); this.scene.add(t);
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), flameMat); f.position.set(lx, B.y + 2.3, lz); this.scene.add(f);
+    }
+    this.basement = B;
   }
 
   buildBed(x, z, floorY, yaw, label) {
@@ -2760,6 +2846,23 @@ export class World {
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
       positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
     }
+    // update 37: the fifth expansion band — ring8
+    const R8 = CFG.ring8;
+    let guard8 = 0;
+    const r8Start = positions.length;
+    while (positions.length - r8Start < R8.treeCount && guard8++ < 300000) {
+      const x = (rng() * 2 - 1) * R8.treeMaxR;
+      const z = (rng() * 2 - 1) * R8.treeMaxR;
+      const r = Math.hypot(x, z);
+      if (r < R8.treeMinR || r > R8.treeMaxR) continue;
+      if (this.inMountain(x, z)) continue;
+      if (this.inNewLandmark(x, z)) continue;
+      if (this.desert.inDesert(x, z) || this.desert.riverDist(x, z) < 20) continue;
+      if (this.ring8Apples.some(([ax, az]) => Math.hypot(x - ax, z - az) < 5)) continue;
+      if (this.ring8Chests.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 2.6)) continue;
+      if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
+      positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
+    }
     // update 36: the desert and the river hold no forest — every earlier band is filtered too
     for (let i = positions.length - 1; i >= 0; i--) {
       const [px, pz] = positions[i];
@@ -2770,13 +2873,15 @@ export class World {
     // beyond the old circle. The fourth corner belongs to the mountain.
     const SQ = W.square - 6;
     let guard5 = 0, cornerN = 0;
-    while (cornerN < 3300 && guard5++ < 600000) {
+    while (cornerN < 4700 && guard5++ < 900000) {   // update 37: the corners grew with the square
       const x = (rng() * 2 - 1) * SQ;
       const z = (rng() * 2 - 1) * SQ;
       if (Math.hypot(x, z) < W.boundaryR - 2) continue;  // corners only
       if (this.inMountain(x, z)) continue;
       if (this.inNewLandmark(x, z)) continue;   // update 30: Dirk's farm sits in the south-east corner now
       if (this.desert.inDesert(x, z) || this.desert.riverDist(x, z) < 20) continue;   // update 36
+      if (this.ring8Apples.some(([ax, az]) => Math.hypot(x - ax, z - az) < 5)) continue;   // update 37
+      if (this.ring8Chests.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 2.6)) continue;
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
       positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
       cornerN++;
@@ -2881,7 +2986,7 @@ export class World {
     }
 
     const am = this.assets.glb.appletree;
-    for (const [ax, az] of [...CFG.world.appleTrees, ...CFG.appleTrees2]) {
+    for (const [ax, az] of [...CFG.world.appleTrees, ...CFG.appleTrees2, ...this.ring8Apples]) {   // update 37: +30
       if (am) {
         const t = am.model.clone();
         t.position.set(ax, 0, az);
@@ -2911,8 +3016,8 @@ export class World {
     const single = new THREE.PlaneGeometry(0.62, 0.42);
     single.translate(0, 0.21, 0);
     const cross = mergeGeometries([single, single.clone().rotateY(Math.PI / 2)]);
-    const grassTotal = CFG.world.grassCount + CFG.newArea.grassCount + CFG.ring2.grassCount + CFG.ring3.grassCount + CFG.ring4.grassCount + CFG.ring5.grassCount + CFG.ring6.grassCount + CFG.ring7.grassCount;
-    const GR = CFG.ring7.treeMaxR - 2;   // the grass disc hugs the outermost band (update 36: ring7)
+    const grassTotal = CFG.world.grassCount + CFG.newArea.grassCount + CFG.ring2.grassCount + CFG.ring3.grassCount + CFG.ring4.grassCount + CFG.ring5.grassCount + CFG.ring6.grassCount + CFG.ring7.grassCount + CFG.ring8.grassCount;
+    const GR = CFG.ring8.treeMaxR - 2;   // the grass disc hugs the outermost band (update 37: ring8)
     const inst = new THREE.InstancedMesh(cross, tuftMat, grassTotal);
     inst.frustumCulled = false;
     const dummy = new THREE.Object3D();
@@ -2989,6 +3094,7 @@ export class World {
       ...CFG.newArea.chests.map(([x, z]) => [x, z, false, 0]),
       ...CFG.ring2.chests.map(([x, z]) => [x, z, false, 0]),
       ...CFG.extraChests.map(([x, z]) => [x, z, false, 0]),
+      ...this.ring8Chests.map(([x, z]) => [x, z, false, 0]),   // update 37: 40 more over the new band
       [L.x + 2.2, L.z - 1.5, false, L.top + 0.14],   // the lighthouse chest
       ...(this.desert.chestSpots || []),             // update 36: rarer, on the dunes
     ];
@@ -3013,7 +3119,9 @@ export class World {
   buildApples() {
     const appleMat = new THREE.MeshStandardMaterial({ color: 0x9c3526, roughness: 0.5 });
     const appleGeo = new THREE.SphereGeometry(0.13, 8, 6);
-    for (const [ax, az] of [...CFG.world.appleTrees, ...CFG.appleTrees2]) {
+    // update 37: every apple remembers which tree it fell from (the red portal counts trees)
+    this.appleTreeList = [...CFG.world.appleTrees, ...CFG.appleTrees2, ...this.ring8Apples];
+    this.appleTreeList.forEach(([ax, az], ti) => {
       for (let i = 0; i < CFG.world.applesPerTree; i++) {
         const ang = this.rng() * Math.PI * 2;
         const d = 1.2 + this.rng() * 1.6;
@@ -3021,9 +3129,9 @@ export class World {
         const m = new THREE.Mesh(appleGeo, appleMat);
         m.position.set(x, 0.13, z);
         this.scene.add(m);
-        this.apples.push({ x, z, mesh: m, taken: false });
+        this.apples.push({ x, z, mesh: m, taken: false, tree: ti });
       }
-    }
+    });
   }
 
   respawnApples() {

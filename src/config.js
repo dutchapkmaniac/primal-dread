@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=36";
+export const ASSET_V = "?v=37";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -12,7 +12,7 @@ export const CFG = {
 
   world: {
     boundaryR: 402,          // the old circle — still the frame the rings hang on
-    square: 763,             // update 36: +20% a fourth time — ring7 grows the frontier (636 before)
+    square: 916,             // update 37: +20% a fifth time — ring8 grows the frontier (763 before)
     oldBoundaryR: 150,       // the original map stays untouched inside this
     fieldR: 52,              // open field radius around the ruin
     hutPos: [-22, -128],     // tree hut, off-axis — you have to find it
@@ -85,6 +85,12 @@ export const CFG = {
   // ---- update 36: the fourth expansion band — one ring further out again ----
   ring7: {
     treeMinR: 630, treeMaxR: 757, treeCount: 1200, grassCount: 1000,
+  },
+  // ---- update 37: the fifth expansion band — 30 apple trees and 40 chests are
+  // scattered over it at build time (seeded), clear of every landmark ----
+  ring8: {
+    treeMinR: 757, treeMaxR: 910, treeCount: 1500, grassCount: 1100,
+    chestCount: 40, appleCount: 30,
   },
   // 15 extra treasure chests scattered across the WHOLE map [x, z]
   extraChests: [
@@ -357,8 +363,8 @@ export const CFG = {
     // outer ring and pick their wander targets along it (never the mountain);
     // update 29 moved them out to the ring6 band
     // update 36: the band moved out with the map; the south-west corner is desert now and a T-Rex never enters it
-    outerSpawns: [[710, 60], [-60, -710], [700, -700]],
-    outerBand: [660, 750],
+    outerSpawns: [[850, 72], [-72, -850], [840, -840]],   // update 37: out with the map again
+    outerBand: [790, 900],
   },
   // update 35: Elisia — the angel of the forest. Once per full day, while you walk the
   // forest, she is put down 40-70 m away out of your sight. Within 18 m (line of sight)
@@ -370,7 +376,9 @@ export const CFG = {
     chaseSpeed: 5.4,       // the dark form
     hp: 600,
     seeR: 18,              // she sees you inside this, any side, with line of sight
-    mistR: 45,             // the mist starts faint here and thickens toward her
+    mistR: 90,             // update 37: doubled — the mist starts faint twice as far out and thickens toward her
+    firstSpot: [-12, 275], // update 37: the first spawn of every new game (the user's X, south of the temple)
+    laughEvery: [8, 20],   // update 37: seconds between her laughs while you stand in the mist
     claw: { range: 3.0, dmg: 20, cd: 1.5 },
     fire: { dmg: 25, speed: 14, cd: 3.0, minR: 6, maxR: 40, gravity: 2.0, r: 0.35 },
     daggerDmg: 50,         // a T-Rex dagger hit on her (against anything else the dagger does player.trex_dagger.dmg)
@@ -383,19 +391,21 @@ export const CFG = {
   },
   // ---- update 36: THE DESERT (south-west), its river, and everything in it ----
   desert: {
-    bounds: { x1: -20, z0: 290 },          // the sand heightfield's box: west edge..x1, z0..south edge
+    bounds: { x1: -24, z0: 348 },          // the sand heightfield's box: west edge..x1, z0..south edge (update 37: ×1.2)
     // the river, traced from the user's sketch and scaled to the bigger map: it enters at the
     // west edge (z ~ +355) and leaves at the south edge (x ~ -45); the desert is its south-west bank
     river: { halfW: 11, beach: 5, waterY: 0.25, bedY: -1.3,
-      points: [[-830, 300], [-700, 395], [-640, 428], [-560, 455], [-512, 472], [-470, 500], [-430, 525], [-404, 544],
-        [-350, 565], [-310, 585], [-270, 625], [-215, 655], [-163, 680], [-120, 715], [-79, 746], [-30, 800]] },
-    bridges: [[-667, 421], [-404, 544], [-163, 680]],   // the sketch's three dashes (north-west, middle, south-east)
-    bridge: { halfWidth: 1.8, overhang: 7, deckY: 0.6 },
+      // update 37: the same course scaled ×1.2 with the map
+      points: [[-996, 360], [-840, 474], [-768, 514], [-672, 546], [-614, 566], [-564, 600], [-516, 630], [-485, 653],
+        [-420, 678], [-372, 702], [-324, 750], [-258, 786], [-196, 816], [-144, 858], [-95, 895], [-36, 960]] },
+    bridges: [[-800, 505], [-485, 653], [-196, 816], [-110, 880]],   // the sketch's three dashes ×1.2, plus update 37's fourth near the river's end
+    // update 37: arched decks (arch = the rise in the middle) with solid rails railT thick — enter only from the ends
+    bridge: { halfWidth: 1.8, overhang: 7, deckY: 0.6, arch: 1.3, railT: 0.5 },
     tent: { fromBridge: 32, along: 6, zoneR: 5 },        // Idris's tent: on the desert bank of the MIDDLE bridge
-    oasis: { x: -500, z: 640, r: 9, palmX: -486, palmZ: 628, shadeR: 5 },
+    oasis: { x: -620, z: 730, r: 9, palmX: -606, palmZ: 718, shadeR: 5 },   // update 37: moved to the middle of the bigger desert
     dune: { base: 0.35, fadeIn: 30, a1: 0.9, a2: 0.8, a3: 0.9, a4: 1.4, a5: 1.3 },   // rolling ridges, 2-5 m; a4/a5 are the crests you hide behind
-    cactusCount: 25, cactusSpacing: 30, cactusFailChance: 0.2, cactusDmg: 10,
-    chestCount: 8, chestSpacing: 60,
+    cactusCount: 36, cactusSpacing: 30, cactusFailChance: 0.2, cactusDmg: 10,   // update 37: same density over the bigger sand
+    chestCount: 8, chestCountNew: 6, chestSpacing: 60,   // update 37: six more, all in the desert's new outer part
     thirst: { drainTime: 360, bottleTime: 360, drinkRate: 20 },   // 100 -> 0 in six minutes; a full bottle is six minutes of water
     thirstHungerMult: 2,                    // thirst at zero: hunger drains twice as fast
   },
@@ -524,6 +534,7 @@ export const CFG = {
     dirk6: 1.78,
     elisia: 2.13, elisia_evil: 2.74,   // update 35: seven feet, and nine
     remotus: 1.8, altai: 1.8, cactus: 4.0, palm: 9.0, nomad: 1.75,   // update 36: the desert (the Alioramus stand 1.8 m, 5.5 m long)
+    portal: 5.2,   // update 37: the stone portals
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { trex: 0, werewolf: 0, pig: 0, chicken: 0, tree: 0, appletree: 0, chest: 0, statue: 0,
@@ -538,7 +549,7 @@ export const CFG = {
     // Duco was lifted from a side photo, so his yaw comes from the measured head direction.
     // update 34: mesh straightened by tools/glb_straighten_head.py -- the raw file now faces exactly -z,
     // so only the node matrix's -9.08 deg azimuth is left to undo on the way to +z: 180 + 9.08
-    duco: 0, fountain2: -90 * DEG,   // update 36: Duco is a Meshy multi-view build now, facing +z
+    duco: -170.9 * DEG, fountain2: -90 * DEG,   // update 37: the update-30 Duco again (body along -z in the file, node yaw -9.1) — turned onto +z
     // update 31 (same rule: the lift's own azimuth, undone, then +x turned into +z)
     leaf_front: -96.1 * DEG, leaf_back: -89 * DEG, leaf_balc: -92.4 * DEG,
     fridge2: -112.6 * DEG, ladder: -80.2 * DEG, a_crates: -121.1 * DEG, a_sacks: -94.6 * DEG,
@@ -557,7 +568,7 @@ export const CFG = {
     dirk6: 0,
     elisia: 0, elisia_evil: 0,   // update 35: Meshy-built, already facing +z
     // update 36: Duco built new from his two photos (front + side), and the desert's models
-    remotus: 0, altai: 0, cactus: 0, palm: 0, nomad: 0 },
+    remotus: 0, altai: 0, cactus: 0, palm: 0, nomad: 0, portal: 0 },   // the portal's medallion face is the model's +z
   // animation clip speed: clip cycles per meter moved (tuned per creature)
   animGait: { trex: 0.22, werewolf: 0.55, chicken: 1.6, croc: 0.9, cow: 0.5, dog: 0.9, elisia: 0.9 },
 
@@ -572,6 +583,24 @@ export const CFG = {
   },
 
   // named places: labeled on the map only after you have STOOD there
+  // ---- update 37: THE PORTALS — see portals.js for the rules ----
+  portals: {
+    spots: { red: [15, -640], green: [-625, -5], yellow: [626, -10], blue: [5, 680] },   // the user's four squares
+    colors: { red: 0xff3b2a, green: 0x6cff3a, yellow: 0xffd23a, blue: 0x3a8cff, white: 0xf4f6ff },
+    clearR: 9,                                   // no trees this close to one
+    apples: 30, appleDecay: 5, hungerDays: 5, chests: 5, beds: 5,
+    useR: 4,                                     // stand this close to investigate / use one
+    whiteScale: 0.78,                            // the cellar is low
+    // the model's frame after normalizeModel (5.2 m tall, feet at 0, medallion face toward +z)
+    geo: { ringY: 2.86, ringR: 1.28, medY: 4.62, medR: 0.36, medZF: 1.31, medZB: -0.63, bowlX: 2.2, bowlY: 3.9, bowlZ: 0.78 },
+    // the temple's cellar: the room under the ground floor, the stairs in the north-west corner
+    // (top at x1, y 0 — dropping westward to x0, y), the white portal facing the stairs
+    basement: { x0: -11.5, x1: 11.5, z0: -6.6, z1: 6.6, y: -4.4, stairs: { x0: -11.3, x1: -4.4, z0: -6.4, z1: -4.5 },
+      portal: [3.0, 0.5], portalYaw: -Math.PI / 2 },
+    // fixed landing spots for places whose marker is not a place to stand (the rest are searched)
+    arrivals: { temple: [0, -12], hut: [-22, -116] },
+  },
+
   locations: [
     { id: "temple", x: 0, z: 0, r: 26 },
     { id: "hut", x: -22, z: -128, r: 16 },

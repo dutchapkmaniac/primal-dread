@@ -49,7 +49,7 @@ export class ElisiaSystem {
   // your view. Seeing her from a distance changes nothing.
   update(dt) {
     const g = this.g;
-    if (this.c && this.c.gone) this.c = null;
+    if (this.c && this.c.gone) { this.c = null; this.firstDone = true; }   // update 37: after the first encounter she goes random
     if (!this.c && g.assets.glb.elisia) this.place();
     this.updateFireballs(dt);
   }
@@ -59,6 +59,24 @@ export class ElisiaSystem {
     const fwd = new THREE.Vector3(0, 0, -1);
     if (g.camera) g.camera.getWorldDirection(fwd);
     const far = (g.scene && g.scene.fog ? g.scene.fog.far : 150) + 20;
+    // update 37: the FIRST spawn of every game is one fixed spot — the nearest free forest
+    // ground to it. Nothing in the game says so.
+    if (!this.firstDone) {
+      const [fx, fz] = E().firstSpot;
+      for (let ring = 0; ring < 14; ring++) {
+        for (let k = 0; k < (ring ? 10 : 1); k++) {
+          const a = k / 10 * Math.PI * 2, x = fx + Math.cos(a) * ring * 3, z = fz + Math.sin(a) * ring * 3;
+          if (!w.inForest(x, z)) continue;
+          if (w.treesNear(x, z).some((t) => Math.hypot(x - t.x, z - t.z) < t.r + 1.5)) continue;
+          if (w.boxes.some((b) => x > b.minX - 1 && x < b.maxX + 1 && z > b.minZ - 1 && z < b.maxZ + 1)) continue;
+          const c = new Creature("elisia", g.assets.glb.elisia, x, z, g.ctx);
+          c.state = "stand"; c.stateT = 0;
+          g.creatures.push(c);
+          this.c = c; this.day = g.dayNum; this.grey = false;
+          return c;
+        }
+      }
+    }
     for (let i = 0; i < 400; i++) {
       const x = (g.rng() * 2 - 1) * S, z = (g.rng() * 2 - 1) * S;
       const d = Math.hypot(x - p.pos.x, z - p.pos.z);
@@ -281,6 +299,7 @@ export class ElisiaSystem {
     const target = on ? Math.max(0, 1 - d / E().mistR) : 0;
     const rate = target > this.mist ? 2 : 0.35;
     this.mist += Math.max(-rate * dt, Math.min(rate * dt, target - this.mist));
+    this.voice(dt);   // update 37: her singing and her laughter live in the mist
     if (this.mist < 0.002) { this.mist = 0; return; }
     const m = this.mist;
     fog.near += (3.5 - fog.near) * m;
@@ -289,6 +308,25 @@ export class ElisiaSystem {
     const col = new THREE.Color(this.grey ? 0x55585c : 0xdfe3e6);
     fog.color.lerp(col, m);
     if (g.scene.background && g.scene.background.isColor) g.scene.background.lerp(col, m);
+  }
+
+  // ---------- update 37: her voice ----------
+  // The singing is a loop whose volume IS the mist (silent at the mist's edge,
+  // full beside her); the laugh comes now and then, louder the closer you are.
+  voice(dt) {
+    const g = this.g, m = this.mist;
+    g.audio.loopMix("elisiaSing", m, 0.95);
+    this.laughT = (this.laughT ?? 6) - dt;
+    if (m > 0.04 && this.laughT <= 0) {
+      const [a, b] = E().laughEvery;
+      this.laughT = a + g.rng() * (b - a);
+      let pan = 0;
+      if (this.c) {
+        const dx = this.c.pos.x - g.player.pos.x, dz = this.c.pos.z - g.player.pos.z;
+        pan = Math.max(-0.8, Math.min(0.8, Math.sin(Math.atan2(dx, dz) - g.player.yaw)));
+      }
+      g.audio.play("elisiaLaugh", { vol: 0.12 + 0.88 * m, pan });
+    }
   }
 
   // ---------- red fire ----------

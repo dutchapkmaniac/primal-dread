@@ -114,6 +114,12 @@ export class Desert {
     return null;
   }
   inOasisWater(x, z) { return Math.hypot(x - this.oasis.x, z - this.oasis.z) < this.oasis.r; }
+  // update 37: the deck's height across the river — a hump, deckY at both ends, deckY + arch in the middle
+  deckY(across) {
+    const B = D().bridge, half = D().river.halfW + B.overhang;
+    const u = across / half;
+    return B.deckY + (B.arch || 0) * Math.max(0, 1 - u * u);
+  }
   // shade: the tent (also a safe zone) and the palm's crown
   inTentZone(x, z) { return Math.hypot(x - this.tent.x, z - this.tent.z) < D().tent.zoneR; }
   inPalmShade(x, z) { return Math.hypot(x - this.palm.x, z - this.palm.z) < D().oasis.shadeR; }
@@ -138,7 +144,7 @@ export class Desert {
   // a candidate for World.groundHeight
   groundCand(x, z, cands) {
     const br = this.bridgeAt(x, z);
-    if (br) { cands.push(D().bridge.deckY); return; }
+    if (br) { cands.push(this.deckY(br.across)); return; }   // update 37: the arch
     if (!this.inDesert(x, z)) return;
     if (this.inOasisWater(x, z)) { cands.push(D().dune.base - 0.25); return; }
     cands.push(this.duneH(x, z));
@@ -157,17 +163,22 @@ export class Desert {
   }
   // nothing walks in the river: pushed out to the bank on its own side, unless it is on a bridge
   collide(x, z, r, y) {
-    const br = this.bridgeAt(x, z);
-    if (br) {
-      // on the deck the rails hold you; the deck is only as wide as it is
-      const lim = br.b.hw - r - 0.05;
-      if (Math.abs(br.along) > lim) {
-        const a = Math.sign(br.along) * lim;
-        x = br.b.x + br.b.tx * a + br.b.nx * br.across;
-        z = br.b.z + br.b.tz * a + br.b.nz * br.across;
+    // update 37: the rails are SOLID walls along both sides of every bridge. In the
+    // rail band you are pushed back to whichever side you came from, so the deck
+    // can only be entered from its two ends; on the deck the river below does not count.
+    const B = D().bridge;
+    for (const b of this.bridges) {
+      const ox = x - b.x, oz = z - b.z;
+      const along = ox * b.tx + oz * b.tz, across = ox * b.nx + oz * b.nz;
+      if (Math.abs(across) >= b.half + 0.2) continue;
+      const a = Math.abs(along), sgn = along < 0 ? -1 : 1;
+      const inner = b.hw - r - 0.05, outer = b.hw + (B.railT || 0.5) + r;
+      if (a > inner && a < outer) {
+        const t = a < b.hw ? inner : outer;
+        x = b.x + b.tx * (sgn * t) + b.nx * across;
+        z = b.z + b.tz * (sgn * t) + b.nz * across;
       }
-      if (y > D().bridge.deckY + 2) return { x, z };
-      return { x, z };
+      if (Math.abs(along) <= inner + 1e-6 && Math.abs(across) < b.half) return { x, z };
     }
     const R = this.riverInfo(x, z);
     const min = D().river.halfW + r + 0.3;
@@ -206,63 +217,83 @@ export class Desert {
     sand.receiveShadow = true;
     scene.add(sand);
     // --- the river: a dark bed, the water, a sand beach on the forest bank
-    const ribbon = (inner, outer, y, mat, sideOnly = 0) => {
+    const ribbon = (inner, outer, y, mat, sideOnly = 0, uvLen = 12) => {
       const g = new THREE.BufferGeometry();
-      const v = [], idx = [];
+      const v = [], idx = [], uv = [];
       for (let i = 0; i < this.pts.length; i++) {
         const s = this.seg[Math.min(i, this.seg.length - 1)];
         const nx2 = -s.tz, nz2 = s.tx;   // toward the desert
         const [px, pz] = this.pts[i];
         const a = sideOnly ? sideOnly : -1, b = sideOnly ? sideOnly : 1;
         v.push(px + nx2 * inner * a, y, pz + nz2 * inner * a, px + nx2 * outer * b, y, pz + nz2 * outer * b);
-        if (i) { const k = (i - 1) * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+        // update 37: real UVs — one tile per uvLen metres along the river, the width in the same scale
+        const u = (i < this.seg.length ? s.s0 : this.length) / uvLen;
+        uv.push(u, 0, u, (Math.abs(inner * a - outer * b)) / uvLen);
+        // update 37: counter-clockwise seen from above — the old winding was back-facing, and a
+        // double-sided material flips the normal on a back face, so the water was lit from below (black)
+        if (i) { const k = (i - 1) * 2; if (sideOnly < 0) idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); else idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }   // a one-sided strip lists its pair the other way round
       }
       g.setAttribute("position", new THREE.Float32BufferAttribute(v, 3));
+      g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
       g.setIndex(idx);
       // flat water and beds face the sky whatever the winding of the strip
       const nrm = new Float32Array(v.length); for (let i = 1; i < nrm.length; i += 3) nrm[i] = 1;
       g.setAttribute("normal", new THREE.BufferAttribute(nrm, 3));
       const m = new THREE.Mesh(g, mat);
-      m.material.side = THREE.DoubleSide;
+      m.material.side = THREE.FrontSide;
       scene.add(m);
       return m;
     };
     const HW = C.river.halfW;
-    ribbon(HW + 0.6, HW + 0.6, C.river.bedY, new THREE.MeshStandardMaterial({ color: 0x24302c, roughness: 1 }));
-    const waterMat = new THREE.MeshStandardMaterial({ color: 0x8fb2b8, transparent: true, opacity: 0.88, roughness: 0.12, metalness: 0.08 });
+    ribbon(HW + 0.6, HW + 0.6, C.river.bedY, new THREE.MeshStandardMaterial({ color: 0x3e5a58, roughness: 1 }));   // update 37: a paler bed shows through as turquoise
+    // update 37: water that reads as water — the flowing texture, its normal map, a pale tint over the dark bed
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x9fc6ce, transparent: true, opacity: 0.8, roughness: 0.08, metalness: 0.12, emissive: 0x0c2a32 });
     if (assets.tex.t_water) {
       const t = assets.tex.t_water.clone();
-      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 6); t.needsUpdate = true;
+      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 1); t.needsUpdate = true;
       waterMat.map = t; waterMat.color.setHex(0xffffff);
       this.waterTex = t;
+      if (assets.texN && assets.texN.t_water) {
+        const n = assets.texN.t_water.clone(); n.wrapS = n.wrapT = THREE.RepeatWrapping; n.repeat.set(1, 1); n.needsUpdate = true;
+        waterMat.normalMap = n; waterMat.normalScale.set(0.7, 0.7); this.waterTexN = n;
+      }
     }
-    this.water = ribbon(HW, HW, C.river.waterY, waterMat);
-    // the forest bank: a beach strip on the far side (the desert side IS sand)
-    ribbon(HW - 0.5, HW + C.river.beach, 0.03, w.mat("t_beach", 9, 9, 0x9a8a68), -1);
-    // --- the bridges: plank decks with rails
+    this.water = ribbon(HW, HW, C.river.waterY, waterMat, 0, 10);
+    // the forest bank: a strip of river sand on the far side (the desert side IS sand) — update 37: its own texture
+    const bankId = assets.tex.t_riversand ? "t_riversand" : "t_beach";
+    ribbon(HW - 0.5, HW + C.river.beach, 0.03, w.mat(bankId, 1, 1, 0x9a8a68), -1, 5);
+    // --- the bridges (update 37): arched plank decks that rise in the middle, solid
+    // plank rails along both sides (you step on only at the ends), piers up to the deck
     const plankMat = w.mat("t_woodplank", 1, 6, 0x6e5636);
     const railMat = new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 });
+    const railPlank = w.mat("t_woodplank", 3, 1, 0x6e5636);
     this.bridgeMeshes = [];
     for (const b of this.bridges) {
       const g = new THREE.Group();
-      const deckL = b.half * 2 + 2, deckW = b.hw * 2;
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(deckW, 0.22, deckL), plankMat);
-      deck.position.y = C.bridge.deckY - 0.11;
-      g.add(deck);
-      for (const sgn of [-1, 1]) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, deckL), railMat);
-        rail.position.set(sgn * (b.hw - 0.12), C.bridge.deckY + 0.95, 0);
-        g.add(rail);
-        for (let k = -4; k <= 4; k++) {
-          const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.0, 0.12), railMat);
-          post.position.set(sgn * (b.hw - 0.12), C.bridge.deckY + 0.5, k * (deckL / 8.4));
-          g.add(post);
+      const deckW = b.hw * 2, N = 16, L = b.half * 2 + 2;
+      for (let i = 0; i < N; i++) {
+        const z0 = -L / 2 + (L / N) * i, z1 = z0 + L / N;
+        const y0 = this.deckY(z0) - 0.11, y1 = this.deckY(z1) - 0.11;
+        const len = Math.hypot(z1 - z0, y1 - y0);
+        const tilt = -Math.atan2(y1 - y0, z1 - z0);
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(deckW, 0.22, len + 0.05), plankMat);
+        seg.position.set(0, (y0 + y1) / 2, (z0 + z1) / 2); seg.rotation.x = tilt;
+        g.add(seg);
+        for (const sgn of [-1, 1]) {
+          const wall = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.05, len + 0.05), railPlank);
+          wall.position.set(sgn * (b.hw - 0.07), (y0 + y1) / 2 + 0.62, (z0 + z1) / 2); wall.rotation.x = tilt;
+          g.add(wall);
+          if (i % 2 === 0) {
+            const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.25, 0.18), railMat);
+            post.position.set(sgn * (b.hw - 0.07), y0 + 0.62, z0);
+            g.add(post);
+          }
         }
       }
-      // piers into the water
-      for (let k = -1; k <= 1; k++) {
-        const pier = new THREE.Mesh(new THREE.BoxGeometry(0.5, C.bridge.deckY - C.river.bedY + 0.2, 0.5), railMat);
-        pier.position.set(0, (C.bridge.deckY + C.river.bedY) / 2 - 0.1, k * (deckL / 3.2));
+      for (const k of [-1, 0, 1]) {
+        const pz = k * (L / 3.2), top = this.deckY(pz) - 0.1;
+        const pier = new THREE.Mesh(new THREE.BoxGeometry(0.6, top - C.river.bedY + 0.2, 0.6), railMat);
+        pier.position.set(0, (top + C.river.bedY) / 2 - 0.1, pz);
         g.add(pier);
       }
       g.position.set(b.x, 0, b.z);
@@ -273,7 +304,7 @@ export class Desert {
     // --- the oasis: a small pool and one palm
     {
       const O = this.oasis;
-      const bed = new THREE.Mesh(new THREE.CircleGeometry(O.r + 0.4, 36), new THREE.MeshStandardMaterial({ color: 0x24302c, roughness: 1 }));
+      const bed = new THREE.Mesh(new THREE.CircleGeometry(O.r + 0.4, 36), new THREE.MeshStandardMaterial({ color: 0x3e5a58, roughness: 1 }));
       bed.rotation.x = -Math.PI / 2; bed.position.set(O.x, C.dune.base - 0.28, O.z);
       const pool = new THREE.Mesh(new THREE.CircleGeometry(O.r, 36), waterMat);
       pool.rotation.x = -Math.PI / 2; pool.position.set(O.x, C.dune.base - 0.02, O.z);
@@ -295,6 +326,25 @@ export class Desert {
       w.addTree(this.palm.x, this.palm.z, 0.5);   // a trunk to walk round — and to cut branches from
       w.occluders.push({ x: this.palm.x, z: this.palm.z, r: 0.6 });
       w.palmTree = { x: this.palm.x, z: this.palm.z };
+      // update 37: the palm's shadow on the sand — exactly the circle where thirst freezes
+      {
+        const cnv = document.createElement("canvas"); cnv.width = cnv.height = 256;
+        const cx2 = cnv.getContext("2d");
+        const grd = cx2.createRadialGradient(128, 128, 16, 128, 128, 126);
+        grd.addColorStop(0, "rgba(0,0,0,0.6)"); grd.addColorStop(0.72, "rgba(0,0,0,0.5)"); grd.addColorStop(1, "rgba(0,0,0,0)");
+        cx2.fillStyle = grd; cx2.beginPath(); cx2.arc(128, 128, 126, 0, Math.PI * 2); cx2.fill();
+        cx2.fillStyle = "rgba(0,0,0,0.5)";
+        for (let i = 0; i < 11; i++) {
+          cx2.save(); cx2.translate(128, 128); cx2.rotate(i / 11 * Math.PI * 2 + 0.3);
+          cx2.beginPath(); cx2.ellipse(72, 0, 56, 12, 0, 0, Math.PI * 2); cx2.fill(); cx2.restore();
+        }
+        const st = new THREE.CanvasTexture(cnv);
+        const sh = new THREE.Mesh(new THREE.PlaneGeometry(C.oasis.shadeR * 2.2, C.oasis.shadeR * 2.2),
+          new THREE.MeshBasicMaterial({ map: st, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+        sh.rotation.x = -Math.PI / 2;
+        sh.position.set(this.palm.x, py + 0.08, this.palm.z);
+        scene.add(sh);
+      }
     }
     // --- cacti: seeded, spread out, clear of the river, the oasis and the tent
     {
@@ -361,8 +411,12 @@ export class Desert {
     {
       let guard = 0;
       const spots = [];
-      while (spots.length < C.chestCount && guard++ < 40000) {
+      // update 37: the first eight anywhere the old desert was, six more only in the part the map grew
+      const oldSq = CFG.world.square / 1.2;
+      while (spots.length < C.chestCount + (C.chestCountNew || 0) && guard++ < 80000) {
         const x = X0 + 12 + rng() * (X1 - X0 - 24), z = Z0 + 12 + rng() * (Z1 - Z0 - 24);
+        const outer = Math.abs(x) > oldSq || Math.abs(z) > oldSq;
+        if (spots.length < C.chestCount ? outer : !outer) continue;
         if (!this.inDesert(x, z) || this.riverDist(x, z) < 26) continue;
         if (Math.hypot(x - this.oasis.x, z - this.oasis.z) < 22) continue;
         if (Math.hypot(x - this.tent.x, z - this.tent.z) < 18) continue;
@@ -390,7 +444,7 @@ export class Desert {
     return out;
   }
   // the desert's animated water shares the lake's scroll
-  tick(t) { if (this.waterTex) { this.waterTex.offset.x = (t * 0.02) % 1; this.waterTex.offset.y = (t * 0.013) % 1; } }
+  tick(t) { if (this.waterTex) { this.waterTex.offset.x = (t * 0.03) % 1; this.waterTex.offset.y = (t * 0.008) % 1; if (this.waterTexN) this.waterTexN.offset.copy(this.waterTex.offset); } }
 }
 
 // ---------- the living part: thirst, the bottle, Idris, the wind ----------

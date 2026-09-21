@@ -14,7 +14,8 @@ import { Creature, ItemDrop } from "./entities.js";
 import { GameMap } from "./map.js";
 import { FarmGame } from "./farmgame.js";
 import { ElisiaSystem } from "./elisia.js";   // update 35
-import { DesertSystem } from "./desert.js";   // update 36
+import { DesertSystem } from "./desert.js";
+import { PortalSystem } from "./portals.js";   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -23,7 +24,7 @@ const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_in
   // update 30: kitchen + bathroom finishes
   "t_checker", "t_whitetile", "t_mosaic", "t_cream",
   // update 36: the desert's sand
-  "t_sand"];
+  "t_sand", "t_riversand"];   // update 37: the river bank
 // ONE word per situation for the mobile context button, resolved from the
 // prompt label's leading constant. Built ONCE — update 26 profiling caught the
 // per-frame rebuild of this table as the main-thread's top garbage source.
@@ -83,7 +84,8 @@ const GLB_IDS = ["trex", "werewolf", "pig", "chicken", "tree", "appletree", "che
   // update 35: Elisia — her light and her dark form
   "elisia", "elisia_evil",
   // update 36: the desert — its two Alioramus, the cactus, the palm, Idris
-  "remotus", "altai", "cactus", "palm", "nomad"];
+  "remotus", "altai", "cactus", "palm", "nomad",
+  "portal"];   // update 37
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
@@ -160,6 +162,7 @@ class Game {
     this.farm = new FarmGame(this);
     this.elisia = new ElisiaSystem(this);   // update 35: the angel of the forest
     this.desert = new DesertSystem(this);   // update 36: thirst, the bottle, Idris, the wind
+    this.portals = new PortalSystem(this);  // update 37: the five portals
     this.barTinderTaken = false;
     this.containerTinderTaken = false;
     this.assets = { tex: {}, texN: {}, glb: {} };
@@ -358,6 +361,7 @@ class Game {
     };
 
     this.world = new World(this.scene, this.assets, this.rng);
+    this.portals.build();                   // update 37: the portals stand once the ground exists
     this.world.fogMult = presetFx.fog;      // preset draw distance, from boot
     this.world.updateEnv(0);
     this.world.setFoliage(presetFx.grass);  // preset foliage density
@@ -1059,6 +1063,7 @@ class Game {
     this.updateArrows(dt);
     this.elisia.update(dt);   // update 35
     this.desert.update(dt);   // update 36
+    this.portals.update(dt);  // update 37
     this.updateHunt();
     // 20Hz is plenty for proximity prompts — profiling showed this scan was
     // the main thread's top allocator (~45 label strings/frame). A pending
@@ -1819,6 +1824,7 @@ class Game {
     if (this.world.hammerMesh) this.world.hammerMesh.visible = true;
     this.farm.onMorning();
     this.elisia.onMorning();   // update 35
+    this.portals.onMorning();  // update 37
   }
 
   // ---------- panels: Bill, storage, crafting ----------
@@ -2233,6 +2239,7 @@ class Game {
       consider(a.x, a.z, 0, `${STR.pickApple} [${STR.interact}]`, () => {
         if (!p.inv.add("apple", 1)) return this.ui.toast(STR.inventoryFull);
         a.taken = true; a.mesh.visible = false;
+        this.portals.applePicked(a.tree);   // update 37: the red portal counts trees
         this.audio.sPickup();
         this.ui.renderHotbar(p.inv);
       });
@@ -2527,6 +2534,7 @@ class Game {
     // update 29: everything at Dirk's farm
     this.farm.interact(consider, p);
     this.desert.interact(consider, p);   // update 36
+    this.portals.interact(consider, p);  // update 37
     // update 27: the canopy — climbable once the scroll has taught you
     if (this.learned.has("treeClimb") && !this.world.climbSpot && this.world.treePoints && p.pos.y < 2) {
       let bt = null, btd = 2.5;
@@ -2570,8 +2578,10 @@ class Game {
     if (c.snake) {
       this.ui.toast(STR.snakeBite);
       this.player.damage(CFG.snakeDmg, "snake");
+      this.portals.snakeBite();   // update 37: the green portal's day starts over
       return;
     }
+    this.portals.chestOpened(c);   // update 37
     const gained = [];
     // the silver dagger: a genuine 1-in-128 find
     if (this.lootRng() < CFG.silverChestChance && !this.player.inv.has("silver_dagger")) {
@@ -2633,6 +2643,7 @@ class Game {
     // your bed is your anchor: dying returns you to where you LAST slept
     const p0 = this.player.pos;
     this.lastSleep = { x: p0.x, y: p0.y, z: p0.z };
+    this.portals.slept(p0.x, p0.z);   // update 37: the blue portal counts beds
     // jump to next dawn
     const cycle = CFG.time.dayLen + CFG.time.nightLen;
     this.time = Math.ceil(this.time / cycle) * cycle;
@@ -2807,6 +2818,7 @@ class Game {
     const kept = p.inv.slots.filter((s) => s && s.id !== "death_compass" && s.id !== "water_bottle").map((s) => ({ ...s }));
     for (let i = 0; i < p.inv.slots.length; i++) if (p.inv.slots[i] && p.inv.slots[i].id === "water_bottle") p.inv.slots[i] = null;
     this.desert.onPlayerDeath();
+    this.portals.onDeath();   // update 37
     if (this.carriedEgg) { this.carriedEgg = false; this.returnEggToNest(true); }
     if (kept.length) {
       if (this.deathBag) this.scene.remove(this.deathBag.mesh); // old bag is lost

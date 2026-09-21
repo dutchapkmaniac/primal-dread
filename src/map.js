@@ -108,11 +108,11 @@ export class GameMap {
       c.fillStyle = rnd() < 0.5 ? "#3d4a35" : "#485841"; c.fill();
       c.strokeStyle = "rgba(28,36,24,.55)"; c.lineWidth = 0.7; c.stroke();
     };
-    for (let i = 0; i < 1800; i++) {
+    for (let i = 0; i < 2500; i++) {   // update 37: more glyphs for the bigger square
       const x = (rnd() * 2 - 1) * (W.square - 8), z = (rnd() * 2 - 1) * (W.square - 8);
       const r = Math.hypot(x, z);
       const wooded = (r > W.treeMinR && r < W.treeMaxR)
-        || (r > CFG.newArea.treeMinR && r < CFG.ring7.treeMaxR)
+        || (r > CFG.newArea.treeMinR && r < CFG.ring8.treeMaxR)   // update 37
         || r > W.boundaryR;
       if (!wooded) continue;
       if (this.game.world.inMountain(x, z)) continue;
@@ -181,6 +181,7 @@ export class GameMap {
       c.closePath(); c.fillStyle = "#4a3b28"; c.fill();
     }
     if (this.game.desert) this.game.desert.paintGlyphs(c, tx, ty, s, disc);   // update 36
+    if (this.game.portals) this.game.portals.paintGlyphs(c, tx, ty, s, disc);   // update 37
     // update 29: Dirk's farm — house, the fenced pasture and the berry rows
     if (disc.has("farm")) {
       const F = CFG.farm, HS = F.house, P = F.pasture, B = F.field;

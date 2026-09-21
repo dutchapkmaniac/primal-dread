@@ -358,6 +358,23 @@ export const STR = {
     farm: "Dirk's Farm",
     tent: "Idris's Tent",
     oasis: "The Oasis",
+    portal_red: "Red Portal", portal_green: "Green Portal", portal_yellow: "Yellow Portal",   // update 37
+    portal_blue: "Blue Portal", portal_white: "White Portal",
+  },
+  // update 37: the portals
+  portal: {
+    investigate: "Investigate portal", use: "Use portal",
+    locked: "The stone is cold. Something still binds it.",
+    red: "Apple trees you have picked from: %n of %m. Each dawn forgets the first five.",
+    yellow: "Days in a row without starving: %n of %m.",
+    green: "Different chests opened today: %n of %m. A snake's bite, or the dawn, starts you over.",
+    blue: "Different beds slept in: %n of %m.",
+    white: "Portals awakened: %n of %m.",
+    awake: "The ring hums. It will carry you anywhere you have already been.",
+    activated: "%p awakens!",
+    whereTo: "Where to?",
+    noDest: "You have found nowhere else to go yet.",
+    arrive: "The light lets go of you.",
   },
   discovered: "Discovered",
   mapHint: "Named places appear on the map once you have found them yourself.",

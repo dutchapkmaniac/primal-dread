@@ -40,6 +40,8 @@ const GEN = {
   ladder: "./assets/audio/sfx_ladder.mp3",          // update 31: the attic ladder
   clock: "./assets/audio/sfx_clock.mp3",
   doorCreak: "./assets/audio/sfx_door.mp3",
+  elisiaSing: "./assets/audio/sfx_elisia_sing.m4a",   // update 37: her voice in the mist (a loop)
+  elisiaLaugh: "./assets/audio/sfx_elisia_laugh.mp3",  // update 37: her laugh, now and then
 };
 
 export class AudioMan {
