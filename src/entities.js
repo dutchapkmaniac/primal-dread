@@ -23,6 +23,15 @@ export class Creature {
     if (type === "elisia") { this.cfg = { ...CFG.elisia }; this.form = "good"; }
     this.wild = !!opts.wild;   // wild chickens roam free (not pen-bound)
     this.outer = !!opts.outer; // update 28: frontier T-Rexes patrol the outer ring
+    this.zone = opts.zone || null;   // update 38: "outside" — the extra hunters keep to the frontier beyond the old circle
+    // update 38: the Imperator — a T-Rex in every rule, with its own numbers
+    this.imperator = !!opts.imperator;
+    if (this.imperator) {
+      const I = CFG.imperator;
+      this.cfg = { ...CFG.trex, biteDmg: Math.round(CFG.trex.biteDmg * I.biteDmgMult), sightR: I.sightR,
+        twigNoiseR: I.twigNoiseR, noiseMult: I.noiseMult, height: CFG.trex.height * I.sizeMult };
+    }
+    this.roarRate = this.imperator ? CFG.imperator.roarRate : 1;
     this.ctx = ctx;
     this.spawn = { x, z };
     this.pos = new THREE.Vector3(x, 0, z);
@@ -299,6 +308,8 @@ export class Creature {
       return [this.pos.x, this.pos.z];
     }
     if (this.type === "trex") {
+      // update 38: the ten extra hunters roam anywhere OUTSIDE the old circle
+      if (this.zone === "outside") return this.ctx.world.randomOutsideForest(rng, CFG.trex.extraMinR);
       // update 28: frontier hunters patrol the SQUARE outer band — polar
       // targets never reach the expanded ring's corners
       if (this.outer && this.cfg.outerBand) {
@@ -399,8 +410,8 @@ export class Creature {
     // T-Rex's tooth — the dagger in your hand, or a live T-Rex's bite (takeBite)
     if (this.type === "elisia") {
       if (this.form !== "evil") { game.audio.sHit(); game.ui.toast(STR.elisiaUnharmed); return; }
-      if (weapon !== "trex_dagger") { game.audio.sHit(); game.ui.toast(STR.elisiaImmune); return; }
-      dmg = CFG.elisia.daggerDmg;
+      if (weapon !== "trex_dagger" && weapon !== "imp_dagger") { game.audio.sHit(); game.ui.toast(STR.elisiaImmune); return; }
+      dmg = weapon === "imp_dagger" ? CFG.elisia.daggerDmgImp : CFG.elisia.daggerDmg;   // update 38
     }
     // the croc dies by the count: ten punches, five knife cuts, three machete blows
     if (this.type === "croc") {
@@ -478,7 +489,7 @@ export class Creature {
     // snaps off its hide like it does on the mother's — and it KNOWS you now.
     game.audio.sHit();
     game.ui.toast(STR.spearImmune);
-    game.audio.play3d("roar", this.distToPlayer(), (this.pos.x - game.player.pos.x) * 0.02, 80, 1);
+    game.audio.play3d("roar", this.distToPlayer(), (this.pos.x - game.player.pos.x) * 0.02, 80, 1, this.roarRate || 1);
     game.ui.shake(1.2);
     this.state = "chase"; this.loseT = 0; this.hiddenT = 0;
     this.hasTasted = true;
@@ -492,7 +503,7 @@ export class Creature {
     if (this.hp <= 0) { this.die(game); return; }
     // pain roar — and it KNOWS you now; hiding won't shake a speared hunter
     const d = this.distToPlayer();
-    game.audio.play3d("roar", d, (this.pos.x - game.player.pos.x) * 0.02, 80, 1);
+    game.audio.play3d("roar", d, (this.pos.x - game.player.pos.x) * 0.02, 80, 1, this.roarRate || 1);
     game.ui.shake(1.2);
     this.state = "chase"; this.loseT = 0; this.hiddenT = 0;
     this.hasTasted = true;
@@ -532,6 +543,8 @@ export class Creature {
     }
     if (this.type === "trex") {
       drops = [...CFG.trexHunt.drops];
+      // update 38: one hunter in ten (Imperator: one in five) leaves a tooth where it fell
+      if (game.rng() < (this.imperator ? CFG.imperator.toothChance : CFG.trexHunt.toothChance)) drops.push([this.imperator ? "imp_tooth" : "trex_tooth", 1]);
       // some spears come out of the carcass whole
       let recovered = 0;
       for (const s of this.stuckSpears) {
@@ -586,7 +599,7 @@ export class Creature {
     this.phase += dt;
     if (this.dead) {
       if (this.stateT < 0.6) this.group.rotation.z = (this.stateT / 0.6) * Math.PI / 2;
-      else if (this.stateT > 2 && this.group.visible) {
+      else if (this.stateT > (this.corpseHold || 2) && this.group.visible) {   // update 38: corpseHold — she eats it first
         this.group.visible = false;
         if (this.type === "elisia") this.gone = true;   // update 35: she is removed, not respawned
       }
@@ -706,7 +719,7 @@ export class Creature {
           p.inv.removeOne(meat.id);
           game.ui.renderHotbar(p.inv);
           game.ui.toast(STR.alioSteal);
-          game.audio.play3d("roar", d, (this.pos.x - p.pos.x) * 0.02, 60, 0.6);
+          game.audio.play3d("roar", d, (this.pos.x - p.pos.x) * 0.02, 60, 0.6, this.roarRate || 1);
           this.state = "eat"; this.eatT = C.stealTime;
         } else {
           game.audio.sGrowl();
@@ -750,7 +763,7 @@ export class Creature {
     }
     if (alert) {
       this.state = "chase"; this.lostT = 0;
-      game.audio.play3d("roar", d, (this.pos.x - p.pos.x) * 0.02, 70, 0.7);
+      game.audio.play3d("roar", d, (this.pos.x - p.pos.x) * 0.02, 70, 0.7, this.roarRate || 1);
     }
   }
   // altai's eye: inside its cone, and nothing between — no cactus, no crest
@@ -791,8 +804,8 @@ export class Creature {
     if (d < reach && this.atkT <= 0) {
       this.atkT = this.cfg.biteCd;
       this.lungeT = 0.4;
-      game.audio.play3d("roar", this.distToPlayer(), (this.pos.x - game.player.pos.x) * 0.02, 80, 0.8);
-      foe.takeBite(game, CFG.elisia.trexBite);
+      game.audio.play3d("roar", this.distToPlayer(), (this.pos.x - game.player.pos.x) * 0.02, 80, 0.8, this.roarRate || 1);
+      foe.takeBite(game, CFG.elisia.trexBite * (this.fightBiteMult || 1));   // update 38: the fight's luck
     }
   }
 
@@ -813,7 +826,7 @@ export class Creature {
     if (this.state === "foe") { this.state = "wander"; this.target = null; }
     // escorting Timo makes the pair of you far easier to notice
     const escortMult = game.escorting ? CFG.escortSightMult : 1;
-    const noiseR = p.noiseRadius() * escortMult;
+    const noiseR = p.noiseRadius() * escortMult * (this.cfg.noiseMult || 1);   // update 38: the Imperator hears a little better
     const playerSafe = w.isSafe(p.pos.x, p.pos.z, p.pos.y);
 
     const walking = this.state !== "idle" && this.speed > 0.2;
@@ -835,7 +848,7 @@ export class Creature {
     if (this.idleRoarT <= 0) {
       this.idleRoarT = 22 + game.rng() * 38;
       if (this.state !== "chase" && game.audio.buf.roarIdle) {
-        game.audio.play3d("roarIdle", d, (this.pos.x - p.pos.x) * 0.02, 130, 0.9);
+        game.audio.play3d("roarIdle", d, (this.pos.x - p.pos.x) * 0.02, 130, 0.9, this.roarRate || 1);
       }
     }
 
@@ -943,7 +956,7 @@ export class Creature {
             this.atkT = this.cfg.windowCd;
             this.lungeT = 0.4;
             this.hasTasted = true;
-            game.audio.play3d("roar", pd + 2, 0, 40, 0.9);
+            game.audio.play3d("roar", pd + 2, 0, 40, 0.9, this.roarRate || 1);
             p.damage(this.cfg.windowDmg, "trex", { x: win.x + win.nx * 3, z: win.z + win.nz * 3 });
           }
         }
@@ -1143,7 +1156,7 @@ export class Creature {
       this.state = "chase";
       if (openField && d > M.sightR + 4) {
         game.ui.toast(STR.motherSees);
-        game.audio.play3d("roar", d, 0, 130, 1);
+        game.audio.play3d("roar", d, 0, 130, 1, this.roarRate || 1);
         game.ui.shake(1.8);
       }
     }

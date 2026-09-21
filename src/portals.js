@@ -136,9 +136,10 @@ export class PortalSystem {
       const dim = new THREE.CanvasTexture(emblemCanvas(id, hex, false)), lit = new THREE.CanvasTexture(emblemCanvas(id, hex, true));
       dim.colorSpace = lit.colorSpace = THREE.SRGBColorSpace;
       const emb = [];
+      // update 38: measured from the model — the disc sits flush ON each medallion face, no gap
       for (const [mz, dir] of [[G.medZF, 1], [G.medZB, -1]]) {
-        const m = new THREE.Mesh(new THREE.CircleGeometry(G.medR, 28), new THREE.MeshBasicMaterial({ map: dim, transparent: true }));
-        m.position.set(0, G.medY, mz); if (dir < 0) m.rotation.y = Math.PI;
+        const m = new THREE.Mesh(new THREE.CircleGeometry(G.medR, 28), new THREE.MeshBasicMaterial({ map: dim, transparent: true, polygonOffset: true, polygonOffsetFactor: -1 }));
+        m.position.set(0, G.medY, mz + dir * 0.012); if (dir < 0) m.rotation.y = Math.PI;
         grp.add(m); emb.push(m);
       }
       // the ring's light and the swirl inside it (shown once awake)
@@ -157,8 +158,9 @@ export class PortalSystem {
       const flMat = new THREE.MeshBasicMaterial({ map: flTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
       const flames = [];
       for (const sx of [-1, 1]) for (const rot of [0, Math.PI / 2]) {
-        const f = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.15), flMat);
-        f.position.set(sx * G.bowlX, G.bowlY + 0.5, G.bowlZ); f.rotation.y = rot;
+        // update 38: the flame's base is IN the bowl (the billboard's bottom edge at the rim)
+        const f = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.95), flMat);
+        f.position.set(sx * G.bowlX, G.bowlY + 0.38, G.bowlZ); f.rotation.y = rot;
         grp.add(f); flames.push(f);
       }
       // the light exists from frame one (a NEW light mid-game recompiles every shader)
@@ -229,7 +231,6 @@ export class PortalSystem {
     if (this.beds.size >= P().beds) this.activate("blue");
   }
   onMorning() {
-    if (!this.on.red) this.apples.splice(0, P().appleDecay);          // the first five found are forgotten
     if (!this.on.yellow) {
       if (this.starvedToday) this.hungerDays = 0; else this.hungerDays++;
       this.starvedToday = false;
@@ -282,9 +283,64 @@ export class PortalSystem {
     const here = "portal_" + pt.id;
     const dests = CFG.locations.filter((l) => l.id !== here && g.discovered.has(l.id));
     if (!dests.length) { g.npcPanel(name, [S.awake, S.noDest]); return; }
-    const btns = dests.map((l) => [`tp_${l.id}`, STR.locations[l.id] || l.id]);
-    const s = g.npcPanel(name, [S.awake, `<b>${S.whereTo}</b>`], btns);
-    for (const l of dests) s.querySelector(`#tp_${l.id}`).addEventListener("click", () => { g.ui.closeScreen(); g.resume(); this.teleport(l.id); });
+    this.openMap(pt, dests);
+  }
+  // update 38: the teleport MAP — W/A/S/D move the mark between the places you know, F goes, one button says no
+  openMap(pt, dests) {
+    const g = this.g, S = STR.portal;
+    g.menuOpen = true;
+    const size = Math.min(640, Math.floor(Math.min(window.innerWidth * 0.86, window.innerHeight * 0.62)));
+    const s = g.ui.screen(`
+      <h1 style="font-size:24px;margin-bottom:4px">${STR.locations["portal_" + pt.id]}</h1>
+      <div style="font-size:13px;opacity:.85;margin-bottom:6px">${S.pickHint}</div>
+      <canvas id="tpMap" width="${size}" height="${size}" style="border-radius:8px;max-width:92vw;max-height:62vh"></canvas>
+      <div id="tpName" style="font-size:18px;font-weight:700;margin:8px 0 6px">&nbsp;</div>
+      <button id="tpNo" style="font-size:15px;padding:9px 26px">${S.dontGo}</button>`);
+    g.ui.navEls = null;
+    const cnv = s.querySelector("#tpMap");
+    const sc = (size * 0.45) / CFG.world.square;
+    const tx = (x) => size / 2 + x * sc, ty = (z) => size / 2 + z * sc;
+    // start on the nearest place
+    let sel = 0, bd = 1e18;
+    dests.forEach((l, i) => { const d = Math.hypot(l.x - pt.x, l.z - pt.z); if (d < bd) { bd = d; sel = i; } });
+    const draw = () => {
+      g.map.drawFull(cnv);
+      const c = cnv.getContext("2d");
+      // you: a ring where this portal stands
+      c.beginPath(); c.arc(tx(pt.x), ty(pt.z), 7, 0, Math.PI * 2); c.lineWidth = 2.5; c.strokeStyle = "#ffffff"; c.stroke();
+      dests.forEach((l, i) => {
+        const x = tx(l.x), y = ty(l.z), on = i === sel;
+        c.beginPath(); c.arc(x, y, on ? 11 : 7, 0, Math.PI * 2);
+        c.fillStyle = on ? "rgba(255,190,80,.35)" : "rgba(255,255,255,.12)"; c.fill();
+        c.lineWidth = on ? 3 : 1.5; c.strokeStyle = on ? "#ffb347" : "rgba(255,220,160,.8)"; c.stroke();
+        if (on) { c.beginPath(); c.arc(x, y, 16 + 3 * Math.sin(performance.now() / 180), 0, Math.PI * 2); c.lineWidth = 1.5; c.strokeStyle = "rgba(255,179,71,.7)"; c.stroke(); }
+      });
+      s.querySelector("#tpName").textContent = S.goTo.replace("%p", STR.locations[dests[sel].id] || dests[sel].id);
+    };
+    draw();
+    const anim = setInterval(() => { if (!document.body.contains(cnv)) { clearInterval(anim); return; } draw(); }, 120);
+    const close = () => { clearInterval(anim); g.ui.closeScreen(); g.resume(); };
+    s.querySelector("#tpNo").addEventListener("click", close);
+    // W/A/S/D: the place that lies most in that direction from the current mark
+    const DIRS = { KeyW: [0, -1], ArrowUp: [0, -1], KeyS: [0, 1], ArrowDown: [0, 1], KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0] };
+    g.ui.keyHook = (e) => {
+      if (DIRS[e.code]) {
+        const [ux, uz] = DIRS[e.code], cur = dests[sel];
+        let best = -1, bs = -1e9;
+        dests.forEach((l, i) => {
+          if (i === sel) return;
+          const dx = l.x - cur.x, dz = l.z - cur.z, d = Math.hypot(dx, dz) || 1;
+          const dot = (dx * ux + dz * uz) / d;
+          if (dot < 0.35) return;
+          const score = dot * 2 - d / 900;   // mostly the direction, a little the distance
+          if (score > bs) { bs = score; best = i; }
+        });
+        if (best >= 0) { sel = best; draw(); g.audio.sSelect(); }
+        return true;
+      }
+      if (e.code === "KeyF" || e.code === "Enter" || e.code === "Space") { const id = dests[sel].id; close(); this.teleport(id); return true; }
+      return false;   // Escape falls through to the screen's own handling (the button)
+    };
   }
   // where you land: in front of a portal, or a free spot beside a place's marker
   arrival(id) {
@@ -311,11 +367,18 @@ export class PortalSystem {
     const g = this.g, p = g.player;
     const to = this.arrival(id);
     g.menuOpen = true;
-    g.audio.blip(300, 0.7, "sine", 0.3, 500);
-    await g.ui.fade(true, 700);
+    // update 38: the whoosh and a white flash
+    if (g.audio.buf.teleport) g.audio.play("teleport", { vol: 1 }); else g.audio.blip(300, 0.7, "sine", 0.3, 500);
+    const flash = document.createElement("div");
+    flash.style.cssText = "position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:60;transition:opacity .35s";
+    document.body.appendChild(flash);
+    requestAnimationFrame(() => { flash.style.opacity = "1"; });
+    await new Promise((r) => setTimeout(r, 420));
     p.pos.set(to.x, to.y, to.z); p.vel.set(0, 0, 0); p.yaw = to.yaw; p.pitch = 0;
     if (g.camera) g.camera.position.set(to.x, to.y + 1.6, to.z);
-    await g.ui.fade(false, 700);
+    await new Promise((r) => setTimeout(r, 150));
+    flash.style.transition = "opacity .9s"; flash.style.opacity = "0";
+    setTimeout(() => flash.remove(), 1000);
     g.menuOpen = false;
     g.ui.toast(STR.portal.arrive);
   }

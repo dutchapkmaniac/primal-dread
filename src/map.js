@@ -108,11 +108,11 @@ export class GameMap {
       c.fillStyle = rnd() < 0.5 ? "#3d4a35" : "#485841"; c.fill();
       c.strokeStyle = "rgba(28,36,24,.55)"; c.lineWidth = 0.7; c.stroke();
     };
-    for (let i = 0; i < 2500; i++) {   // update 37: more glyphs for the bigger square
+    for (let i = 0; i < 2900; i++) {   // update 38: more glyphs for the bigger square
       const x = (rnd() * 2 - 1) * (W.square - 8), z = (rnd() * 2 - 1) * (W.square - 8);
       const r = Math.hypot(x, z);
       const wooded = (r > W.treeMinR && r < W.treeMaxR)
-        || (r > CFG.newArea.treeMinR && r < CFG.ring8.treeMaxR)   // update 37
+        || (r > CFG.newArea.treeMinR && r < CFG.ring9.treeMaxR)   // update 38
         || r > W.boundaryR;
       if (!wooded) continue;
       if (this.game.world.inMountain(x, z)) continue;
@@ -225,8 +225,9 @@ export class GameMap {
         c.strokeStyle = "rgba(214,198,158,.75)";
         c.lineWidth = 3;
         const label = STR.locations[loc.id] || loc.id;
-        c.strokeText(label, x, y - 9);
-        c.fillText(label, x, y - 9);
+        const ly = loc.id === "portal_white" ? y + 20 : y - 9;   // update 38: the cellar portal's name sits below, clear of the temple's
+        c.strokeText(label, x, ly);
+        c.fillText(label, x, ly);
       }
     }
   }

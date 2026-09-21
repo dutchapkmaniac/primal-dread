@@ -349,7 +349,12 @@ export class FarmGame {
     const px = p.pos.x, pz = p.pos.z;
     // mode transitions on the day/night edge
     if (g.isNight && D.mode !== "home" && D.mode !== "sleep") { D.mode = "home"; D.pathI = 0; }
-    if (!g.isNight && (D.mode === "home" || D.mode === "sleep")) { D.mode = "leave"; D.pathI = this.homePath.length - 2; }
+    if (!g.isNight && (D.mode === "home" || D.mode === "sleep")) {
+      // update 38: only a dog that is actually on the bed walks the path back out; one that never
+      // got there (the night caught him outside, a door, a wall) just starts his day where he is
+      if (D.mode === "sleep") { D.mode = "leave"; D.pathI = this.homePath.length - 2; }
+      else { D.mode = "wander"; D.t = 1; D.target = null; D.pathI = 0; }
+    }
     let tx = null, tz = null, spd = C.speed, stopAt = 0.35;
     if (D.mode === "home" || D.mode === "leave") {
       const path = this.homePath;
@@ -367,7 +372,7 @@ export class FarmGame {
     // behind him once he is through (unless you are standing in it)
     for (const dr of w.farmDoors || []) {
       const dd = Math.hypot(dr.x - b.position.x, dr.z - b.position.z);
-      if (dd < 1.6 && !dr.open && D.speed > 0.2) { g.toggleDoor(dr); dr.ducoOpened = true; }
+      if (dd < 1.8 && !dr.open && (D.speed > 0.2 || (D.stuckT || 0) > 0.2)) { g.toggleDoor(dr); dr.ducoOpened = true; }   // update 38: a dog stopped AT a door still gets it opened
       else if (dr.ducoOpened && dd > 2.8 && dr.open && Math.hypot(dr.x - px, dr.z - pz) > 1.8) { g.toggleDoor(dr); dr.ducoOpened = false; }
     }
     void door;
@@ -488,6 +493,16 @@ export class FarmGame {
       }
     }
     D.speed = moving;
+    // update 38: the stuck timer — a target he cannot reach for five seconds is given up on,
+    // whatever the mode, so his head is never left in a wall
+    D.stuckT = (tx !== null && moving < 0.05 && !D.jump) ? (D.stuckT || 0) + dt : 0;
+    if (D.stuckT > 5) {
+      D.stuckT = 0;
+      if (D.mode === "home") { D.mode = "sleep"; D.pathI = this.homePath.length - 1; }         // he is put to bed
+      else if (D.mode === "leave") { D.mode = "wander"; D.t = 1; D.target = null; D.pathI = 0;   // he is put out in the yard
+        const st = [FA.terrace.x1 + 1.5, FA.terrace.z0 + 3]; b.position.set(st[0], w.groundHeight(st[0], st[1], 999), st[1]); }
+      else { D.target = null; D.t = 0; const a = b.rotation.y + Math.PI / 2; b.position.x += Math.sin(a) * 0.6; b.position.z += Math.cos(a) * 0.6; }   // a sidestep and a fresh target
+    }
     // update 32: asleep he is ON the bed, not on the floor under it, so his
     // height comes from the mattress rather than from the ground probe.
     const dbed = w.farmDogBed;

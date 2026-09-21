@@ -42,6 +42,10 @@ const GEN = {
   doorCreak: "./assets/audio/sfx_door.mp3",
   elisiaSing: "./assets/audio/sfx_elisia_sing.m4a",   // update 37: her voice in the mist (a loop)
   elisiaLaugh: "./assets/audio/sfx_elisia_laugh.mp3",  // update 37: her laugh, now and then
+  elisiaLaughLoop: "./assets/audio/sfx_elisia_laughloop.mp3",   // update 38: the dark form's laughter replaces the singing
+  elisiaLaughBig: "./assets/audio/sfx_elisia_laughbig.mp3",     // update 38: when she has eaten a T-Rex
+  elisiaChase: "./assets/audio/a_elisia_chase.m4a",              // update 38: her own chase music
+  teleport: "./assets/audio/sfx_teleport.mp3",                   // update 38: a portal takes you
 };
 
 export class AudioMan {
@@ -100,10 +104,10 @@ export class AudioMan {
     return s;
   }
   // positional helper: volume by distance, pan by lateral offset
-  play3d(k, dist, side, maxDist, vol = 1) {
+  play3d(k, dist, side, maxDist, vol = 1, rate = 1) {
     if (dist > maxDist) return;
     const v = vol * Math.pow(1 - dist / maxDist, 1.6);
-    this.play(k, { vol: v, pan: Math.max(-0.8, Math.min(0.8, side)) });
+    this.play(k, { vol: v, pan: Math.max(-0.8, Math.min(0.8, side)), rate });
   }
   music(name) { // "ambient" | "chase" | null — crossfade 1s
     if (this.currentMusic === name || !this.ctx) return;

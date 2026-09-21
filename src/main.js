@@ -85,7 +85,8 @@ const GLB_IDS = ["trex", "werewolf", "pig", "chicken", "tree", "appletree", "che
   "elisia", "elisia_evil",
   // update 36: the desert — its two Alioramus, the cactus, the palm, Idris
   "remotus", "altai", "cactus", "palm", "nomad",
-  "portal"];   // update 37
+  "portal",   // update 37
+  "imperator", "trexdagger3d", "impdagger3d"];   // update 38
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
@@ -387,9 +388,22 @@ class Game {
     this.compassEl = document.getElementById("compass");
 
     // creatures
-    for (const [x, z] of CFG.trex.spawns) this.creatures.push(new Creature("trex", this.assets.glb.trex, x, z, ctx));
-    // update 28: three frontier hunters that live on the expanded outer ring
-    for (const [x, z] of CFG.trex.outerSpawns || []) this.creatures.push(new Creature("trex", this.assets.glb.trex, x, z, ctx, { outer: true }));
+    // update 38: TWENTY hunters — the seven of the old map, the three frontier patrols, and ten more
+    // born and roaming OUTSIDE the old circle. One of the twenty, chosen at random, is the Imperator.
+    {
+      const specs = [];
+      for (const [x, z] of CFG.trex.spawns) specs.push([x, z, {}]);
+      for (const [x, z] of CFG.trex.outerSpawns || []) specs.push([x, z, { outer: true }]);
+      for (let i = 0; i < (CFG.trex.extraCount || 0); i++) {
+        const [x, z] = this.world.randomOutsideForest(this.rng, CFG.trex.extraMinR);
+        specs.push([x, z, { zone: "outside" }]);
+      }
+      const imp = Math.floor(this.rng() * specs.length);
+      specs.forEach(([x, z, o], i) => {
+        const isImp = i === imp;
+        this.creatures.push(new Creature("trex", (isImp && this.assets.glb.imperator) || this.assets.glb.trex, x, z, ctx, { ...o, imperator: isImp }));
+      });
+    }
     for (const [x, z] of CFG.pig.spawns) this.creatures.push(new Creature("pig", this.assets.glb.pig, x, z, ctx));
     // update 36: the desert's hunters — remotus along the river, altai deeper in
     for (const kind of ["remotus", "altai"]) {
@@ -575,7 +589,7 @@ class Game {
     this.ui.hintFor = (slot) => {
       if (!slot) return null;
       const name = STR.items[slot.id]?.name || slot.id;
-      if (slot.id === "knife" || slot.id === "silver_dagger" || slot.id === "trex_dagger" || slot.id === "machete" || slot.id === "axe") return `${useKey} ${STR.hintAttack} — ${name}`;
+      if (slot.id === "knife" || slot.id === "silver_dagger" || slot.id === "trex_dagger" || slot.id === "imp_dagger" || slot.id === "machete" || slot.id === "axe") return `${useKey} ${STR.hintAttack} — ${name}`;
       if (slot.id === "spear") return `${useKey} ${STR.hintSpear}`;
       if (slot.id === "water_bottle") return `${name}: ${this.desert.bottleHint()}`;   // update 36
       if (slot.id === "super_energy_drink") return `${useKey} ${STR.hintDrink} — ${name}`;
@@ -1593,6 +1607,10 @@ class Game {
       this.ui.huntBar(null, null);
       if (t && t.dead) this.huntTarget = null;
     }
+    // update 38: the T-Rex she fights shows its own bar under hers
+    const f = this.huntFoe;
+    if (f && !f.dead && f.distToPlayer() < 90) this.ui.huntBar2(f.imperator ? STR.huntImperator : STR.huntTrex, Math.max(0, f.hp) / f.maxHp);
+    else { this.ui.huntBar2(null, null); if (f && f.dead) this.huntFoe = null; }
   }
 
   // light the torch: tinderbox, or hold it into any burning fire.
@@ -2737,7 +2755,9 @@ class Game {
     const danger = this.creatures.some((c) => (c.type === "trex" && (c.state === "chase" || c.state === "window" || c.state === "foe"))
         || (c.type === "elisia" && c.state === "evil") || ((c.type === "remotus" || c.type === "altai") && c.state === "chase"))
       || this.wolves.some((w) => !w.dead && w.state === "chase");
-    this.audio.music(danger ? "chase" : "ambient");
+    // update 38: the dark form has her own chase music
+    const elisiaOut = this.creatures.some((c) => c.type === "elisia" && (c.state === "evil" || c.state === "eat") && !c.dead);
+    this.audio.music(elisiaOut && this.audio.buf.elisiaChase ? "elisiaChase" : danger ? "chase" : "ambient");
   }
 
   spawnDrop(id, n, x, z, y, ttl = 0) {

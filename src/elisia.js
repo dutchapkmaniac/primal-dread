@@ -33,6 +33,8 @@ export class ElisiaSystem {
     this.grey = false;     // the dark form's mist
     this.fireballs = [];
     this.cine = null;      // the kiss cinematic, while it runs
+    this.kills = 0; this.impKills = 0;   // update 38: hunters her dark form has eaten this encounter
+    this.fight = null;                    // update 38: the fight in progress { foe, clawMult }
     this._glow = null;
   }
 
@@ -100,6 +102,7 @@ export class ElisiaSystem {
   }
 
   onPlayerDeath() {
+    this.fight = null; this.g.huntFoe = null;
     if (this.c) { this.c.gone = true; this.c = null; }
     this.cine = null; this.grey = false;
     for (const f of this.fireballs) this.g.scene.remove(f.mesh);
@@ -155,6 +158,18 @@ export class ElisiaSystem {
       case "evil":
         this.driveEvil(c, dt, d, dx, dz);
         break;
+      case "eat": {   // update 38: she feeds on the hunter she killed — you have this long to run
+        const F = E().fight, k = Math.min(1, c.stateT / F.eatTime);
+        if (c.eatFoe) { const dy = norm(Math.atan2(c.eatFoe.pos.x - c.pos.x, c.eatFoe.pos.z - c.pos.z) - c.yaw); c.yaw += Math.max(-3 * dt, Math.min(3 * dt, dy)); }
+        const sc = c.eatFrom + (c.eatTo - c.eatFrom) * k;
+        c.body.scale.setScalar(sc);
+        if (c.anim && c.stateT % 1.2 < dt) c.anim.playAttack();
+        if (k >= 1) {
+          c.cfg.height = E().evilHeight * (c.eatTo / (c.baseScale || 1));
+          c.state = "evil"; c.stateT = 0; c.eatFoe = null; c.atkT = 0.5;
+        }
+        break;
+      }
       default:
         c.state = "stand";
     }
@@ -172,17 +187,44 @@ export class ElisiaSystem {
       if (td < 6 && td < fd) { foe = t; fd = td; }
     }
     if (foe) {
+      // update 38: a matter of luck, decided the moment a hunter closes in — she wins one
+      // T-Rex fight in two and one Imperator fight in four; never a fourth T-Rex, never a
+      // second Imperator. The roll sets how hard she claws and how hard it bites, so the
+      // bars tell the story and the end follows the roll.
+      const F = C.fight;
+      if (!this.fight || this.fight.foe !== foe) {
+        const imp = !!foe.imperator;
+        let pWin = imp ? F.winImp : F.winRex;
+        if (this.kills >= F.maxKills || (imp && this.impKills >= F.maxImpKills)) pWin = 0;
+        const win = g.rng() < pWin;
+        this.fight = { foe, win, clawMult: win ? 1.05 + g.rng() * 0.25 : 0.45 + g.rng() * 0.15 };
+        foe.fightBiteMult = win ? 0.4 + g.rng() * 0.15 : 1.0 + g.rng() * 0.25;
+        g.huntFoe = foe;
+      }
       const reach = C.claw.range + foe.cfg.height * 0.3;
       c.moveToward(foe.pos.x, foe.pos.z, fd > reach ? C.chaseSpeed : 0, dt);
       if (fd <= reach && c.atkT <= 0) {
         c.atkT = C.claw.cd; c.lungeT = 0.4;
         if (c.anim) c.anim.playAttack();
         g.audio.sGrowl();
-        foe.hp -= C.clawTrex;
-        if (foe.hp <= 0) foe.die(g);
+        foe.hp -= C.clawTrex * this.fight.clawMult;
+        if (foe.hp <= 0) {
+          foe.corpseHold = F.eatTime + 1.5;
+          foe.die(g);
+          this.kills++; if (foe.imperator) this.impKills++;
+          this.fight = null; g.huntFoe = null;
+          // the meal: five seconds over the corpse, a laugh, and she grows by half
+          c.state = "eat"; c.stateT = 0; c.eatFrom = c.body.scale.x; c.eatTo = c.body.scale.x * F.eatGrow; c.eatFoe = foe;
+          g.ui.toast(STR.elisiaFeeds);
+          g.audio.play("elisiaLaughBig", { vol: 1 });
+          g.ui.shake(1.0);
+        }
       }
       return;
     }
+    this.fight = null; g.huntFoe = null;
+    // update 38: between fights her wounds close, slowly — full again in regenTime seconds
+    if (c.hp < c.maxHp) c.hp = Math.min(c.maxHp, c.hp + c.maxHp / C.fight.regenTime * dt);
     // safe zones are safe: she holds off, paces, and waits for you to come out
     if (w.isSafe(p.pos.x, p.pos.z, p.pos.y)) {
       if (d > 5) {
@@ -230,6 +272,9 @@ export class ElisiaSystem {
     delete c.group.userData.fogShow;
     c.hp = c.maxHp = C.hp;
     c.atkT = 0.8; c.fireT = 1.5;
+    c.baseScale = c.body.scale.x;   // update 38: the size she grows from with every meal
+    this.grey = true;               // update 38: the dark form's mist, laughter and music from here on
+    this.kills = 0; this.impKills = 0; this.fight = null;
     g.huntTarget = c;
     g.ui.shake(1.2);
   }
@@ -297,7 +342,7 @@ export class ElisiaSystem {
     if (on) this.mistD = Math.hypot(c.pos.x - g.player.pos.x, c.pos.z - g.player.pos.z);
     const d = this.mistD;
     const target = on ? Math.max(0, 1 - d / E().mistR) : 0;
-    const rate = target > this.mist ? 2 : 0.35;
+    const rate = target > this.mist ? 2 : on ? 0.35 : 1 / (E().mistFadeOut || 10);   // update 38: gone -> a slow fade
     this.mist += Math.max(-rate * dt, Math.min(rate * dt, target - this.mist));
     this.voice(dt);   // update 37: her singing and her laughter live in the mist
     if (this.mist < 0.002) { this.mist = 0; return; }
@@ -315,9 +360,11 @@ export class ElisiaSystem {
   // full beside her); the laugh comes now and then, louder the closer you are.
   voice(dt) {
     const g = this.g, m = this.mist;
-    g.audio.loopMix("elisiaSing", m, 0.95);
+    // update 38: the dark form does not sing — its laughter fills the mist instead
+    g.audio.loopMix("elisiaSing", this.grey ? 0 : m, 0.95);
+    g.audio.loopMix("elisiaLaughLoop", this.grey ? m : 0, 0.9);
     this.laughT = (this.laughT ?? 6) - dt;
-    if (m > 0.04 && this.laughT <= 0) {
+    if (m > 0.04 && this.laughT <= 0 && !this.grey) {
       const [a, b] = E().laughEvery;
       this.laughT = a + g.rng() * (b - a);
       let pan = 0;

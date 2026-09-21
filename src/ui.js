@@ -62,6 +62,7 @@ export class UI {
       // menus are fully keyboard-driven — but while PAUSED the hotbar is a
       // workbench: digits pick a slot, F lifts an item and drops it again
       if (document.getElementById("screen")) {
+        if (this.keyHook && this.keyHook(e)) { e.preventDefault(); return; }   // update 38: a screen may take the keys first (the teleport map)
         if (this.pauseInv && this.invKey(e)) return;
         if (this.storeNav && this.storeKey(e)) return;
         this.navKey(e); return;
@@ -286,6 +287,15 @@ export class UI {
     el.querySelector(".nm").textContent = name;
     el.querySelector(".tr i").style.width = `${Math.max(0, Math.min(100, frac * 100))}%`;
   }
+  // update 38: the second bar — the hunter Elisia's dark form is fighting
+  huntBar2(name, frac) {
+    const el = $("#hunt2");
+    if (!el) return;
+    if (frac === null || frac === undefined) { if (el.style.display !== "none") el.style.display = "none"; return; }
+    el.style.display = "block";
+    el.querySelector(".nm").textContent = name;
+    el.querySelector(".tr i").style.width = `${Math.max(0, Math.min(100, frac * 100))}%`;
+  }
   clockDisplay(day, phase, night) {
     $("#clock .day").textContent = `${STR.day} ${day}`;
     $("#clock .tod").innerHTML = `<span class="glyph">${night ? "☾" : "☀"}</span>${phase}`;
@@ -401,7 +411,7 @@ export class UI {
     this.refreshNav(d);
     return d;
   }
-  closeScreen() { $("#screen")?.remove(); this.navEls = null; this.storeNav = null; this.stopPour(); }
+  closeScreen() { $("#screen")?.remove(); this.navEls = null; this.storeNav = null; this.keyHook = null; this.stopPour(); }
   // tap = one transfer, hold = keep pouring until the button lifts
   startPour(fn) {
     this.stopPour();

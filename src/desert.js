@@ -116,9 +116,11 @@ export class Desert {
   inOasisWater(x, z) { return Math.hypot(x - this.oasis.x, z - this.oasis.z) < this.oasis.r; }
   // update 37: the deck's height across the river — a hump, deckY at both ends, deckY + arch in the middle
   deckY(across) {
+    // update 38: a hump from ground level at one end to ground level at the other
     const B = D().bridge, half = D().river.halfW + B.overhang;
-    const u = across / half;
-    return B.deckY + (B.arch || 0) * Math.max(0, 1 - u * u);
+    const u = Math.max(-1, Math.min(1, across / half));
+    const end = B.endY ?? 0.03, mid = B.deckY + (B.arch || 0);
+    return end + (mid - end) * (1 - u * u);
   }
   // shade: the tent (also a safe zone) and the palm's crown
   inTentZone(x, z) { return Math.hypot(x - this.tent.x, z - this.tent.z) < D().tent.zoneR; }
@@ -195,7 +197,7 @@ export class Desert {
     const C = D(), W = CFG.world;
     const w = this.world;
     // --- the sand: a heightfield over the south-west, hidden where the forest is
-    const X0 = -W.square - 4, X1 = C.bounds.x1, Z0 = C.bounds.z0, Z1 = W.square + 4;
+    const X0 = -W.square - (C.edgePad || 4), X1 = C.bounds.x1, Z0 = C.bounds.z0, Z1 = W.square + (C.edgePad || 4);   // update 38: 260 m past the edge
     const nx = Math.ceil((X1 - X0) / 4), nz = Math.ceil((Z1 - Z0) / 4);
     const geo = new THREE.PlaneGeometry(X1 - X0, Z1 - Z0, nx, nz);
     geo.rotateX(-Math.PI / 2);
@@ -412,7 +414,7 @@ export class Desert {
       let guard = 0;
       const spots = [];
       // update 37: the first eight anywhere the old desert was, six more only in the part the map grew
-      const oldSq = CFG.world.square / 1.2;
+      const oldSq = C.oldSquare || 763;   // update 38: the u36 desert is the 'old' part
       while (spots.length < C.chestCount + (C.chestCountNew || 0) && guard++ < 80000) {
         const x = X0 + 12 + rng() * (X1 - X0 - 24), z = Z0 + 12 + rng() * (Z1 - Z0 - 24);
         const outer = Math.abs(x) > oldSq || Math.abs(z) > oldSq;
@@ -524,7 +526,11 @@ export class DesertSystem {
     const w = this.g.world, des = this.d;
     if (!des) return null;
     const R = des.riverInfo(x, z);
-    if (R.d > D().river.halfW - 1 && R.d < D().river.halfW + 4 && !des.bridgeAt(x, z)) return { x: R.px, z: R.pz, name: "river" };
+    if (R.d > D().river.halfW - 1 && R.d < D().river.halfW + 6 && !des.bridgeAt(x, z)) {
+      // update 38: the fill point is the water's edge nearest you (the centre line was 12 m out — never in reach)
+      const ux = (x - R.px) / (R.d || 1), uz = (z - R.pz) / (R.d || 1), hw = D().river.halfW;
+      return { x: R.px + ux * hw, z: R.pz + uz * hw, name: "river" };
+    }
     const od = Math.hypot(x - des.oasis.x, z - des.oasis.z);
     if (od > des.oasis.r - 1 && od < des.oasis.r + 3.5) {
       const a = Math.atan2(z - des.oasis.z, x - des.oasis.x);

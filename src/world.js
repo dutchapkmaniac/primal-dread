@@ -182,7 +182,7 @@ export class World {
     // update 37: the temple's cellar — its stairs (dropping westward) and its floor
     {
       const B = CFG.portals.basement, S = B.stairs;
-      if (x > S.x0 - 0.3 && x < S.x1 + 0.3 && z > S.z0 && z < S.z1 && y < 1.0) return B.y * Math.min(1, Math.max(0, (S.x1 - x) / (S.x1 - S.x0)));
+      if (x > S.x0 - 0.3 && x < S.x1 + 0.3 && z > S.z0 && z < S.z1 && y < 1.0) return B.y * Math.min(1, Math.max(0, (x - S.x0) / (S.x1 - S.x0)));   // update 38: drops eastward
       if (x > B.x0 && x < B.x1 && z > B.z0 && z < B.z1 && y < -0.5) return B.y;
     }
     const cands = [this.mountainH(x, z)];
@@ -244,6 +244,21 @@ export class World {
     let best = 0;
     for (const c of cands) if (c <= y + 0.7 && c > best) best = c;
     return best;
+  }
+
+  // update 38: a random forest spot outside the old circle (the frontier), for the extra hunters
+  randomOutsideForest(rng, minR) {
+    const sq = CFG.world.square - 40;
+    for (let i = 0; i < 4000; i++) {
+      const x = (rng() * 2 - 1) * sq, z = (rng() * 2 - 1) * sq;
+      const r = Math.hypot(x, z);
+      if (r < minR) continue;
+      if (this.inMountain(x, z) || this.inNewLandmark(x, z, 20)) continue;
+      if (this.desert.inDesert(x, z) || this.desert.riverDist(x, z) < 40) continue;
+      if (Math.hypot(x - CFG.lake.x, z - CFG.lake.z) < CFG.lake.r + 30) continue;
+      return [x, z];
+    }
+    return [sq * 0.7, 0];
   }
 
   // ---------- construction ----------
@@ -340,6 +355,16 @@ export class World {
       for (const [px, pz] of [[a, -880], [a, 880], [-880, a], [880, a]]) {
         if (this.desert.inDesert(px, pz)) continue;
         const p = new THREE.Mesh(new THREE.PlaneGeometry(180, 180), ffMat);
+        p.rotation.x = -Math.PI / 2;
+        p.position.set(px, 0.01, pz);
+        this.scene.add(p);
+      }
+    }
+    // update 38: ring9 — a sixth rank of forest floor along the newest frontier
+    for (let a = -970; a <= 970; a += 194) {
+      for (const [px, pz] of [[a, -970], [a, 970], [-970, a], [970, a]]) {
+        if (this.desert.inDesert(px, pz)) continue;
+        const p = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), ffMat);
         p.rotation.x = -Math.PI / 2;
         p.position.set(px, 0.01, pz);
         this.scene.add(p);
@@ -2394,10 +2419,11 @@ export class World {
     box((B.x0 + B.x1) / 2, B.y + H / 2, B.z1 + T / 2, B.x1 - B.x0 + 2 * T, H, T);
     box(B.x0 - T / 2, B.y + H / 2, 0, T, H, B.z1 - B.z0);
     box(B.x1 + T / 2, B.y + H / 2, 0, T, H, B.z1 - B.z0);
-    // the stairs: from the top (x1, floor level) down to the bottom (x0, the cellar floor), along the north wall
+    // update 38: the stairs turned round — the top step is in the north-west CORNER (x0, floor
+    // level) and they drop EASTWARD to x1, so you walk off the bottom step into the room
     const n = 16, run = S.x1 - S.x0, rise = H / n;
     for (let i = 0; i < n; i++) {
-      const x1 = S.x1 - (run / n) * i, x0 = x1 - run / n, top = -rise * (i + 1);
+      const x0 = S.x0 + (run / n) * i, x1 = x0 + run / n, top = -rise * (i + 1);
       const g = new THREE.BoxGeometry(run / n + 0.04, rise + 0.02, S.z1 - S.z0);
       g.translate((x0 + x1) / 2, top - rise / 2 + 0.01, (S.z0 + S.z1) / 2);
       geos.push(g);
@@ -2405,13 +2431,38 @@ export class World {
     const m = new THREE.Mesh(mergeGeometries(geos), this.mat("t_romanstone", 3.4, 1.7, 0x7a7f74));
     m.receiveShadow = true;
     this.scene.add(m);
-    // three wall torches — lights that exist from frame one (a new light mid-game recompiles every shader)
-    const torchMat = new THREE.MeshStandardMaterial({ color: 0x3a2a18, roughness: 1 });
-    const flameMat = new THREE.MeshBasicMaterial({ color: 0xffb060 });
-    for (const [lx, lz] of [[B.x0 + 1, 0], [B.x1 - 1, 0], [0, B.z1 - 1]]) {
-      const l = new THREE.PointLight(0xd07a30, 5, 12, 2); l.position.set(lx, B.y + 2.4, lz); this.scene.add(l);
-      const t = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.5, 6), torchMat); t.position.set(lx, B.y + 2.0, lz); this.scene.add(t);
-      const f = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), flameMat); f.position.set(lx, B.y + 2.3, lz); this.scene.add(f);
+    // update 38: REAL torches on the walls — an iron bracket, the generated torch leaning out of
+    // it, two crossed flame billboards and a warm light (lights exist from frame one: a new light
+    // mid-game recompiles every shader)
+    const bracketMat = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.8, metalness: 0.4 });
+    const flameTex = this.assets.flame || new THREE.CanvasTexture(makeFlameCanvas());
+    const flameMat = new THREE.MeshBasicMaterial({ map: flameTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    const torchAsset = this.assets.glb.torch3d;
+    this.cellarFlames = [];
+    // [x, z, facing yaw]: the torch leans AWAY from its wall, into the room
+    for (const [lx, lz, yaw] of [[B.x0 + 0.12, -2.5, Math.PI / 2], [B.x0 + 0.12, 2.5, Math.PI / 2], [B.x1 - 0.12, 0, -Math.PI / 2], [0, B.z1 - 0.12, Math.PI]]) {
+      const g = new THREE.Group();
+      g.position.set(lx, B.y + 1.9, lz); g.rotation.y = yaw;   // local +z points into the room
+      const br = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.26), bracketMat); br.position.set(0, 0, 0.13); g.add(br);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 6, 12), bracketMat); ring.position.set(0, 0.02, 0.26); ring.rotation.x = Math.PI / 2; g.add(ring);
+      let torch;
+      if (torchAsset) {
+        torch = torchAsset.model.clone();
+        const bb = new THREE.Box3().setFromObject(torch); const sz = new THREE.Vector3(); bb.getSize(sz);
+        torch.scale.multiplyScalar(0.6 / Math.max(sz.x, sz.y, sz.z));
+        const bb2 = new THREE.Box3().setFromObject(torch); torch.position.y -= bb2.min.y;
+      } else {
+        torch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.6, 6), new THREE.MeshStandardMaterial({ color: 0x3a2a18, roughness: 1 }));
+        torch.position.y = 0.3;
+      }
+      const lean = new THREE.Group(); lean.position.set(0, -0.12, 0.26); lean.rotation.x = 0.42;   // leans out of the bracket
+      lean.add(torch); g.add(lean);
+      for (const rot of [0, Math.PI / 2]) {
+        const f = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.5), flameMat);
+        f.position.set(0, 0.62, 0.44); f.rotation.y = rot; g.add(f); this.cellarFlames.push(f);
+      }
+      const l = new THREE.PointLight(0xd07a30, 5, 12, 2); l.position.set(0, 0.75, 0.5); g.add(l);
+      this.scene.add(g);
     }
     this.basement = B;
   }
@@ -2863,6 +2914,21 @@ export class World {
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
       positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
     }
+    // update 38: the sixth expansion band — ring9
+    const R9 = CFG.ring9;
+    let guard9 = 0;
+    const r9Start = positions.length;
+    while (positions.length - r9Start < R9.treeCount && guard9++ < 300000) {
+      const x = (rng() * 2 - 1) * R9.treeMaxR;
+      const z = (rng() * 2 - 1) * R9.treeMaxR;
+      const r = Math.hypot(x, z);
+      if (r < R9.treeMinR || r > R9.treeMaxR) continue;
+      if (this.inMountain(x, z)) continue;
+      if (this.inNewLandmark(x, z)) continue;
+      if (this.desert.inDesert(x, z) || this.desert.riverDist(x, z) < 20) continue;
+      if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
+      positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
+    }
     // update 36: the desert and the river hold no forest — every earlier band is filtered too
     for (let i = positions.length - 1; i >= 0; i--) {
       const [px, pz] = positions[i];
@@ -2873,7 +2939,7 @@ export class World {
     // beyond the old circle. The fourth corner belongs to the mountain.
     const SQ = W.square - 6;
     let guard5 = 0, cornerN = 0;
-    while (cornerN < 4700 && guard5++ < 900000) {   // update 37: the corners grew with the square
+    while (cornerN < 5400 && guard5++ < 1100000) {   // update 38: the corners grew with the square
       const x = (rng() * 2 - 1) * SQ;
       const z = (rng() * 2 - 1) * SQ;
       if (Math.hypot(x, z) < W.boundaryR - 2) continue;  // corners only
@@ -3016,8 +3082,8 @@ export class World {
     const single = new THREE.PlaneGeometry(0.62, 0.42);
     single.translate(0, 0.21, 0);
     const cross = mergeGeometries([single, single.clone().rotateY(Math.PI / 2)]);
-    const grassTotal = CFG.world.grassCount + CFG.newArea.grassCount + CFG.ring2.grassCount + CFG.ring3.grassCount + CFG.ring4.grassCount + CFG.ring5.grassCount + CFG.ring6.grassCount + CFG.ring7.grassCount + CFG.ring8.grassCount;
-    const GR = CFG.ring8.treeMaxR - 2;   // the grass disc hugs the outermost band (update 37: ring8)
+    const grassTotal = CFG.world.grassCount + CFG.newArea.grassCount + CFG.ring2.grassCount + CFG.ring3.grassCount + CFG.ring4.grassCount + CFG.ring5.grassCount + CFG.ring6.grassCount + CFG.ring7.grassCount + CFG.ring8.grassCount + CFG.ring9.grassCount;
+    const GR = CFG.ring9.treeMaxR - 2;   // the grass disc hugs the outermost band (update 38: ring9)
     const inst = new THREE.InstancedMesh(cross, tuftMat, grassTotal);
     inst.frustumCulled = false;
     const dummy = new THREE.Object3D();

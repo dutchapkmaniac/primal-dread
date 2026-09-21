@@ -87,6 +87,7 @@ export async function loadIcons() {
     ["trex_dagger", "./assets/ui_trexdagger.png"], ["holy_water", "./assets/ui_holywater.png"],
     ["unholy_water", "./assets/ui_unholywater.png"], ["unholy_tiara", "./assets/ui_unholytiara.png"],
     ["water_bottle", "./assets/ui_waterbottle.png"],   // update 36
+    ["imp_tooth", "./assets/ui_imptooth.png"], ["imp_dagger", "./assets/ui_impdagger.png"],   // update 38
   ].map(async ([id, url]) => {
     const im = await loadImage(url);
     if (!im) { icons[id] = fallbackIcon(id); return; }
@@ -151,6 +152,7 @@ function fallbackIcon(id) {
     cooked_beef: "#7a4a26", raw_beef: "#a8303a", blueberries: "#3a4a8c", lemon: "#d8c23a", bowl: "#a08a5c",
     bowl_milk: "#e8e4d8", bowl_yogurt: "#ece6d4", bowl_yogurt_blueberries: "#8a7aa8", scroll_yogurt: "#e0d8b0",
     trex_dagger: "#e8dcc4", holy_water: "#f0e2b0", unholy_water: "#4a1018", unholy_tiara: "#3a3438",
+    imp_tooth: "#3a3a3c", imp_dagger: "#2c2c30",
     water_bottle: "#5a3a22",
   };
   const cnv = document.createElement("canvas");

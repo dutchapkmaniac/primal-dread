@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=37";
+export const ASSET_V = "?v=38";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -12,7 +12,7 @@ export const CFG = {
 
   world: {
     boundaryR: 402,          // the old circle — still the frame the rings hang on
-    square: 916,             // update 37: +20% a fifth time — ring8 grows the frontier (763 before)
+    square: 1008,            // update 38: +10% — ring9 grows the frontier (916 before)
     oldBoundaryR: 150,       // the original map stays untouched inside this
     fieldR: 52,              // open field radius around the ruin
     hutPos: [-22, -128],     // tree hut, off-axis — you have to find it
@@ -92,6 +92,10 @@ export const CFG = {
     treeMinR: 757, treeMaxR: 910, treeCount: 1500, grassCount: 1100,
     chestCount: 40, appleCount: 30,
   },
+  // ---- update 38: the sixth expansion band (+10%) — forest only ----
+  ring9: {
+    treeMinR: 910, treeMaxR: 1002, treeCount: 1100, grassCount: 800,
+  },
   // 15 extra treasure chests scattered across the WHOLE map [x, z]
   extraChests: [
     [350, 40], [-340, 120], [180, -320], [-260, -270], [60, 370],
@@ -160,7 +164,7 @@ export const CFG = {
     // wading past 30 seconds makes it certain. No timers, no warnings.
     entryChance: 0.2, guaranteedAfter: 30, nearShore: 14,
     // blows to the kill: fists 10, knife 5, machete 3 — a thrown spear 3
-    hitDmg: { fists: 15, knife: 30, silver_dagger: 30, trex_dagger: 40, machete: 50, axe: 50, spear: 50, arrow: 30, silver_arrow: 38 },
+    hitDmg: { fists: 15, knife: 30, silver_dagger: 30, trex_dagger: 40, imp_dagger: 40, machete: 50, axe: 50, spear: 50, arrow: 30, silver_arrow: 38 },
     drops: [["croc_skin", 1], ["raw_fish", 2]],
   },
   lighthouse: { x: 143, z: 78, r: 4.3, top: 26, revs: 6, doorYaw: Math.PI },
@@ -208,6 +212,8 @@ export const CFG = {
     { id: "arrow", count: 10, cost: { knife: 2, branch: 2, feather: 3 }, scroll: "arrows" },
     { id: "silver_arrow", count: 10, cost: { silver_dust: 1, knife: 2, branch: 2, feather: 3 }, scroll: "silver_arrows" },
     { id: "bowl", cost: { branch: 2 }, needs: "knife" },   // update 29: two branches whittled into a bowl (the knife stays)
+    { id: "trex_dagger", cost: { trex_tooth: 1, branch: 1 } },   // update 38: a tooth lashed to a branch
+    { id: "imp_dagger", cost: { imp_tooth: 1, branch: 1 } },
   ],
   needleBreakChance: 0.2,       // sewing gambles the needle — 20% it snaps
   wolfBagStackMax: 20,          // wearing the bag doubles every inventory slot
@@ -224,8 +230,9 @@ export const CFG = {
   trexHunt: {
     hp: 800,                              // ~7 body hits, or 3 clean skull throws
     enrageFrac: 0.3, enrageSpeedMult: 1.25,
-    respawn: 420,                         // a slain hunter stays down 7 minutes
-    drops: [["raw_trex", 3], ["trex_tooth", 1]],
+    respawn: 180,                         // update 38: a slain hunter is back 3 REAL minutes later
+    drops: [],                            // update 38: Elisia eats what she kills — only a tooth may be left...
+    toothChance: 0.1,                     // ...one time in ten
   },
   silverChestChance: 1 / 128,        // the silver dagger — werewolf slayer
   axeChestChance: 1 / 64,            // the axe — lumberjack's luck
@@ -293,6 +300,7 @@ export const CFG = {
     knife: { dmg: 25, range: 2.3, arcCos: 0.45, cooldown: 0.5 },
     silver_dagger: { dmg: 30, range: 2.2, arcCos: 0.45, cooldown: 0.45 },
     trex_dagger:   { dmg: 35, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 35: Elisia's gift — a blade ground from a T-Rex tooth
+    imp_dagger:    { dmg: 35, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 38: the same blade from an Imperator tooth (double on Elisia)
     machete: { dmg: 40, range: 2.5, arcCos: 0.45, cooldown: 0.55 },
     axe: { dmg: 50, range: 2.9, arcCos: 0.36, cooldown: 0.6 }, // double the knife, longer AND wider swing
     interactR: 2.6,
@@ -363,8 +371,22 @@ export const CFG = {
     // outer ring and pick their wander targets along it (never the mountain);
     // update 29 moved them out to the ring6 band
     // update 36: the band moved out with the map; the south-west corner is desert now and a T-Rex never enters it
-    outerSpawns: [[850, 72], [-72, -850], [840, -840]],   // update 37: out with the map again
-    outerBand: [790, 900],
+    outerSpawns: [[935, 79], [-79, -935], [924, -924]],   // update 38: out with the map again
+    outerBand: [869, 990],
+    // update 38: ten more hunters, born and wandering OUTSIDE the old circle (r > boundaryR)
+    // so the middle of the map is no busier than before; 20 T-Rexes in all
+    extraCount: 10, extraMinR: 440,
+    roarRate: 1,
+  },
+  // ---- update 38: TYRANNOSAURUS IMPERATOR — one of the twenty hunters, chosen at random.
+  // A T-Rex in every rule (type "trex", creature.imperator = true) with these differences:
+  imperator: {
+    biteDmgMult: 1.2,      // 20% more damage
+    sizeMult: 1.1,         // 10% larger
+    noiseMult: 1.25,       // hears you a little easier (the Spinosaurus is 2.0)
+    twigNoiseR: 62, sightR: 15,
+    roarRate: 0.8,         // a deeper roar
+    toothChance: 0.2,      // one in five leaves an Imperator tooth
   },
   // update 35: Elisia — the angel of the forest. Once per full day, while you walk the
   // forest, she is put down 40-70 m away out of your sight. Within 18 m (line of sight)
@@ -382,6 +404,11 @@ export const CFG = {
     claw: { range: 3.0, dmg: 20, cd: 1.5 },
     fire: { dmg: 25, speed: 14, cd: 3.0, minR: 6, maxR: 40, gravity: 2.0, r: 0.35 },
     daggerDmg: 50,         // a T-Rex dagger hit on her (against anything else the dagger does player.trex_dagger.dmg)
+    daggerDmgImp: 100,     // update 38: the Imperator dagger hits her twice as hard
+    mistFadeOut: 10,       // update 38: seconds for her mist to fade once she is gone
+    // update 38: the fight is a matter of luck, decided when a hunter closes in. She wins one
+    // T-Rex fight in two, one Imperator fight in four; never a fourth T-Rex, never a second Imperator.
+    fight: { winRex: 0.5, winImp: 0.25, maxKills: 3, maxImpKills: 1, regenTime: 300, eatTime: 5, eatGrow: 1.5 },
     trexBite: 60,          // a T-Rex bite on her
     clawTrex: 45,          // her claws on a T-Rex
     trexHelpR: 45,         // a T-Rex this close to the dark form turns on her
@@ -391,18 +418,20 @@ export const CFG = {
   },
   // ---- update 36: THE DESERT (south-west), its river, and everything in it ----
   desert: {
-    bounds: { x1: -24, z0: 348 },          // the sand heightfield's box: west edge..x1, z0..south edge (update 37: ×1.2)
+    bounds: { x1: -26, z0: 383 },          // the sand heightfield's box: west edge..x1, z0..south edge (update 38: ×1.1)
+    edgePad: 260, oldSquare: 763,          // update 38: the sand runs 260 m past the edge into the mist (no 'ocean'); the desert's u36 extent for the chest split
     // the river, traced from the user's sketch and scaled to the bigger map: it enters at the
     // west edge (z ~ +355) and leaves at the south edge (x ~ -45); the desert is its south-west bank
     river: { halfW: 11, beach: 5, waterY: 0.25, bedY: -1.3,
       // update 37: the same course scaled ×1.2 with the map
-      points: [[-996, 360], [-840, 474], [-768, 514], [-672, 546], [-614, 566], [-564, 600], [-516, 630], [-485, 653],
-        [-420, 678], [-372, 702], [-324, 750], [-258, 786], [-196, 816], [-144, 858], [-95, 895], [-36, 960]] },
-    bridges: [[-800, 505], [-485, 653], [-196, 816], [-110, 880]],   // the sketch's three dashes ×1.2, plus update 37's fourth near the river's end
+      // update 38: ×1.1 again with the map
+      points: [[-1096, 396], [-924, 521], [-845, 565], [-739, 601], [-675, 623], [-620, 660], [-568, 693], [-534, 718],
+        [-462, 746], [-409, 772], [-356, 825], [-284, 865], [-216, 898], [-158, 944], [-105, 985], [-40, 1056]] },
+    bridges: [[-880, 556], [-534, 718], [-216, 898], [-121, 968]],   // ×1.1
     // update 37: arched decks (arch = the rise in the middle) with solid rails railT thick — enter only from the ends
-    bridge: { halfWidth: 1.8, overhang: 7, deckY: 0.6, arch: 1.3, railT: 0.5 },
+    bridge: { halfWidth: 1.8, overhang: 7, deckY: 0.6, arch: 1.3, railT: 0.5, endY: 0.03 },   // update 38: endY — both ends meet the ground
     tent: { fromBridge: 32, along: 6, zoneR: 5 },        // Idris's tent: on the desert bank of the MIDDLE bridge
-    oasis: { x: -620, z: 730, r: 9, palmX: -606, palmZ: 718, shadeR: 5 },   // update 37: moved to the middle of the bigger desert
+    oasis: { x: -770, z: 890, r: 9, palmX: -756, palmZ: 878, shadeR: 5 },   // update 38: 150 m deeper into the corner
     dune: { base: 0.35, fadeIn: 30, a1: 0.9, a2: 0.8, a3: 0.9, a4: 1.4, a5: 1.3 },   // rolling ridges, 2-5 m; a4/a5 are the crests you hide behind
     cactusCount: 36, cactusSpacing: 30, cactusFailChance: 0.2, cactusDmg: 10,   // update 37: same density over the bigger sand
     chestCount: 8, chestCountNew: 6, chestSpacing: 60,   // update 37: six more, all in the desert's new outer part
@@ -535,6 +564,7 @@ export const CFG = {
     elisia: 2.13, elisia_evil: 2.74,   // update 35: seven feet, and nine
     remotus: 1.8, altai: 1.8, cactus: 4.0, palm: 9.0, nomad: 1.75,   // update 36: the desert (the Alioramus stand 1.8 m, 5.5 m long)
     portal: 5.2,   // update 37: the stone portals
+    imperator: 5.94, trexdagger3d: 0.4, impdagger3d: 0.4,   // update 38
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { trex: 0, werewolf: 0, pig: 0, chicken: 0, tree: 0, appletree: 0, chest: 0, statue: 0,
@@ -568,7 +598,8 @@ export const CFG = {
     dirk6: 0,
     elisia: 0, elisia_evil: 0,   // update 35: Meshy-built, already facing +z
     // update 36: Duco built new from his two photos (front + side), and the desert's models
-    remotus: 0, altai: 0, cactus: 0, palm: 0, nomad: 0, portal: 0 },   // the portal's medallion face is the model's +z
+    remotus: 0, altai: 0, cactus: 0, palm: 0, nomad: 0, portal: 0,   // the portal's medallion face is the model's +z
+    imperator: 0, trexdagger3d: 0, impdagger3d: 0 },
   // animation clip speed: clip cycles per meter moved (tuned per creature)
   animGait: { trex: 0.22, werewolf: 0.55, chicken: 1.6, croc: 0.9, cow: 0.5, dog: 0.9, elisia: 0.9 },
 
@@ -579,6 +610,8 @@ export const CFG = {
     torch3d:   { s: 0.68, pos: [-0.3, -0.30, -0.55], rot: [0.28, 0, 0] },
     axe3d:     { s: 0.70, pos: [0.32, -0.32, -0.70], rot: [0.12, -0.3, 0] },
     dagger3d:  { s: 0.48, pos: [0.30, -0.30, -0.62], rot: [-1.25, -0.3, 0.15] },
+    trexdagger3d: { s: 0.46, pos: [0.28, -0.28, -0.60], rot: [0.35, -1.75, 0.25] },   // update 38: the real tooth daggers (their long axis is x, tip at -x)
+    impdagger3d:  { s: 0.46, pos: [0.28, -0.28, -0.60], rot: [0.35, -1.75, 0.25] },
     crossbow3d:{ s: 0.62, pos: [0.28, -0.30, -0.66], rot: [0.05, -1.62, 0.02] },
   },
 
@@ -592,7 +625,7 @@ export const CFG = {
     useR: 4,                                     // stand this close to investigate / use one
     whiteScale: 0.78,                            // the cellar is low
     // the model's frame after normalizeModel (5.2 m tall, feet at 0, medallion face toward +z)
-    geo: { ringY: 2.86, ringR: 1.28, medY: 4.62, medR: 0.36, medZF: 1.31, medZB: -0.63, bowlX: 2.2, bowlY: 3.9, bowlZ: 0.78 },
+    geo: { ringY: 2.86, ringR: 1.26, medY: 4.7, medR: 0.37, medZF: -0.25, medZB: -1.29, bowlX: 2.48, bowlY: 2.18, bowlZ: 0.27 },   // update 38: measured — the ring's top sits BEHIND the pillars (z -1.29..-0.25), the bowls' rims at y 2.18
     // the temple's cellar: the room under the ground floor, the stairs in the north-west corner
     // (top at x1, y 0 — dropping westward to x0, y), the white portal facing the stairs
     basement: { x0: -11.5, x1: 11.5, z0: -6.6, z1: 6.6, y: -4.4, stairs: { x0: -11.3, x1: -4.4, z0: -6.4, z1: -4.5 },
