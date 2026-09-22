@@ -4,7 +4,7 @@ import { STR } from "../strings.js";
 import { Creature } from "./entities.js";
 import { riggedHumanoid, driveHumanoid } from "./humanoid.js";
 import { iconUrl } from "./items.js";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake } from "./eternius_frame.js";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js";
 import { buildCity } from "./eternius_build.js";
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
@@ -41,9 +41,16 @@ export class EterniusCity {
   }
   // update 40: a ridge cluster — a broad shoulder, several peaks, crags — with a sheer foot nothing walks up
   // the foot of the mountain is not a circle: outcrops and bays up to ten metres in and out
+  // update 41: behind the castle the foot is a straight face at a = castle.a0 - 3 — the rock used to bulge
+  // 8 m into the courtyard, covering the mountain gate and pushing you back out of it
   edgeR(a, b) {
-    const th = Math.atan2(b, a);
-    return E().mountainR + 5 * Math.sin(4 * th + 1) + 3 * Math.sin(9 * th + 2) + 2 * Math.sin(17 * th + 0.5);
+    const C = E(), th = Math.atan2(b, a);
+    const R = C.mountainR + 5 * Math.sin(4 * th + 1) + 3 * Math.sin(9 * th + 2) + 2 * Math.sin(17 * th + 0.5);
+    const K = C.castle, span = Math.atan2(K.hw + 6, K.a0), blend = 8 * D2R;
+    const k = smooth((span + blend - Math.abs(th)) / blend);
+    if (k <= 0) return R;
+    const face = (K.a0 - 3) / Math.max(0.2, Math.cos(th));
+    return R + (Math.min(R, face) - R) * k;
   }
   mountainH(x, z) {
     const C = E(), { a, b } = cityLocal(x, z), r = Math.hypot(a, b), R = this.edgeR(a, b);
@@ -218,16 +225,21 @@ export class EterniusCity {
         const k = side / rb; a *= k; b *= k; moved = true;
       }
     }
-    // the lake and its moat: no wading — the bridge crosses them, and only from its ends
+    // update 41: the lake: no wading — pushed back to the shore, away from the water's heart; the bridge crosses it,
+    // and only from its ends. Near the castle the push would land you on the sill, so there you go sideways instead.
     {
-      const LK = C.lake, B = C.bridge;
+      const LK = C.lake, B = C.bridge, K = C.castle;
       const onBridge = Math.abs(b) < B.hw + 0.2 && a > B.a0 - 1 && a < B.a1 + 1;
       if (!onBridge) {
-        const da = a - LK.a, dl = Math.hypot(da, b);
-        if (dl < LK.r + r) { const k = (LK.r + r) / (dl || 1e-6); a = LK.a + da * k; b = b * k; if (a < LK.moatA0 + 3.2) a = LK.moatA0 + 3.2; moved = true; }
-        else if (a > LK.moatA0 - r && a < LK.moatA1 + r && Math.abs(b) < LK.moatHw + r) {
-          if (a > LK.moatA1 - 3) a = LK.moatA1 + r; else b = Math.sign(b || 1) * (LK.moatHw + r);
-          moved = true;
+        const da = a - LK.a, dl = Math.hypot(da, b), phi = Math.atan2(b, da), Rl = lakeR(phi);
+        if (dl < Rl + r) {
+          const k = (Rl + r) / (dl || 1e-6);
+          let na = LK.a + da * k, nb = b * k;
+          if (na < K.a1 + 1.5 && Math.abs(nb) < K.hw + 2) {
+            na = a; nb = b; const sg = Math.sign(b || 1);
+            for (let i = 0; i < 60; i++) { nb += sg * 1.2; if (Math.hypot(na - LK.a, nb) >= lakeR(Math.atan2(nb, na - LK.a)) + r) break; }
+          }
+          a = na; b = nb; moved = true;
         }
       } else if (a > B.a0 - 1 && a < B.a1 - 2 && Math.abs(b) > B.hw - r) { b = Math.sign(b || 1) * (B.hw - r); moved = true; }
     }
@@ -259,10 +271,12 @@ export class EterniusCity {
   buildRex() {
     const C = E(), R = C.chainRex, A = this.g.assets, g = this.g;
     const [px, pz] = cityWorld(R.a, R.b), y = C.levels.court;
-    if (!A.glb.trex) return;
-    const asset = { model: A.glb.trex.model.clone(), anims: A.glb.trex.anims };
-    const green = A.tex.t_trexgreen;
-    asset.model.traverse((o) => {
+    // update 41: a green T-Rex of its own (Higgsfield: trexgreen) — real hide, not a tinted copy; the old tint stays as the fallback
+    const src = A.glb.trexgreen || A.glb.trex;
+    if (!src) return;
+    const asset = { model: src.model.clone(), anims: src.anims };
+    const green = A.glb.trexgreen ? null : A.tex.t_trexgreen;
+    if (!A.glb.trexgreen) asset.model.traverse((o) => {
       if (!o.isMesh || !o.material) return;
       o.material = o.material.clone();
       if (green) { const t = green.clone(); t.colorSpace = THREE.SRGBColorSpace; t.flipY = o.material.map ? o.material.map.flipY : false; t.needsUpdate = true; o.material.map = t; o.material.color = new THREE.Color(0xffffff); }
@@ -294,46 +308,27 @@ export class EterniusCity {
     for (let i = 0; i < 26; i++) { const l = new THREE.Mesh(linkGeo, this.mats.goldBright); g.scene.add(l); this.chainLinks.push(l); }
     this.rexSign = { x: px + (sx - px) * 0.2, z: pz + (sz - pz) * 0.2 };
   }
-  // heavy golden armour fitted to the beast's bones: crest, collar, chest plate, back and tail plates, shoulders, greaves
+  // update 41: no armour — the beast is naked but for the golden collar the chain holds (and its ring)
   armourRex(rex) {
     const rig = rex.body && rex.body.userData && rex.body.userData.rig;
     const skinned = rex.body && rex.body.children && rex.body.children[0];
-    const gold = this.mats.gold, goldP = this.mats.goldPlain, gem = this.mats.gem;
+    const goldP = this.mats.goldPlain;
     if (!rig || !skinned || !skinned.geometry || !skinned.geometry.boundingBox) {
       const H = rex.cfg.height || 5.4;
       const collar = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.14, 8, 20), goldP); collar.position.set(0, H * 0.62, H * 0.22); collar.rotation.x = Math.PI / 2 - 0.5; rex.group.add(collar);
       this.rexCollar = collar; return;
     }
     const bb = skinned.geometry.boundingBox, size = new THREE.Vector3(); bb.getSize(size);
-    const spine = rig.head.parent, head = rig.head, tail = rig.tail;
+    const spine = rig.head.parent, head = rig.head;
     const at = (bone, mesh, mx, my, mz) => {
-      // the mesh's position is given in model space; a bone's rest position is the spine's plus its own offset
       const bx = spine.position.x + (bone === spine ? 0 : bone.position.x), by = spine.position.y + (bone === spine ? 0 : bone.position.y), bz = spine.position.z + (bone === spine ? 0 : bone.position.z);
       mesh.position.set(mx - bx, my - by, mz - bz); bone.add(mesh); return mesh;
     };
     const w = size.x, h = size.y, len = size.z, z0 = bb.min.z, y0 = bb.min.y;
-    // the head: a crest running back from the brow, a gem in the forehead, cheek plates
-    const crest = new THREE.Mesh(new THREE.ConeGeometry(0.34, 1.9, 4), gold); crest.rotation.x = -Math.PI / 2 + 0.35;
-    at(head, crest, 0, y0 + h * 0.96, z0 + len * 0.86);
-    const brow = new THREE.Mesh(new THREE.BoxGeometry(w * 0.55, 0.18, 0.9), gold); brow.rotation.x = 0.35; at(head, brow, 0, y0 + h * 0.9, z0 + len * 0.88);
-    const fg = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), gem); at(head, fg, 0, y0 + h * 0.905, z0 + len * 0.925);
-    for (const s of [-1, 1]) { const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 1.1), goldP); cheek.rotation.x = 0.2; at(head, cheek, s * w * 0.38, y0 + h * 0.74, z0 + len * 0.85); }
-    // the neck collar (with the ring the chain holds), the chest plate
     const collar = new THREE.Mesh(new THREE.TorusGeometry(w * 0.42, 0.16, 8, 20), goldP); collar.rotation.x = Math.PI / 2 - 0.55;
     at(head, collar, 0, y0 + h * 0.66, z0 + len * 0.7);
     this.rexCollar = collar;
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.06, 6, 12), goldP); ring.position.set(0, -0.25, w * 0.42 + 0.1); collar.add(ring); this.rexRing = ring;
-    const chest = new THREE.Mesh(new THREE.BoxGeometry(w * 0.6, 1.4, 0.2), gold); chest.rotation.x = 0.3; at(spine, chest, 0, y0 + h * 0.5, z0 + len * 0.64);
-    // plates along the back and down the tail, shoulder guards, greaves on both shins
-    for (let k = 0; k < 4; k++) { const p = new THREE.Mesh(new THREE.BoxGeometry(w * (0.5 - k * 0.05), 0.18, len * 0.07), gold); at(spine, p, 0, y0 + h * (0.9 - k * 0.055), z0 + len * (0.6 - k * 0.085)); const gg = new THREE.Mesh(new THREE.OctahedronGeometry(0.13), gem); at(spine, gg, 0, y0 + h * (0.93 - k * 0.055), z0 + len * (0.6 - k * 0.085)); }
-    if (tail) for (let k = 0; k < 3; k++) { const p = new THREE.Mesh(new THREE.BoxGeometry(w * (0.32 - k * 0.06), 0.14, len * 0.06), gold); at(tail, p, 0, y0 + h * (0.55 - k * 0.06), z0 + len * (0.26 - k * 0.09)); }
-    for (const s of [-1, 1]) { const sh = new THREE.Mesh(new THREE.SphereGeometry(w * 0.2, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), gold); at(spine, sh, s * w * 0.42, y0 + h * 0.7, z0 + len * 0.55); }
-    if (rig.legs) rig.legs.forEach((leg, i) => {
-      const gr = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.15, w * 0.17, h * 0.16, 10, 1, true), gold.clone()); gr.material.side = THREE.DoubleSide;
-      const lx = spine.position.x + leg.position.x, lz = spine.position.z + leg.position.z;
-      at(leg, gr, lx, y0 + h * 0.2, lz + len * 0.02);
-      const gg = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), gem); at(leg, gg, lx + (i ? 1 : -1) * w * 0.17, y0 + h * 0.22, lz + len * 0.02);
-    });
   }
   buildNpcs() {
     const C = E(), L = C.levels, A = this.g.assets, scene = this.g.scene;
@@ -686,10 +681,8 @@ export class EterniusCity {
     }
     c.beginPath(); c.arc(mx, mz, Math.max(2, C.shaftR * s), 0, Math.PI * 2); c.fillStyle = "#2a2018"; c.fill();
     // the lake and the moat
-    const [lx, lz] = cityWorld(LK.a, 0);
     c.fillStyle = "rgba(94,132,142,.9)"; c.strokeStyle = "#3a5a6a"; c.lineWidth = 1;
-    c.beginPath(); c.arc(tx(lx), ty(lz), LK.r * s, 0, Math.PI * 2); c.fill(); c.stroke();
-    { const m = [[LK.moatA0, -LK.moatHw], [LK.moatA1, -LK.moatHw], [LK.moatA1, LK.moatHw], [LK.moatA0, LK.moatHw]].map(([a, b]) => cityWorld(a, b)); c.beginPath(); m.forEach(([x, z], i) => (i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z)))); c.closePath(); c.fill(); c.stroke(); }
+    { const m = lakeOutline(0, 48).map(([a, b]) => cityWorld(a, b)); c.beginPath(); m.forEach(([x, z], i) => (i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z)))); c.closePath(); c.fill(); c.stroke(); }
     // the castle: walls, four corner towers, the gate towers, the great dome; the bridge across the lake
     const corners = [[K.a0, -K.hw], [K.a1, -K.hw], [K.a1, K.hw], [K.a0, K.hw]].map(([a, b]) => cityWorld(a, b));
     c.beginPath(); corners.forEach(([x, z], i) => (i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z)))); c.closePath();

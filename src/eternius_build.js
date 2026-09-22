@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { CFG } from "./config.js";
-import { E, D2R, cityWorld, lakeNorm } from "./eternius_frame.js";
+import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";   // update 41
 
 // ============================================================================
 // update 40: everything that is BUILT in Eternius City — the mountain, the castle,
@@ -121,14 +122,22 @@ export function buildCity(city) {
     const f = new THREE.Mesh(new THREE.PlaneGeometry(wd, h), m); f.position.set(bx, y - h / 2, az); f.rotation.y = faceDeg * D2R; grp.add(f); city.flags.push(f);
     const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, wd + 0.6, 6), goldPlain); rod.position.set(bx, y + 0.1, az); rod.rotation.z = Math.PI / 2; rod.rotation.y = faceDeg * D2R; grp.add(rod);
   };
+  // update 41: a lamp is a VIRTUAL light — a PointLight that is never rendered (visible = false). main.js keeps a
+  // small pool of real lights and hands them to the nearest, brightest virtual ones each frame (initLightPool).
+  // Every lamp used to be a real light: 192 of them, in every shader, for every pixel — 50 ms a frame at 1440p.
+  city.emit = (parent, x, y, z, color, on, dist, flags = {}) => {
+    const l = new THREE.PointLight(color, on, dist, 2); l.position.set(x, y, z); l.visible = false; l.userData.virtual = true; parent.add(l);
+    if (flags.night) city.lights.push({ l, night: true, on: flags.on !== undefined ? flags.on : on });
+    return l;
+  };
   // the old small lantern (kept for the shelves and stalls)
   city.addLantern = (bx, y, az, night, cave, lit = 0) => {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.6, 6), goldPlain); post.position.set(bx, y + 1.3, az); grp.add(post);
     const cage = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.5), goldPlain); cage.position.set(bx, y + 2.9, az); grp.add(cage);
     const glow = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.5, 0.34), glowM); glow.position.set(bx, y + 2.9, az); grp.add(glow);
     city.lanterns.push({ glow, night });
-    if (lit) { const l = new THREE.PointLight(0xffc35a, lit, 34, 2); l.position.set(bx, y + 2.9, az); grp.add(l); city.lights.push({ l, night, on: lit }); }
-    else if (night) { const l = new THREE.PointLight(0xffc35a, 0, 26, 2); l.position.set(bx, y + 2.9, az); grp.add(l); city.lights.push({ l, night: true, on: 3.2 }); }
+    if (lit) city.emit(grp, bx, y + 2.9, az, 0xffc35a, lit, 34, { night, on: lit });
+    else if (night) city.emit(grp, bx, y + 2.9, az, 0xffc35a, 0, 26, { night: true, on: 3.2 });
     obst(az, bx, 0.25);
   };
   // update 40: the golden lamppost with a green gem (Higgsfield: et_lamppost); lights the ground around it
@@ -144,7 +153,7 @@ export function buildCity(city) {
       return gg;
     };
     prop("et_lamppost", a, b, y, 0, fb);
-    const l = new THREE.PointLight(0x9cffb0, night ? 0 : lit, 30, 2); l.position.set(b, y + 4.8, a); grp.add(l); city.lights.push({ l, night, on: lit, green: true });
+    city.emit(grp, b, y + 4.8, a, 0x9cffb0, night ? 0 : lit, 30, { night, on: lit, green: true });
     obst(a, b, 0.45);
   };
   city.addBrazier = (bx, y, az, big = false) => {
@@ -156,7 +165,7 @@ export function buildCity(city) {
   };
   city.addFlame = (bx, y, az, s = 1, parent = grp) => {
     for (const rot of [0, Math.PI / 2]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(1.1 * s, 1.5 * s), flameM); f.position.set(bx, y, az); f.rotation.y = rot; parent.add(f); city.flames.push(f); }
-    const l = new THREE.PointLight(0xffa040, 2.2 * s, 18 * s, 2); l.position.set(bx, y, az); parent.add(l);
+    city.emit(parent, bx, y, az, 0xffa040, 2.2 * s, 18 * s, { flame: true });
   };
   // update 40: a golden Eternial statue raising a bowl of fire (Higgsfield: et_torchbearer); stands against a wall, facing faceDeg
   city.addTorchbearer = (a, b, y, faceDeg) => {
@@ -188,12 +197,13 @@ export function buildCity(city) {
       const bot = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.5, 8), goldPlain); bot.position.y = -1.4; bot.rotation.x = Math.PI; gg.add(bot);
       return gg;
     });
-    const l = new THREE.PointLight(green ? 0x9cffb0 : 0xffc35a, green ? 1.4 : 2.4, 22, 2); l.position.set(b, y - 1.2, a); grp.add(l);
+    city.emit(grp, b, y - 1.2, a, green ? 0x9cffb0 : 0xffc35a, green ? 1.4 : 2.4, 22, {});
   };
 
   buildMountain(city, grp, mountainM, dark, rock);
   buildCastle(city, grp, box, sand, rock, gold, goldPlain, goldBright, gem, dark, wallSeg, obst, archFrame, archFill, archWall, latticeM, prop, waterMat, pillar);
   buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, goldBright, gem, dark, wallSeg, obst, pillar, archFrame, archWall, carpetM, waterMat, prop, glowM, greenGlowM, latticeM);
+  mergeStatic(city, grp);   // update 41: 2000 boxes and cylinders become ~150 draw calls
   // the map place, the safe spot the portals land you on
   if (!CFG.locations.some((l) => l.id === "eternius")) {
     CFG.locations.push({ id: "eternius", x: C.cx, z: C.cz, r: C.castle.a1 - 4 });
@@ -209,11 +219,13 @@ function buildMountain(city, grp, mountainM, dark, rock) {
   const C = E(), R = C.mountainR, NR = 64, NT = 168;
   const pos = [], uv = [], col = [], idx = [];
   const shaftR = (th) => C.shaftR * (1 + 0.22 * Math.sin(3 * th + 1.1) + 0.12 * Math.sin(7 * th + 0.4));
-  for (let i = 0; i <= NR; i++) {
+  for (let i = 0; i <= NR + 1; i++) {
     for (let j = 0; j <= NT; j++) {
       const th = (j / NT) * Math.PI * 2;
-      // the grid follows the ragged foot: the last ring sits exactly on the edge (height 0), outcrops included
+      // the grid follows the ragged foot: the last ring sits exactly on the edge (height 0), outcrops included;
+      // update 41: one more ring — a rock apron 14 m out, just under the sand, so bays and the castle notch never show the void
       const Re = city.edgeR(Math.cos(th), Math.sin(th)) ;
+      if (i === NR + 1) { const lx = (Re + 14) * Math.sin(th), lz = (Re + 14) * Math.cos(th); pos.push(lx, -0.35, lz); uv.push(lx / 16, lz / 16); col.push(1, 1, 1); continue; }
       const r = Re * Math.pow(i / NR, 0.72);
       let lx = r * Math.sin(th), lz = r * Math.cos(th);
       const [wx, wz] = cityWorld(lz, lx);
@@ -226,7 +238,7 @@ function buildMountain(city, grp, mountainM, dark, rock) {
       col.push(1, 1, 1);
     }
   }
-  for (let i = 0; i < NR; i++) for (let j = 0; j < NT; j++) {
+  for (let i = 0; i < NR + 1; i++) for (let j = 0; j < NT; j++) {
     const p0 = i * (NT + 1) + j, p1 = p0 + 1, p2 = p0 + NT + 1, p3 = p2 + 1;
     idx.push(p0, p2, p1, p1, p2, p3);
   }
@@ -384,8 +396,10 @@ function buildCastle(city, grp, box, sand, rock, gold, goldPlain, goldBright, ge
   {
     const LK = C.lake, wy = L.court - 2.05 + 0.02;
     const wm = waterMat(); wm.map && wm.map.repeat.set(7, 7);
-    const lake = new THREE.Mesh(new THREE.CircleGeometry(LK.r + 1, 56), wm); lake.rotation.x = -Math.PI / 2; lake.position.set(0, wy, LK.a); grp.add(lake); city.lakeMesh = lake;
-    const moat = new THREE.Mesh(new THREE.PlaneGeometry(LK.moatHw * 2 + 2, LK.moatA1 - LK.moatA0 + 4), wm); moat.rotation.x = -Math.PI / 2; moat.position.set(0, wy - 0.01, (LK.moatA0 + LK.moatA1) / 2); grp.add(moat);
+    // update 41: the water is the lake's own outline (local x = b, z = a), a metre under the shore
+    const shp = new THREE.Shape(); lakeOutline(1.2, 96).forEach(([a, b], i) => (i ? shp.lineTo(b, -a) : shp.moveTo(b, -a))); shp.closePath();
+    const lgeo = new THREE.ShapeGeometry(shp); { const uvA = lgeo.attributes.uv; for (let i = 0; i < uvA.count; i++) uvA.setXY(i, uvA.getX(i) / 24, uvA.getY(i) / 24); }
+    const lake = new THREE.Mesh(lgeo, wm); lake.rotation.x = -Math.PI / 2; lake.position.set(0, wy, 0); grp.add(lake); city.lakeMesh = lake;
     const BR = C.bridge, N = 16, Lb = BR.a1 - BR.a0;
     const deckAt = (a) => city.floorH(...cityWorld(a, 0));
     const stone = sand(2, 1);
@@ -583,7 +597,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     box(6.4, 0.9, 6.4, 0, L.dais + 0.45, 0, gold); box(4.6, 0.9, 4.6, 0, L.dais + 1.35, 0, gold);
     const ob = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 1.3, 7.5, 4), goldBright); ob.position.set(0, L.dais + 1.8 + 3.75, 0); ob.rotation.y = Math.PI / 4; grp.add(ob);
     const ag = new THREE.Mesh(new THREE.OctahedronGeometry(0.75), gem); ag.position.set(0, L.dais + 10.4, 0); grp.add(ag); city.altarGem = ag;
-    const gl = new THREE.PointLight(0x5cff7a, 2.6, 30, 2); gl.position.set(0, L.dais + 10.4, 0); grp.add(gl);
+    city.emit(grp, 0, L.dais + 10.4, 0, 0x5cff7a, 2.6, 30, {});
     // the prayer altar: a low golden table at the front of the monument
     box(3.2, 1.1, 1.4, 0, L.dais + 0.55, 4.9, gold); box(3.4, 0.12, 1.6, 0, L.dais + 1.16, 4.9, goldBright);
     city.altarLocal = { a: 6.8, b: 0 };
@@ -702,7 +716,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
         const gm = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), gem); gm.position.set(0, 1.85, 1.9); gg.add(gm);
         return gg;
       });
-      const gl = new THREE.PointLight(0x7cff9a, 1.1, 9, 2); gl.position.set(bb, y + 4.6, ba); grp.add(gl);
+      city.emit(grp, bb, y + 4.6, ba, 0x7cff9a, 1.1, 9, {});
       const glow = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), greenGlowM); glow.position.set(bb, y + 4.9, ba); grp.add(glow);
       const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 4), dark); cord.position.set(bb, y + 5.3, ba); grp.add(cord);
       city.innBeds.push({ x: wx, z: wz, y: y + 0.3 });
@@ -760,7 +774,7 @@ function buildHomes(city, grp, box, cyl, sand, rock, gold, goldPlain, goldBright
     add(new THREE.BoxGeometry(6.2, 0.1, 0.1), goldPlain, 0, 6.45, 1.6);
     add(new THREE.BoxGeometry(1.0, 1.1, 0.3), goldPlain, 0, 6.2, 0.55); const win2 = add(new THREE.BoxGeometry(0.8, 0.9, 0.2), windowM, 0, 6.2, 0.6); city.homeGlows.push(win2);
     add(new THREE.BoxGeometry(0.3, 0.4, 0.3), glowM, 2.2, 3.9, 0.7);
-    const l = new THREE.PointLight(0xffc35a, 1.3, 12, 2); l.position.set(2.2, 3.9, 1.2); gg.add(l);
+    city.emit(gg, 2.2, 3.9, 1.2, 0xffc35a, 1.3, 12, {});
     // the blocking wall segment (the front is 0.9 m proud of the rock)
     const ta = [-Math.sin(th * D2R), Math.cos(th * D2R)];   // tangential (a, b)
     const fa = (R - 1.1) * Math.cos(th * D2R), fb = (R - 1.1) * Math.sin(th * D2R);
@@ -817,7 +831,7 @@ function buildStall(city, st, grp, box, sand, gold, goldPlain, goldBright, gem, 
   const awn = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 4.6, 8, 4), aw);
   { const p = awn.geometry.attributes.position; for (let i = 0; i < p.count; i++) p.setZ(i, Math.sin(p.getX(i) * 2.6) * 0.08 - Math.abs(p.getY(i)) * 0.06); awn.geometry.computeVertexNormals(); }
   const [awa, awb] = P(-0.6, 0); awn.position.set(awb, y + 3.85, awa); awn.rotation.set(-Math.PI / 2 + 0.28, ry, 0, "YXZ"); grp.add(awn);
-  for (const s of [-1, 1]) { const [la, lb] = P(0.9, s * 2.2); const cage = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.55, 6, 1, true), latticeM()); cage.position.set(lb, y + 3.1, la); grp.add(cage); const gl = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.5, 6), glowM); gl.position.set(lb, y + 3.1, la); grp.add(gl); const l = new THREE.PointLight(0xffc35a, 1.4, 12, 2); l.position.set(lb, y + 2.9, la); grp.add(l); }
+  for (const s of [-1, 1]) { const [la, lb] = P(0.9, s * 2.2); const cage = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.55, 6, 1, true), latticeM()); cage.position.set(lb, y + 3.1, la); grp.add(cage); const gl = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.5, 6), glowM); gl.position.set(lb, y + 3.1, la); grp.add(gl); city.emit(grp, lb, y + 2.9, la, 0xffc35a, 1.4, 12, {}); }
   // the wares: what each stall really sells, on the counter and the shelves
   const put = (id, u, v, yy, yaw = 0, sc = 1, tint = null) => {
     const asset = A.glb[id]; if (!asset) return false;
@@ -862,4 +876,71 @@ export function flameCanvas() {
   gr.addColorStop(0, "rgba(255,240,190,1)"); gr.addColorStop(0.35, "rgba(255,170,60,0.9)"); gr.addColorStop(0.7, "rgba(230,80,20,0.45)"); gr.addColorStop(1, "rgba(0,0,0,0)");
   c.fillStyle = gr; c.beginPath(); c.moveTo(32, 4); c.bezierCurveTo(50, 30, 58, 60, 32, 92); c.bezierCurveTo(6, 60, 14, 30, 32, 4); c.fill();
   return cv;
+}
+
+// ============================================================================
+// update 41: the city is built from ~2500 small boxes, cylinders and tori, each its own draw call — from the
+// courtyard, looking through the mountain gate, 2400 of them were in view (31 ms of CPU per frame). Every
+// STATIC mesh with a plain position/normal/uv geometry is merged with its look-alikes (same material recipe)
+// per district — 12 sectors by 5 rings — so frustum culling still drops what is behind you. The moving parts
+// (flags, flames, doors, the gem, the beam, water, the mountain) and the GLB props are left alone.
+// ============================================================================
+function mergeStatic(city, grp) {
+  // the moving and the toggled: flags, flames, the light rays, doors, the gem, the beam, the water, the mountain
+  const keep = new Set([...(city.flags || []), ...(city.flames || []), ...(city.lanterns || []).map((l) => l.glow), ...(city.nightGlows || []),
+    ...(city.rays || []), ...(city.doors || []), city.altarGem, city.lakeMesh, city.riverMesh, city.mountainMesh, city.beam, city.pool, city.vaultDoor].filter(Boolean));
+  const dynAnc = new Set(((city.gate && city.gate.leaves) || []).map((l) => l.hinge));
+  // a texture's identity is its SOURCE — the repeat and offset are baked into the merged uvs, so every sand(rx, rz)
+  // variant lands in one bucket. Only materials whose map and normal map share one transform are baked.
+  const texKey = (t) => t ? (t.source ? t.source.uuid : t.uuid) + "/" + t.wrapS + t.wrapT + (t.flipY ? 1 : 0) + t.colorSpace : "";
+  const bakeable = (m) => { const a = m.map, b = m.normalMap; if (!a && !b) return true; if (a && a.rotation) return false; if (a && b) return a.repeat.equals(b.repeat) && a.offset.equals(b.offset); return true; };
+  const sig = (m) => [m.type, m.color ? m.color.getHex() : "", texKey(m.map), texKey(m.normalMap), m.normalScale ? m.normalScale.x.toFixed(2) : "", m.emissive ? m.emissive.getHex() : "", m.emissiveIntensity || 0,
+    m.roughness, m.metalness, m.side, m.transparent ? 1 : 0, m.opacity, m.vertexColors ? 1 : 0, m.alphaTest || 0, m.depthWrite ? 1 : 0, m.blending, bakeable(m) ? "b" : "u" + m.uuid].join("|");
+  grp.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(grp.matrixWorld).invert();
+  const buckets = new Map(), list = [];
+  grp.traverse((o) => {
+    if (!o.isMesh || o.isSkinnedMesh || keep.has(o) || !o.visible) return;
+    for (let p = o.parent; p && p !== grp; p = p.parent) if (dynAnc.has(p)) return;
+    const g = o.geometry, at = g.attributes;
+    if (!at.position || !at.normal || !at.uv || Object.keys(at).length !== 3 || (g.morphAttributes && Object.keys(g.morphAttributes).length)) return;
+    if (Array.isArray(o.material)) return;
+    const tris = (g.index ? g.index.count : at.position.count) / 3;
+    if (tris > 6000) return;   // the GLB props: shared geometry, their own draw calls
+    list.push(o);
+  });
+  for (const o of list) {
+    const rel = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    const px = rel.elements[12], pz = rel.elements[14], r = Math.hypot(px, pz), th = Math.atan2(px, pz);
+    const cell = Math.floor((th + Math.PI) / (Math.PI / 6)) + "|" + (r < 40 ? 0 : r < 80 ? 1 : r < 125 ? 2 : r < 215 ? 3 : 4);
+    const key = sig(o.material) + "#" + (o.geometry.index ? "i" : "n") + "#" + cell;
+    let b = buckets.get(key); if (!b) { b = { mat: o.material, geos: [], meshes: [] }; buckets.set(key, b); }
+    const geo = o.geometry.clone().applyMatrix4(rel);
+    const t = o.material.map || o.material.normalMap;
+    if (t && bakeable(o.material) && (t.repeat.x !== 1 || t.repeat.y !== 1 || t.offset.x || t.offset.y)) {
+      const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * t.repeat.x + t.offset.x, uv.getY(i) * t.repeat.y + t.offset.y);
+    }
+    b.geos.push(geo); b.meshes.push(o);
+  }
+  const canon = new Map();   // one material per recipe, its textures at repeat 1
+  let merged = 0, removed = 0, failed = 0;
+  for (const [key, b] of buckets) {
+    if (b.geos.length < 2) { b.geos.forEach((g) => g.dispose()); continue; }
+    const mg = mergeGeometries(b.geos, false);
+    b.geos.forEach((g) => g.dispose());
+    if (!mg) { failed++; continue; }
+    const recipe = key.split("#")[0];
+    let cm = canon.get(recipe);
+    if (!cm) {
+      cm = b.mat;
+      if (bakeable(b.mat) && (b.mat.map || b.mat.normalMap)) {
+        cm = b.mat.clone();
+        for (const k of ["map", "normalMap"]) if (cm[k]) { cm[k] = cm[k].clone(); cm[k].repeat.set(1, 1); cm[k].offset.set(0, 0); cm[k].needsUpdate = true; }
+      }
+      canon.set(recipe, cm);
+    }
+    const m = new THREE.Mesh(mg, cm); m.castShadow = m.receiveShadow = true; grp.add(m); merged++;
+    for (const o of b.meshes) { if (o.parent) o.parent.remove(o); removed++; }
+  }
+  city.mergeStats = { merged, removed, failed, materials: canon.size };
 }

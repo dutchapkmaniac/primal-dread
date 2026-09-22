@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=40";
+export const ASSET_V = "?v=41";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -540,7 +540,7 @@ export const CFG = {
 
   modelScale: { et_bed: 2.0, et_lamppost: 4.6, et_torchbearer: 5.2, et_chainpost: 3.6, et_ceilinglamp: 1.8, et_throne: 4.2, et_gate: 10,   // update 40
     etdagger3d: 0.95, etsword3d: 1.6, etspear3d: 2.6,   // update 40: the generated weapons (upright scans; turned to lie along -x in buildEternialWeapons)
-    trex: 5.4, werewolf: 1.9, pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
+    trex: 5.4, trexgreen: 5.4, werewolf: 1.9, pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
     bedroll: 0.45, hutbed: 0.95, kitchen: 1.5, bill: 1.75, storagechest: 0.8, boulder: 1.9,
     door: 2.05, table: 0.9, chair: 1.05, lantern: 0.5, croc: 0.72, dinoegg: 1.15,
     metaldoor: 2.3, beaconlamp: 2.4,
@@ -656,11 +656,11 @@ export const CFG = {
     tunnel: { a0: 118, a1: 206, hw: 5, h: 9 },
     castle: { a0: 205, a1: 250, hw: 60, wallH: 14 },
     gate: { hw: 5, h: 10, openR: 16 },                   // update 40: the mountain gate's golden doors swing open within openR
-    lake: { a: 296, r: 46, depth: 3, moatA0: 250, moatA1: 263, moatHw: 72 },   // update 40: a moat band along the castle front — no way round the bridge
+    lake: { a: 280, rFar: 50, rNear: 34, rSide: 84, aFront: 246, depth: 3 },   // update 41: one organic lake hugging the castle front (see lakeR in eternius_frame.js) — still no way round the bridge
     bridge: { a0: 250, a1: 344, hw: 3, arch: 1.2 },      // update 40: the deck starts ON the castle sill
     flatA: 280, flatR: 140,                              // the dunes go flat this far around the castle
     statue: { a: 226, b: 0 },
-    chainRex: { a: 222, b: -40, reach: 15 },             // the chained beast, in the courtyard's south-east wing
+    chainRex: { a: 226, b: -38, reach: 18 },             // update 41: a longer chain (the post moved so the beast never reaches the walls)
     altar: { r: 10 },
     throne: { a0: -152, a1: -116, hw: 20, doorHw: 4 },
     vault: { b0: 118, b1: 142, hw: 18, doorHw: 2.2 },
@@ -776,5 +776,5 @@ export const CFG = {
     music: 0.14, sfx: 0.35, thudMaxDist: 60,
   },
 
-  perf: { dprCap: 1.5, targetFps: 60 },
+  perf: { dprCap: 1.5, targetFps: 60, lightPool: 12 },   // update 41: real point lights in the scene at once — every other one is virtual (see main.js initLightPool)
 };

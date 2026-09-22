@@ -426,7 +426,10 @@ export function riggedCreature(sourceGroup, type) {
   geo.setAttribute("skinWeight", new THREE.BufferAttribute(wgt, 4));
 
   const skinned = new THREE.SkinnedMesh(geo, srcMesh.material);
-  skinned.frustumCulled = false;
+  // update 41: frustum-culled with a generous sphere (the gait never leaves it) — every rigged creature used to be
+  // drawn every frame wherever it stood, 100+ of them, most of them behind you
+  geo.computeBoundingSphere(); skinned.boundingSphere = geo.boundingSphere.clone(); skinned.boundingSphere.radius *= 1.8;
+  skinned.frustumCulled = true;
   skinned.add(spine);
   skinned.bind(new THREE.Skeleton(bones));
   // update 33: "looks forward" is MEASURED on the skinned result now, not

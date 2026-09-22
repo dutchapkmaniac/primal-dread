@@ -62,7 +62,7 @@ const verbFor = (label) => {
   return STR.mobUse;
 };
 
-const GLB_IDS = ["trex", "werewolf", "pig", "chicken", "tree", "appletree", "chest", "statue",
+const GLB_IDS = ["trex", "trexgreen", "werewolf", "pig", "chicken", "tree", "appletree", "chest", "statue",
   "bedroll", "hutbed", "kitchen", "bill", "storagechest", "boulder",
   "door", "table", "chair", "lantern", "croc", "dinoegg", "metaldoor", "beaconlamp",
   "nest", "barrel", "closet", "woodchest", "trapdoor", "knife3d", "machete3d", "torch3d",
@@ -390,6 +390,7 @@ class Game {
     ctx.player = this.player;
     this.ctx = ctx;
     this.city.build();   // update 39: the city needs the creature context for its chained beast
+    this.initLightPool();   // update 41: after everything with a lamp exists
 
     // the expedition map + HUD minimap + compass
     this.map = new GameMap(this);
@@ -857,6 +858,55 @@ class Game {
 
   // The mountain's law: the sheer band between the lower slope and the high
   // shelf only yields to a climber holding TWO anchors, selected and ready.
+  // ---- update 41: THE LIGHT POOL ----
+  // Three.js puts every visible light into every lit shader, for every pixel: with the city's 150 lamps the
+  // scene held 192 point lights and a 1440p frame took 50 ms on a GTX 1070. Now every PointLight that does not
+  // cast shadows is VIRTUAL — hidden, still owned and animated by its module (flicker, night switches, the
+  // campfire pool) — and a fixed pool of real lights mirrors the nearest, brightest ones. The count of real
+  // lights never changes, so no shader ever recompiles. Lights created later are picked up by a 2 s rescan.
+  initLightPool() {
+    this.lpool = []; this.vlights = []; this.lpoolT = 0; this.lscanT = 0;
+    const n = (CFG.perf && CFG.perf.lightPool) || 12;
+    for (let i = 0; i < n; i++) { const l = new THREE.PointLight(0xffffff, 0, 10, 2); l.position.set(0, -500, 0); l.userData.pool = true; this.scene.add(l); this.lpool.push({ l, v: null, fade: 0 }); }
+    this.scanLights();
+  }
+  scanLights() {
+    const seen = new Set(this.vlights);
+    this.scene.traverse((o) => {
+      if (!o.isPointLight || o.userData.pool || o.castShadow || seen.has(o)) return;
+      o.visible = false; o.userData.virtual = true; this.vlights.push(o);
+    });
+  }
+  updateLightPool(dt) {
+    if (!this.lpool) return;
+    this.lscanT -= dt; if (this.lscanT <= 0) { this.lscanT = 2; this.scanLights(); }
+    this.lpoolT -= dt;
+    const p = this.player.pos;
+    if (this.lpoolT <= 0) {
+      this.lpoolT = 0.15;
+      const cand = [];
+      for (const v of this.vlights) {
+        if (v.intensity <= 0 || !v.parent) continue;
+        let shown = true; for (let q = v.parent; q; q = q.parent) if (q.visible === false) { shown = false; break; }
+        if (!shown) continue;
+        const e = v.matrixWorld.elements, d = Math.hypot(e[12] - p.x, e[13] - p.y, e[14] - p.z), reach = v.distance || 20;
+        if (d > reach * 1.3 + 4) continue;
+        v.userData.score = v.intensity / (1 + (d * d) / (reach * reach * 0.25));
+        cand.push(v);
+      }
+      cand.sort((a, b) => b.userData.score - a.userData.score);
+      const top = new Set(cand.slice(0, this.lpool.length));
+      for (const P of this.lpool) if (P.v && !top.has(P.v)) P.v = null;
+      for (const v of top) if (!this.lpool.some((P) => P.v === v)) { const free = this.lpool.find((P) => !P.v); if (free) { free.v = v; free.fade = 0; } }
+    }
+    for (const P of this.lpool) {
+      const l = P.l, v = P.v;
+      if (!v || !v.parent) { l.intensity = 0; P.v = null; continue; }
+      P.fade = Math.min(1, P.fade + dt * 5);
+      const e = v.matrixWorld.elements; l.position.set(e[12], e[13], e[14]);
+      l.color.copy(v.color); l.distance = v.distance; l.decay = v.decay; l.intensity = v.intensity * P.fade;
+    }
+  }
   enforceClimb() {
     const M = CFG.mountain, p = this.player;
     // THE dungeon-entry bug (three reports): the summit "world's-end" wall
@@ -1092,6 +1142,7 @@ class Game {
     this.desert.update(dt);   // update 36
     this.portals.update(dt);  // update 37
     this.city.update(dt);     // update 39
+    this.updateLightPool(dt);   // update 41
     this.updateHunt();
     // 20Hz is plenty for proximity prompts — profiling showed this scan was
     // the main thread's top allocator (~45 label strings/frame). A pending

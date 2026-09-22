@@ -23,13 +23,17 @@ export function riggedHumanoid(sourceGroup) {
   const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
   const H = size.y;
   const hipY = bb.min.y + H * 0.50, chestY = bb.min.y + H * 0.66, neckY = bb.min.y + H * 0.86;
-  const kneeY = bb.min.y + H * 0.27, shoulderX = size.x * 0.21, elbowY = bb.min.y + H * 0.62;
+  // update 41: measured on the scans — the torso is 0.12 H wide at the chest, the shoulder joint sits at 0.15 H,
+  // the hands hang at 0.42–0.5 H. Claims go by these, not by a share of the model's width: the old 0.21 W
+  // shoulder put the hands (below hip height) on the LEG bones — they swung behind the back and stretched.
+  const kneeY = bb.min.y + H * 0.27, shoulderX = H * 0.15, elbowY = bb.min.y + H * 0.62, armX = H * 0.145, armLow = bb.min.y + H * 0.36;
 
   const hips = new THREE.Bone(); hips.position.set(cx, hipY, cz);
   const chest = new THREE.Bone(); chest.position.set(0, chestY - hipY, 0); hips.add(chest);
   const head = new THREE.Bone(); head.position.set(0, neckY - chestY, 0); chest.add(head);
-  const arms = [-1, 1].map((s) => { const b = new THREE.Bone(); b.position.set(s * shoulderX, neckY - 0.02 * H - chestY, 0); chest.add(b); return b; });
-  const fore = arms.map((a, i) => { const b = new THREE.Bone(); b.position.set(0, elbowY - (neckY - 0.02 * H), 0); a.add(b); return b; });
+  const shoulderY = bb.min.y + H * 0.78;
+  const arms = [-1, 1].map((s) => { const b = new THREE.Bone(); b.position.set(s * shoulderX, shoulderY - chestY, 0); chest.add(b); return b; });
+  const fore = arms.map((a, i) => { const b = new THREE.Bone(); b.position.set(0, elbowY - shoulderY, 0); a.add(b); return b; });
   const legs = [-1, 1].map((s) => { const b = new THREE.Bone(); b.position.set(s * size.x * 0.09, 0, 0); hips.add(b); return b; });
   const knees = legs.map((l) => { const b = new THREE.Bone(); b.position.set(0, kneeY - hipY, 0); l.add(b); return b; });
   const bones = [hips, chest, head, arms[0], arms[1], fore[0], fore[1], legs[0], legs[1], knees[0], knees[1]];
@@ -46,9 +50,9 @@ export function riggedHumanoid(sourceGroup) {
     if (y > neckY - fade && Math.abs(x) < size.x * 0.2) {        // the head (and the neck ramp)
       const k = Math.min(1, (y - (neckY - fade)) / (2 * fade));
       blend2(i, I.head, k, I.chest, 1 - k);
-    } else if (y > hipY + fade && Math.abs(x) > shoulderX * 0.95 && y < neckY + fade) {   // arms: out past the shoulders
+    } else if (y > armLow && Math.abs(x) > armX && y < neckY + fade) {   // arms: out past the torso, down to the hands
       const s = x < 0 ? 0 : 1;
-      const k = Math.min(1, (Math.abs(x) - shoulderX * 0.95) / (size.x * 0.06));
+      const k = Math.min(1, (Math.abs(x) - armX) / (H * 0.03));
       if (y < elbowY - fade) blend2(i, I.foreL + s, k, I.armL + s, 0);
       else if (y < elbowY + fade) { const q = (elbowY + fade - y) / (2 * fade); blend2(i, I.foreL + s, k * q, I.armL + s, k * (1 - q)); }
       else blend2(i, I.armL + s, k, I.chest, 1 - k);
@@ -66,7 +70,10 @@ export function riggedHumanoid(sourceGroup) {
   geo.setAttribute("skinIndex", new THREE.BufferAttribute(idx, 4));
   geo.setAttribute("skinWeight", new THREE.BufferAttribute(wgt, 4));
   const skinned = new THREE.SkinnedMesh(geo, srcMesh.material);
-  skinned.frustumCulled = false; skinned.castShadow = true;
+  // update 41: culled like any mesh — a generous sphere around the rest pose (the arms and the stride stay well inside it).
+  // frustumCulled=false drew every rigged body every frame, in every direction: 2.3 M triangles that were behind you.
+  geo.computeBoundingSphere(); skinned.boundingSphere = geo.boundingSphere.clone(); skinned.boundingSphere.radius *= 1.5;
+  skinned.frustumCulled = true; skinned.castShadow = true;
   skinned.add(hips);
   skinned.bind(new THREE.Skeleton(bones));
   const g = new THREE.Group(); g.add(skinned);
@@ -93,6 +100,7 @@ export function driveHumanoid(group, state, speed, dt, headTurn = 0, style = "ca
     R.hips.position.y = R.hipsY0 + Math.abs(Math.sin(R.phase)) * R.H * 0.012;
     R.hips.rotation.y = s * 0.05; R.chest.rotation.y = -s * 0.06; R.chest.rotation.x = 0.03;
     R.chest.rotation.z = 0;
+    R.arms[0].rotation.z = 0.02; R.arms[1].rotation.z = -0.02;
   } else {
     // at rest: a slow breath, a small weight shift every few seconds, a look around
     const relax = Math.min(1, dt * 4);
@@ -111,8 +119,8 @@ export function driveHumanoid(group, state, speed, dt, headTurn = 0, style = "ca
     const sway = style === "busy" ? 0.06 : 0.025;
     R.arms[0].rotation.z = 0.04 + Math.sin(t * 0.8 + R.phase) * sway; R.arms[1].rotation.z = -0.04 - Math.sin(t * 0.8 + R.phase + 1) * sway;
   }
-  // the scans stand in an A-pose: bring the arms down to the sides (about the shoulder, in the body's plane)
-  R.arms[0].rotation.z += 0.34; R.arms[1].rotation.z -= 0.34;
+  // update 41: the arms hang exactly as scanned (the user wants the original pose) — no extra lowering;
+  // the old `+= 0.34` also ACCUMULATED every walking frame and spun the arms
   // the head: turns toward a visitor, otherwise glances around slowly
   R.lookT -= dt;
   if (R.lookT <= 0) { R.lookT = 3 + Math.random() * 5; R.lookTarget = (Math.random() - 0.5) * 0.5; }
