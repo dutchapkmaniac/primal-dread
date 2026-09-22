@@ -26,7 +26,8 @@ const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_in
   "t_checker", "t_whitetile", "t_mosaic", "t_cream",
   // update 36: the desert's sand
   "t_sand", "t_riversand",   // update 37: the river bank
-  "t_sandstone", "t_goldpanel", "t_cavern", "t_flag"];   // update 39: Eternius City
+  "t_sandstone", "t_goldpanel", "t_cavern", "t_flag",
+  "t_trexgreen", "t_goldlattice", "t_greencarpet", "t_mountain"];   // update 39/40: Eternius City
 // ONE word per situation for the mobile context button, resolved from the
 // prompt label's leading constant. Built ONCE — update 26 profiling caught the
 // per-frame rebuild of this table as the main-thread's top garbage source.
@@ -87,6 +88,9 @@ const GLB_IDS = ["trex", "werewolf", "pig", "chicken", "tree", "appletree", "che
   "elisia", "elisia_evil",
   // update 36: the desert — its two Alioramus, the cactus, the palm, Idris
   "remotus", "altai", "cactus", "palm", "nomad",
+  // update 40: Eternius City's generated furniture (a code stand-in takes each one's place until it lands)
+  "et_bed", "et_lamppost", "et_torchbearer", "et_chainpost", "et_ceilinglamp", "et_throne",
+  "etdagger3d", "etsword3d", "etspear3d",   // update 40: the Eternial weapons, generated at last (buildEternialWeapons wraps them)
   "portal",   // update 37
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
   "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue"];   // update 39: the Eternials

@@ -191,3 +191,16 @@ ui_etdagger,icon,assets/ui_etdagger.png,"Eternial dagger icon — from the weapo
 ui_etsword,icon,assets/ui_etsword.png,"Eternial sword icon — from the weapon render, keyed offline (u39)"
 ui_etspear,icon,assets/ui_etspear.png,"Eternial spear icon — from the weapon render, keyed offline (u39)"
 ui_vaultkey,icon,assets/ui_vaultkey.png,Vault key icon — drawn in PIL (u39)
+et_bed,model,assets/models/et_bed.glb,Eternial inn/home bed — gold frame + green blanket — Higgsfield image_to_3d (u40)
+et_lamppost,model,assets/models/et_lamppost.glb,golden lamppost with a green gem lantern — Higgsfield image_to_3d (u40)
+et_torchbearer,model,assets/models/et_torchbearer.glb,golden Eternial statue raising a fire bowl — Higgsfield image_to_3d (u40)
+et_chainpost,model,assets/models/et_chainpost.glb,the chained beast's golden tethering post — Higgsfield image_to_3d (u40)
+et_ceilinglamp,model,assets/models/et_ceilinglamp.glb,hanging golden lattice lamp — Higgsfield image_to_3d (u40)
+et_throne,model,assets/models/et_throne.glb,King Anhurath's golden throne — Higgsfield image_to_3d (u40)
+etdagger3d,model,assets/models/etdagger3d.glb,Eternial dagger (held/thrown model) — Higgsfield image_to_3d from the u39 render (u40)
+etsword3d,model,assets/models/etsword3d.glb,Eternial sword (held model) — Higgsfield image_to_3d from the u39 render (u40)
+etspear3d,model,assets/models/etspear3d.glb,Eternial spear (held/thrown model) — Higgsfield image_to_3d from the u39 render (u40)
+t_trexgreen,texture,assets/tex/t_trexgreen_basecolor.webp,"the chained beast's green hide — hue-mapped from the T-Rex basecolor, mottled (u40)"
+t_goldlattice,texture,assets/tex/t_goldlattice_basecolor.webp,"golden lattice screen with transparent openings (gate tympanum, lamps) — nano_banana (u40)"
+t_greencarpet,texture,assets/tex/t_greencarpet_*.webp,"emerald carpet with gold lotus embroidery (throne hall, hallway, homes) — nano_banana + pipeline (u40)"
+t_mountain,texture,assets/tex/t_mountain_*.webp,"red desert mountain rock — nano_banana + pipeline (u40)"

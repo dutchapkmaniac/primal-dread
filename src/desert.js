@@ -221,6 +221,8 @@ export class Desert {
       if (R.side > 0 && R.d >= C.river.halfW) y = this.inOasisWater(x, z) ? C.dune.base - 0.3 : this.duneH(x, z);
       else if (R.side > 0) y = C.dune.base - 0.1 - (C.river.halfW - R.d) * 0.12;   // the bank slopes into the water
       else y = -3;                                                                 // the forest side: under the grass
+      // update 40: under the mountain the sand drops away — the cavern floor is its own ground (no sand layer through the city)
+      if (Math.hypot(x - CFG.eternius.cx, z - CFG.eternius.cz) < CFG.eternius.mountainR - 2) y = -40;
       pos.setY(i, y);
     }
     geo.computeVertexNormals();
@@ -478,7 +480,8 @@ export class DesertSystem {
     const g = this.g, p = g.player, w = g.world, des = this.d, C = D();
     if (!des) return;
     des.tick(g.time);
-    const inD = des.inDesert(p.pos.x, p.pos.z) && !des.bridgeAt(p.pos.x, p.pos.z);
+    // update 40: inside the mountain the heat is gone — the thirst bar goes with it
+    const inD = des.inDesert(p.pos.x, p.pos.z) && !des.bridgeAt(p.pos.x, p.pos.z) && !(g.city && g.city.inMountain(p.pos.x, p.pos.z, p.pos.y));
     const shade = inD && des.inShade(p.pos.x, p.pos.z);
     this.inDesert = inD; this.shade = shade;
     const sun = inD && !shade;
@@ -551,6 +554,7 @@ export class DesertSystem {
       return { x: des.oasis.x + Math.cos(a) * des.oasis.r, z: des.oasis.z + Math.sin(a) * des.oasis.r, name: "oasis" };
     }
     if (w.nearShore(x, z)) return { x, z, name: "lake" };
+    if (this.g.city) { const cs = this.g.city.waterSource(x, z, this.g.player.pos.y); if (cs) return cs; }   // update 40: the castle lake, the cavern river
     for (const t of w.farmTaps || []) if (Math.hypot(t.x - x, t.z - z) < 2.2) return { x: t.x, z: t.z, y: t.y + 0.9, name: "tap" };
     const F = CFG.farm.fountain;
     if (Math.hypot(F.x - x, F.z - z) < F.r + 1.6) return { x: F.x, z: F.z, name: "fountain" };

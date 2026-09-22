@@ -2,48 +2,24 @@ import * as THREE from "three";
 import { CFG } from "./config.js";
 import { STR } from "../strings.js";
 import { Creature } from "./entities.js";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js";
+import { iconUrl } from "./items.js";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake } from "./eternius_frame.js";
+import { buildCity } from "./eternius_build.js";
+export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
-// update 39: ETERNIUS CITY — the golden city of the Eternials in the south-west
+// update 39/40: ETERNIUS CITY — the golden city of the Eternials in the south-west
 // corner of the desert. A mountain with a castle at its foot and a lake with a
 // bridge in front of it; behind the castle's courtyard a gate leads into the
 // mountain, to a cavern city under a shaft of daylight: the market, the altar,
-// an inn, the throne hall, the keeper of tales, the vault, and the river below.
+// an inn, the throne hall, the keeper of tales, the vault, homes in the rock,
+// and the river below.
 //
-// Everything is laid out in a LOCAL frame: `a` runs from the mountain's heart
-// toward the north-east (the castle side), `b` runs to the north-west. The
-// cavern is polar: r from the heart, θ = atan2(b, a) (0 = the entry side,
-// +90° = north-west (the upper terrace), -90° = south-east (the lower gallery)).
-// Local three.js coordinates inside `this.grp`: x = b, z = a.
+// This file is the city's RULES: where the floor is, what stops you, who you
+// can talk to, what the stalls trade, what the map shows. The geometry is in
+// eternius_build.js, the local frame in eternius_frame.js.
 // ============================================================================
-const E = () => CFG.eternius;
-const D2R = Math.PI / 180;
-
-export function cityLocal(x, z) {
-  const C = E(), dx = x - C.cx, dz = z - C.cz;
-  return { a: dx * C.ux + dz * C.uz, b: dx * C.vx + dz * C.vz };
-}
-export function cityWorld(a, b) {
-  const C = E();
-  return [C.cx + a * C.ux + b * C.vx, C.cz + a * C.uz + b * C.vz];
-}
-// the dunes go flat around the city (the castle stands on level sand)
-export function cityFlatten(x, z) {
-  const C = E();
-  const [px, pz] = cityWorld(C.flatA, 0);
-  const d = Math.hypot(x - px, z - pz), r = Math.hypot(x - C.cx, z - C.cz);
-  const cf = Math.max(0, Math.min(1, (d - C.flatR) / 50));
-  const cm = Math.max(0, Math.min(1, (r - C.mountainR - 10) / 25));
-  return Math.min(cf, cm);
-}
-// the lake in front of the castle: a bowl in the sand
-export function cityLakeDip(x, z) {
-  const C = E(), [lx, lz] = cityWorld(C.lake.a, 0);
-  const r = Math.hypot(x - lx, z - lz) / C.lake.r;
-  return r < 1 ? C.lake.depth * (1 - r * r) : 0;
-}
-
-const smooth = (t) => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
 
 export class EterniusCity {
   constructor(game) {
@@ -54,7 +30,7 @@ export class EterniusCity {
     this.chapter = 0; this.keeperReady = true;
     this.npcs = []; this.stalls = []; this.lights = []; this.flags = []; this.lanterns = [];
     this.walls = []; this.t = 0;
-    this.rex = null; this.chainMesh = null;
+    this.rex = null; this.chainLinks = null;
     this.discoveredToast = false;
   }
 
@@ -63,22 +39,50 @@ export class EterniusCity {
     const { a, b } = cityLocal(x, z);
     return { a, b, r: Math.hypot(a, b), th: Math.atan2(b, a) / D2R };
   }
-  mountainH(x, z) {
-    const C = E(), r = Math.hypot(x - C.cx, z - C.cz), R = C.mountainR;
-    if (r >= R) return 0;
-    if (r > R - C.cliffW) return C.cliffH * (R - r) / C.cliffW;   // a sheer foot: nothing walks up
-    const t = smooth((R - C.cliffW - r) / (R - C.cliffW - C.peakR));
-    const crag = 4 * Math.sin(0.05 * (x - C.cx)) * Math.sin(0.043 * (z - C.cz) + 1.3);
-    return C.cliffH + (C.peakH - C.cliffH) * t + crag * (1 - t) * t * 4;
+  // update 40: a ridge cluster — a broad shoulder, several peaks, crags — with a sheer foot nothing walks up
+  // the foot of the mountain is not a circle: outcrops and bays up to ten metres in and out
+  edgeR(a, b) {
+    const th = Math.atan2(b, a);
+    return E().mountainR + 5 * Math.sin(4 * th + 1) + 3 * Math.sin(9 * th + 2) + 2 * Math.sin(17 * th + 0.5);
   }
-  // inside the mountain (cavern, tunnel, the carved halls)?
+  mountainH(x, z) {
+    const C = E(), { a, b } = cityLocal(x, z), r = Math.hypot(a, b), R = this.edgeR(a, b);
+    if (r >= R) return 0;
+    if (r > R - C.cliffW) return C.cliffH * (R - r) / C.cliffW;
+    const t = smooth((R - C.cliffW - r) / (R - C.cliffW - C.peakR));
+    let h = C.cliffH + (C.peakH * 0.5 - C.cliffH) * t;
+    const inner = smooth((R - C.cliffW - r) / 14);   // crags and peaks fade out at the foot so the cliff stays continuous
+    for (const [pa, pb, ph] of C.peaks) {
+      const pr = 46 + ph * 0.28, d = Math.hypot(a - pa, b - pb);
+      if (d < pr) { const k = 1 - d / pr; h = Math.max(h, (C.cliffH + (ph - C.cliffH) * Math.pow(k, 1.5)) * inner + h * (1 - inner)); }
+    }
+    const crag = 3.2 * Math.sin(0.07 * a + 0.4) * Math.sin(0.06 * b + 1.3) + 1.7 * Math.sin(0.19 * a + 0.9) * Math.cos(0.17 * b) + 0.9 * Math.sin(0.41 * a) * Math.sin(0.37 * b + 0.6)
+      + 2.2 * Math.abs(Math.sin(0.05 * (a - b) + 0.8));   // a ridge line
+    return h + crag * inner;
+  }
+  // the four homes as (u out of the wall, v along it) around their own radial
+  roomUV(rm, a, b) {
+    const C = E(), cs = Math.cos(rm.th * D2R), sn = Math.sin(rm.th * D2R);
+    return { u: a * cs + b * sn - C.wallR, v: -a * sn + b * cs };
+  }
+  inHome(a, b, m = 1) {
+    const C = E(), RM = C.room;
+    for (const rm of C.rooms) { const { u, v } = this.roomUV(rm, a, b); if (u > -m && u < RM.depth + m && Math.abs(v) < RM.hw + m) return rm; }
+    return null;
+  }
+  // inside the mountain (cavern, tunnel, the carved halls, the homes)?
   inMountainRooms(a, b, r) {
     const C = E();
     if (r < C.wallR + 0.5) return true;
     if (a > C.tunnel.a0 - 1 && a < C.tunnel.a1 + 1 && Math.abs(b) < C.tunnel.hw + 0.5) return true;
     const T = C.throne; if (a > T.a0 - 1 && a < T.a1 + 1 && Math.abs(b) < T.hw + 1) return true;
     const V = C.vault; if (Math.abs(a) < V.hw + 1 && b < -V.b0 + 1 && b > -V.b1 - 1) return true;
+    if (this.inHome(a, b, 1)) return true;
     return false;
+  }
+  inMountain(x, z, y = 0) {
+    const P = this.polar(x, z);
+    return this.inMountainRooms(P.a, P.b, P.r) && y < 24;
   }
   // the floor under (x, z), or null outside the city's built ground. `y` gates the
   // rooms under the mountain: someone on the rock above must not fall through.
@@ -87,7 +91,6 @@ export class EterniusCity {
     if (r < C.mountainR + 2 || (a > C.tunnel.a0 && a < C.tunnel.a1 + 1)) {
       if (this.inMountainRooms(a, b, r) && (y < 24 || y > 900)) return this.roomH(a, b, r, th);
     }
-    // the castle's courtyard plinth, the gate sill, the bridge over the lake
     const K = C.castle;
     if (a >= K.a0 - 0.5 && a <= K.a1 + 0.5 && Math.abs(b) < K.hw + 0.5) return L.court;
     const B = C.bridge;
@@ -98,27 +101,51 @@ export class EterniusCity {
     }
     return null;
   }
+  grandStairY(th) {
+    const G = this.grandStair, L = E().levels;
+    if (!G) return L.terrace;
+    const u = th - G.th0;
+    if (u <= 0) return L.terrace;
+    if (th >= G.th1) return L.lower;
+    let i;
+    if (u <= G.half * G.stepArc) i = Math.ceil(u / G.stepArc);
+    else if (u <= G.half * G.stepArc + G.land) i = G.half;
+    else i = G.half + Math.ceil((u - G.half * G.stepArc - G.land) / G.stepArc);
+    return L.terrace - G.rs * Math.min(G.n, Math.max(0, i));
+  }
   roomH(a, b, r, th) {
-    const C = E(), L = C.levels;
+    const C = E(), L = C.levels, rise = C.stairRise, S = C.split;
     const T = C.throne; if (a > T.a0 - 1 && a < T.a1 + 1 && Math.abs(b) < T.hw + 1) return L.terrace;
     const V = C.vault; if (Math.abs(a) < V.hw + 1 && b < -V.b0 + 1 && b > -V.b1 - 1) return L.lower;
+    const home = this.inHome(a, b, 1); if (home) return L[home.level];
     if (a > C.tunnel.a0 - 1) return L.court;                                   // the tunnel and the gate
     if (r >= C.terraceR && Math.abs(th) < C.entryTh) return L.court;           // the entry terrace, wall to wall
     if (a > C.entryA) return L.court;
-    if (a > C.entryRampA) return L.plaza + (L.court - L.plaza) * (a - C.entryRampA) / (C.entryA - C.entryRampA);
-    // the two ramps: up to the north-west terrace, down to the south-east gallery
-    if (Math.abs(a) < C.ramp.hw) {
-      if (b > C.ramp.r0 && b <= C.ramp.r1) return L.plaza + (L.terrace - L.plaza) * (b - C.ramp.r0) / (C.ramp.r1 - C.ramp.r0);
-      if (-b > C.ramp.r0 && -b <= C.ramp.r1) return L.plaza + (L.lower - L.plaza) * (-b - C.ramp.r0) / (C.ramp.r1 - C.ramp.r0);
+    if (a > C.entryRampA) {                                                     // the entry stair: real treads
+      const n = Math.round((L.court - L.plaza) / rise), run = (C.entryA - C.entryRampA) / n;
+      return L.plaza + rise * Math.min(n, Math.ceil((a - C.entryRampA) / run));
+    }
+    // the two staircases: up to the north-west terrace, down to the south-east gallery
+    const SU = C.stairs.up, SD = C.stairs.down;
+    if (Math.abs(a) < SU.hw + 0.3 && b > SU.r0 && b <= SU.r1 + 0.3) {
+      const n = Math.round((L.terrace - L.plaza) / rise), run = (SU.r1 - SU.r0) / n;
+      return L.plaza + ((L.terrace - L.plaza) / n) * Math.min(n, Math.ceil((b - SU.r0) / run));
+    }
+    if (Math.abs(a) < SD.hw + 0.3 && -b > SD.r0 && -b <= SD.r1 + 0.3) {
+      const n = Math.round((L.plaza - L.lower) / rise), run = (SD.r1 - SD.r0) / n;
+      return L.plaza - ((L.plaza - L.lower) / n) * Math.min(n, Math.ceil((-b - SD.r0) / run));
     }
     if (r >= C.terraceR) {
-      if (b >= 0) return L.terrace;
+      if (th >= C.entryTh || th <= S.stairTh0) return L.terrace;
+      if (th < S.stairTh1) return this.grandStairY(th);
       // the lower gallery, the river through it, the bridge over the river
-      if (r > C.riverR0 && r < C.riverR1 && Math.abs(a) > C.riverBridgeHw) return L.riverBed;
+      const RT = C.riverTh;
+      if (r > C.riverR0 && r < C.riverR1 && th > RT.th0 && th < RT.th1 && Math.abs(a) > C.riverBridgeHw) return L.riverBed;
       return L.lower;
     }
+    const nD = Math.round((L.dais - L.plaza) / rise), runD = 0.6, edge = C.altar.r + nD * runD;
     if (r < C.altar.r) return L.dais;
-    if (r < C.altar.r + 3) return L.plaza + (L.dais - L.plaza) * (C.altar.r + 3 - r) / 3;
+    if (r < edge) return L.plaza + rise * Math.min(nD, Math.ceil((edge - r) / runD));
     return L.plaza;
   }
   inside(x, z, y = 0) {
@@ -133,13 +160,23 @@ export class EterniusCity {
     if (this.rex && Math.hypot(x - this.rex.chain.x, z - this.rex.chain.z) < this.rex.chain.r + 3) return false;
     return true;
   }
+  // a place to fill the bottle: the cavern river's bank, the castle lake's shore
+  waterSource(x, z, y) {
+    const C = E(), L = C.levels, P = this.polar(x, z), { a, b, r, th } = P;
+    const RT = C.riverTh;
+    if (th > RT.th0 && th < RT.th1 && Math.abs(y - L.lower) < 2.5 && ((r > C.riverR0 - 3 && r < C.riverR0) || (r > C.riverR1 && r < C.riverR1 + 3))) {
+      const rr = r < C.riverR0 ? C.riverR0 : C.riverR1, [wx, wz] = cityWorld(rr * Math.cos(th * D2R), rr * Math.sin(th * D2R));
+      return { x: wx, z: wz, y: L.water, name: "cavern" };
+    }
+    const n = lakeNorm(a, b), onBridge = Math.abs(b) < C.bridge.hw + 0.4 && a > C.bridge.a0 - 1 && a < C.bridge.a1 + 1;
+    if (!onBridge && n > 0.92 && n < 1.28 && y < 6) return { x, z, y: L.court - 2.05, name: "lake" };
+    return null;
+  }
   // ---------------- collision ----------------
   collide(x, z, r, y) {
     const C = E(), P = this.polar(x, z);
     let { a, b } = P;
-    const rr = Math.hypot(a, b), th = Math.atan2(b, a) / D2R;
     let moved = false;
-    // straight walls (local segments)
     for (const w of this.walls) {
       if (w.off) continue;
       const ex = w.a1 - w.a0, ez = w.b1 - w.b0, L2 = ex * ex + ez * ez || 1e-6;
@@ -148,392 +185,68 @@ export class EterniusCity {
       const dx = a - px, dz = b - pz, d = Math.hypot(dx, dz), need = r + (w.t || 0.4);
       if (d < need) { const k = d > 1e-6 ? need / d : 1; a = px + (d > 1e-6 ? dx * k : need); b = pz + (d > 1e-6 ? dz * k : 0); moved = true; }
     }
+    // update 40: the mountain is solid rock — below its surface and outside every room you are pushed out
+    {
+      const rc = Math.hypot(a, b);
+      const Re = this.edgeR(a, b);
+      if (rc < Re - 0.6 && !this.inMountainRooms(a, b, rc) && y < this.mountainH(x, z) - 1.2) {
+        const k = (Re + 0.2) / (rc || 1e-6); a *= k; b *= k; moved = true;
+      }
+    }
     if (y < 24 || y > 900) {
-      // the cavern wall: stay inside (the vault door at -90°, the throne door at 180°)
-      const inVaultDoor = Math.abs(a) < C.vault.doorHw + r && b < -C.wallR + 6 && b > -C.wallR - 6;
-      const inThroneDoor = Math.abs(b) < C.throne.doorHw + r && a < -C.wallR + 6 && a > -C.wallR - 6;
+      const rr = Math.hypot(a, b);
+      // the cavern wall: stay inside, except through the doors and inside the halls carved beyond it
+      const inVault = b < -(C.wallR - 6) && Math.abs(a) < C.vault.hw + 1;
+      const inThrone = a < -(C.wallR - 6) && Math.abs(b) < C.throne.hw + 1;
       const inTunnel = a > C.tunnel.a0 - 4 && Math.abs(b) < C.tunnel.hw + r;
-      if (rr > C.wallR - r && rr < C.wallR + 8 && !inVaultDoor && !inThroneDoor && !inTunnel) {
+      const inHome = !!this.inHome(a, b, 1.2) || this.nearHomeDoor(a, b, r);
+      if (rr > C.wallR - r && rr < C.wallR + 8 && !inVault && !inThrone && !inTunnel && !inHome) {
         const k = (C.wallR - r) / rr; a *= k; b *= k; moved = true;
       }
-      // the terrace edges: a rail along r = terraceR, gaps at the ramps and the entry
+      // the terrace edges: a rail along r = terraceR, gaps at the two staircases and the entry
       const ra = Math.hypot(a, b), tha = Math.atan2(b, a) / D2R;
-      if (Math.abs(ra - C.terraceR) < r + 0.3 && Math.abs(tha) > C.entryTh && Math.abs(Math.abs(tha) - 90) > 4.5) {
+      const stairGap = (b > 0 && Math.abs(a) < C.stairs.up.hw + 0.6) || (b < 0 && Math.abs(a) < C.stairs.down.hw + 0.6);
+      if (Math.abs(ra - C.terraceR) < r + 0.3 && Math.abs(tha) > C.entryTh && !stairGap) {
         const side = ra < C.terraceR ? C.terraceR - r - 0.3 : C.terraceR + r + 0.3;
         const k = side / ra; a *= k; b *= k; moved = true;
       }
       // the river: banks, not water — unless on the bridge
-      const rb = Math.hypot(a, b);
-      if (b < 0 && Math.abs(Math.atan2(b, a) / D2R) > C.entryTh && rb > C.riverR0 - r && rb < C.riverR1 + r && Math.abs(a) > C.riverBridgeHw - 0.2) {
+      const rb = Math.hypot(a, b), thb = Math.atan2(b, a) / D2R, RT = C.riverTh;
+      if (thb > RT.th0 - 2 && thb < RT.th1 + 2 && rb > C.riverR0 - r && rb < C.riverR1 + r && Math.abs(a) > C.riverBridgeHw - 0.2) {
         const mid = (C.riverR0 + C.riverR1) / 2;
         const side = rb < mid ? C.riverR0 - r : C.riverR1 + r;
         const k = side / rb; a *= k; b *= k; moved = true;
       }
     }
-    // the lake: no wading — the bridge crosses it
+    // the lake and its moat: no wading — the bridge crosses them, and only from its ends
     {
-      const LK = C.lake, da = a - LK.a, dl = Math.hypot(da, b);
-      const onBridge = Math.abs(b) < C.bridge.hw + 0.2 && a > C.bridge.a0 - 1 && a < C.bridge.a1 + 1;
-      if (dl < LK.r + r && !onBridge) { const k = (LK.r + r) / (dl || 1e-6); a = LK.a + da * k; b = b * k; moved = true; }
-      if (onBridge && a > C.bridge.a0 + 2 && a < C.bridge.a1 - 2 && Math.abs(b) > C.bridge.hw - r) b = Math.sign(b || 1) * (C.bridge.hw - r), moved = true;
+      const LK = C.lake, B = C.bridge;
+      const onBridge = Math.abs(b) < B.hw + 0.2 && a > B.a0 - 1 && a < B.a1 + 1;
+      if (!onBridge) {
+        const da = a - LK.a, dl = Math.hypot(da, b);
+        if (dl < LK.r + r) { const k = (LK.r + r) / (dl || 1e-6); a = LK.a + da * k; b = b * k; if (a < LK.moatA0 + 3.2) a = LK.moatA0 + 3.2; moved = true; }
+        else if (a > LK.moatA0 - r && a < LK.moatA1 + r && Math.abs(b) < LK.moatHw + r) {
+          if (a > LK.moatA1 - 3) a = LK.moatA1 + r; else b = Math.sign(b || 1) * (LK.moatHw + r);
+          moved = true;
+        }
+      } else if (a > B.a0 - 1 && a < B.a1 - 2 && Math.abs(b) > B.hw - r) { b = Math.sign(b || 1) * (B.hw - r); moved = true; }
     }
     if (!moved) return { x, z };
     const [wx, wz] = cityWorld(a, b);
     return { x: wx, z: wz };
   }
+  nearHomeDoor(a, b, r) {
+    const C = E(), RM = C.room;
+    for (const rm of C.rooms) { const { u, v } = this.roomUV(rm, a, b); if (u > -3 && u < 2 && Math.abs(v) < RM.doorHw + r) return true; }
+    return false;
+  }
 
   // ---------------- build ----------------
   build() {
-    const g = this.g, w = g.world, A = g.assets, scene = g.scene, C = E(), L = C.levels;
-    const grp = new THREE.Group();
-    grp.position.set(C.cx, 0, C.cz); grp.rotation.y = C.grpYaw;
-    scene.add(grp); this.grp = grp;
-    // the interior is lit by lanterns and the shaft: the stone glows a little on its own, or the cavern reads black
-    const sand = (rx, rz) => { const m = w.mat("t_sandstone", rx, rz, 0xc8a870); m.emissive = new THREE.Color(0x4a3c26); m.emissiveIntensity = 0.42; return m; };
-    const rock = (rx, rz) => { const m = w.mat("t_cavern", rx, rz, 0x6b5238); m.emissive = new THREE.Color(0x3a2c1c); m.emissiveIntensity = 0.5; return m; };
-    const goldM = () => { const m = w.mat("t_goldpanel", 2, 2, 0xd4a72c); m.metalness = 0.55; m.roughness = 0.35; m.emissive = new THREE.Color(0x4a3608); m.emissiveIntensity = 0.35; return m; };
-    const gold = goldM();
-    const goldPlain = new THREE.MeshStandardMaterial({ color: 0xd9ad2e, metalness: 0.6, roughness: 0.3, emissive: 0x3a2a06 });
-    const gem = new THREE.MeshStandardMaterial({ color: 0x2fdc5a, emissive: 0x1fbf46, emissiveIntensity: 1.4, roughness: 0.2 });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x2b2620, roughness: 0.9 });
-    this.mats = { sand, rock, gold, goldPlain, gem, dark };
-    const box = (wd, h, d, x, y, z, m, ry = 0) => { const mm = new THREE.Mesh(new THREE.BoxGeometry(wd, h, d), m); mm.position.set(x, y, z); mm.rotation.y = ry; mm.castShadow = mm.receiveShadow = true; grp.add(mm); return mm; };
-    // a flat ring sector in the local xz plane (θ from +z toward +x)
-    const sector = (r0, r1, th0, th1, y, m, segs = 40) => {
-      const geo = new THREE.RingGeometry(Math.max(0.01, r0), r1, segs, 1, (90 - th1) * D2R, (th1 - th0) * D2R);
-      geo.rotateX(Math.PI / 2);
-      const mm = new THREE.Mesh(geo, m.clone()); mm.material.side = THREE.DoubleSide; mm.position.y = y; mm.receiveShadow = true; grp.add(mm); return mm;
-    };
-    const cyl = (r, th0, th1, y0, y1, m, inside = false, segs = 48) => {
-      const geo = new THREE.CylinderGeometry(r, r, y1 - y0, segs, 1, true, th0 * D2R, (th1 - th0) * D2R);
-      const mm = new THREE.Mesh(geo, m); mm.material = m; mm.position.y = (y0 + y1) / 2; grp.add(mm);
-      if (inside) mm.material = m.clone(), mm.material.side = THREE.BackSide;
-      return mm;
-    };
-    // NOTE on RingGeometry: its θ runs from +x toward +y; after rotateX(-90°) that is +x toward -z.
-    // Our polar θ runs from +z toward +x, so a sector [th0, th1] is passed as [90 - th1, 90 - th0]. cyl()
-    // (CylinderGeometry) already counts from +z toward +x, exactly our θ.
-    const wallSeg = (a0, b0, a1, b1, t = 0.4) => this.walls.push({ a0, b0, a1, b1, t });
-
-    // ===== the MOUNTAIN: a craggy heightfield around the heart (the rooms are cut out below) =====
-    {
-      const R = C.mountainR, NR = 44, NT = 96;
-      const pos = [], uv = [], idx = [];
-      for (let i = 0; i <= NR; i++) {
-        const r = R * Math.pow(i / NR, 0.8);
-        for (let j = 0; j <= NT; j++) {
-          const th = (j / NT) * Math.PI * 2;
-          const lx = r * Math.sin(th), lz = r * Math.cos(th);
-          const [wx, wz] = cityWorld(lz, lx);
-          let h = this.mountainH(wx, wz);
-          if (i === 0) h = C.peakH;
-          pos.push(lx, h, lz); uv.push(lx / 18, lz / 18);
-        }
-      }
-      for (let i = 0; i < NR; i++) for (let j = 0; j < NT; j++) {
-        const p0 = i * (NT + 1) + j, p1 = p0 + 1, p2 = p0 + NT + 1, p3 = p2 + 1;
-        idx.push(p0, p2, p1, p1, p2, p3);
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-      geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-      geo.setIndex(idx); geo.computeVertexNormals();
-      const m = rock(1, 1); const mesh = new THREE.Mesh(geo, m); mesh.receiveShadow = true; grp.add(mesh);
-      // the light shaft's mouth on the peak: a dark ring
-      const mouth = new THREE.Mesh(new THREE.RingGeometry(C.shaftR, C.shaftR + 6, 32), dark); mouth.rotation.x = -Math.PI / 2; mouth.position.y = C.peakH + 0.3; grp.add(mouth);
-    }
-
-    // ===== the CASTLE: courtyard plinth, walls, gate towers, spires and domes =====
-    {
-      const K = C.castle, GT = C.gate, y0 = L.court, H = K.wallH, T = 2;
-      box(K.hw * 2 + 6, 2.4, K.a1 - K.a0 + 6, 0, y0 - 1.2, (K.a0 + K.a1) / 2, sand(12, 8));      // the plinth
-      const floor = box(K.hw * 2, 0.2, K.a1 - K.a0, 0, y0 - 0.1, (K.a0 + K.a1) / 2, sand(10, 6));
-      floor.receiveShadow = true;
-      // front wall (the gate at |b| < GT.hw) and the back wall (the mountain gate)
-      for (const az of [K.a1, K.a0]) {
-        for (const s of [-1, 1]) {
-          const bw = K.hw - GT.hw, bc = s * (GT.hw + bw / 2);
-          box(bw, H, T, bc, y0 + H / 2, az, sand(bw / 4, H / 4));
-          box(bw, 0.6, T + 0.4, bc, y0 + H + 0.3, az, gold);   // gold coping
-        }
-        box(GT.hw * 2 + 1, H - GT.h, T, 0, y0 + GT.h + (H - GT.h) / 2, az, sand(3, 2));   // the lintel over the gate
-        box(GT.hw * 2 + 1.4, 0.8, T + 0.5, 0, y0 + GT.h + 0.4, az, gold);
-        for (const s of [-1, 1]) { box(0.9, GT.h, T + 0.6, s * (GT.hw + 0.45), y0 + GT.h / 2, az, goldPlain); }
-        const g1 = new THREE.Mesh(new THREE.OctahedronGeometry(0.7), gem); g1.position.set(0, y0 + GT.h + 2.2, az + (az === K.a1 ? T / 2 + 0.4 : -T / 2 - 0.4)); grp.add(g1);
-        wallSeg(az, -K.hw, az, -GT.hw, T / 2 + 0.3); wallSeg(az, GT.hw, az, K.hw, T / 2 + 0.3);
-      }
-      // side walls
-      for (const s of [-1, 1]) {
-        box(T, H, K.a1 - K.a0, s * K.hw, y0 + H / 2, (K.a0 + K.a1) / 2, sand(3, 10));
-        box(T + 0.4, 0.6, K.a1 - K.a0, s * K.hw, y0 + H + 0.3, (K.a0 + K.a1) / 2, gold);
-        wallSeg(K.a0, s * K.hw, K.a1, s * K.hw, T / 2 + 0.3);
-        // three spires along each side wall
-        for (let i = 0; i < 3; i++) {
-          const az = K.a0 + 8 + i * ((K.a1 - K.a0 - 16) / 2);
-          box(4, 6, 4, s * K.hw, y0 + H + 3, az, sand(1, 1));
-          const cone = new THREE.Mesh(new THREE.ConeGeometry(2.6, 11, 8), gold); cone.position.set(s * K.hw, y0 + H + 6 + 5.5, az); grp.add(cone);
-        }
-      }
-      // gate towers (front and back) and the four corner domes
-      for (const az of [K.a1, K.a0]) for (const s of [-1, 1]) {
-        const tb = s * (GT.hw + 5.5);
-        box(7, H + 9, 7, tb, y0 + (H + 9) / 2, az, sand(2, 5));
-        const cone = new THREE.Mesh(new THREE.ConeGeometry(4.6, 12, 8), gold); cone.position.set(tb, y0 + H + 9 + 6, az); grp.add(cone);
-        for (let k = 0; k < 3; k++) { const gg = new THREE.Mesh(new THREE.OctahedronGeometry(0.45), gem); gg.position.set(tb, y0 + 4 + k * 5, az + (az === K.a1 ? 3.6 : -3.6)); grp.add(gg); }
-        wallSeg(az - 3.5, tb - 3.5, az + 3.5, tb - 3.5, 0.3); wallSeg(az - 3.5, tb + 3.5, az + 3.5, tb + 3.5, 0.3);
-        wallSeg(az - 3.5, tb - 3.5, az - 3.5, tb + 3.5, 0.3); wallSeg(az + 3.5, tb - 3.5, az + 3.5, tb + 3.5, 0.3);
-      }
-      for (const az of [K.a1, K.a0]) for (const s of [-1, 1]) {
-        box(7, H + 6, 7, s * K.hw, y0 + (H + 6) / 2, az, sand(2, 4));
-        const dome = new THREE.Mesh(new THREE.SphereGeometry(4.4, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), gold); dome.position.set(s * K.hw, y0 + H + 6, az); grp.add(dome);
-        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.6, 3, 6), goldPlain); tip.position.set(s * K.hw, y0 + H + 6 + 5.4, az); grp.add(tip);
-      }
-      // the great golden dome over the mountain gate, and a golden facade band with the emblem
-      const bigDome = new THREE.Mesh(new THREE.SphereGeometry(9, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), gold); bigDome.position.set(0, y0 + H, K.a0 - 4); grp.add(bigDome);
-      // flags on the walls
-      for (let i = 0; i < 6; i++) for (const s of [-1, 1]) this.addFlag(s * (K.hw - 1.2), y0 + H + 0.6, K.a0 + 5 + i * 7, s > 0 ? -90 : 90);
-      for (const s of [-1, 1]) { this.addFlag(s * 24, y0 + H + 0.6, K.a1 - 1.2, 0); this.addFlag(s * 40, y0 + H + 0.6, K.a1 - 1.2, 0); }
-      // courtyard lanterns (their lights come on at night) and the paved way from gate to gate
-      box(8, 0.06, K.a1 - K.a0, 0, y0 + 0.04, (K.a0 + K.a1) / 2, gold);
-      for (const az of [K.a0 + 10, (K.a0 + K.a1) / 2, K.a1 - 10]) for (const s of [-1, 1]) this.addLantern(s * 6, y0, az, true);
-      // the tunnel into the mountain
-      const TN = C.tunnel, len = TN.a1 - TN.a0, ac = (TN.a0 + TN.a1) / 2;
-      box(TN.hw * 2 + 1, 0.3, len + 2, 0, y0 - 0.15, ac, sand(3, 20));
-      for (const s of [-1, 1]) { box(1, TN.h, len + 2, s * (TN.hw + 0.5), y0 + TN.h / 2, ac, rock(2, 20)); wallSeg(TN.a0 - 2, s * TN.hw, TN.a1 + 1, s * TN.hw, 0.6); }
-      box(TN.hw * 2 + 2, 1, len + 2, 0, y0 + TN.h + 0.5, ac, rock(3, 20));
-      for (let i = 0; i < 6; i++) for (const s of [-1, 1]) this.addLantern(s * (TN.hw - 0.6), y0 + 3.2, TN.a0 + 8 + i * (len / 6), false, true);
-      // the lake and the bridge over it
-      const LK = C.lake;
-      const waterMat = new THREE.MeshStandardMaterial({ map: A.tex.t_water || null, color: A.tex.t_water ? 0xffffff : 0x3c7a8a, transparent: true, opacity: 0.82, roughness: 0.25, metalness: 0.05, emissive: 0x0a2a32 });
-      if (waterMat.map) { waterMat.map = waterMat.map.clone(); waterMat.map.repeat.set(6, 6); waterMat.map.wrapS = waterMat.map.wrapT = THREE.RepeatWrapping; waterMat.map.needsUpdate = true; }
-      const lake = new THREE.Mesh(new THREE.CircleGeometry(LK.r + 1, 48), waterMat); lake.rotation.x = -Math.PI / 2; lake.position.set(0, L.court - 2.05 + 0.02, LK.a); grp.add(lake); this.lakeMesh = lake;
-      const BR = C.bridge, N = 14, Lb = BR.a1 - BR.a0;
-      for (let i = 0; i < N; i++) {
-        const a0 = BR.a0 + (Lb / N) * i, a1 = a0 + Lb / N;
-        const y0b = this.floorH(...cityWorld(a0, 0)) - 0.16, y1b = this.floorH(...cityWorld(a1, 0)) - 0.16;
-        const segL = Math.hypot(a1 - a0, y1b - y0b), tilt = Math.atan2(y1b - y0b, a1 - a0);
-        const seg = new THREE.Mesh(new THREE.BoxGeometry(BR.hw * 2, 0.32, segL + 0.05), sand(2, 1)); seg.position.set(0, (y0b + y1b) / 2, (a0 + a1) / 2); seg.rotation.x = -tilt; seg.receiveShadow = true; grp.add(seg);
-        for (const s of [-1, 1]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.1, segL + 0.05), goldPlain); rail.position.set(s * (BR.hw - 0.15), (y0b + y1b) / 2 + 0.7, (a0 + a1) / 2); rail.rotation.x = -tilt; grp.add(rail); }
-      }
-      for (const k of [0.25, 0.5, 0.75]) { const az = BR.a0 + Lb * k; const pier = new THREE.Mesh(new THREE.BoxGeometry(1.4, 6, 1.4), sand(1, 3)); pier.position.set(0, L.court - 2.6, az); grp.add(pier); }
-    }
-
-    // ===== the CAVERN =====
-    {
-      const R = C.wallR, TR = C.terraceR, ET = C.entryTh;
-      // floors: plaza, the altar dais, the entry terrace, the upper terrace, the lower gallery, the river
-      sector(0, TR + 1, -180, 180, L.plaza, sand(24, 24), 96);
-      const daisM = gold; sector(0, C.altar.r, -180, 180, L.dais, daisM, 48);
-      cyl(C.altar.r, 0, 360, L.plaza, L.dais, gold);
-      for (let k = 1; k <= 3; k++) { const rr = C.altar.r + k; const yy = L.plaza + (L.dais - L.plaza) * (3 - k + 1) / 3; sector(rr - 1, rr, -180, 180, yy, sand(4, 4), 48); cyl(rr, 0, 360, L.plaza, yy, sand(4, 1)); }
-      // entry terrace (a > entryA, plus the wall-to-wall band at |θ| < ET beyond the terrace radius)
-      sector(TR, R, -ET, ET, L.court, sand(8, 8), 40);
-      {
-        const shape = new THREE.Shape();   // the chord region a > entryA inside r < TR (local x = b, y = a here)
-        const th = Math.acos(Math.min(1, C.entryA / TR));
-        shape.moveTo(-TR * Math.sin(th), C.entryA);
-        for (let i = 0; i <= 24; i++) { const t = -th + (2 * th) * (i / 24); shape.lineTo(TR * Math.sin(t), TR * Math.cos(t)); }
-        shape.closePath();
-        const geo = new THREE.ShapeGeometry(shape); geo.rotateX(Math.PI / 2);   // shape (x, y) -> (x, -z)? keep a on +z
-        const mm = new THREE.Mesh(geo, sand(8, 8)); mm.position.y = L.court; mm.material.side = THREE.DoubleSide; grp.add(mm);
-      }
-      // the ramp down from the entry terrace: a broad flight of steps, wall to wall
-      {
-        const steps = 8, dy = (L.court - L.plaza) / steps, da = (C.entryA - C.entryRampA) / steps;
-        for (let i = 0; i < steps; i++) {
-          const a0 = C.entryRampA + da * i, y = L.plaza + dy * (i + 1);
-          const halfW = Math.sqrt(Math.max(1, TR * TR - a0 * a0)) + 2;
-          box(halfW * 2, dy + 0.05, da + 0.05, 0, y - dy / 2, a0 + da / 2, sand(halfW / 2, 0.5));
-        }
-      }
-      // the upper terrace (north-west, b > 0) and the lower gallery (south-east, b < 0)
-      sector(TR, R, ET, 180, L.terrace, sand(6, 6), 48);
-      cyl(TR, ET, 180, L.plaza, L.terrace, sand(12, 2));
-      sector(TR, C.riverR0, -180, -ET, L.lower, sand(6, 6), 48);
-      sector(C.riverR1, R, -180, -ET, L.lower, sand(6, 6), 48);
-      sector(C.riverR0 - 0.2, C.riverR1 + 0.2, -180, -ET, L.riverBed, rock(6, 2), 48);
-      cyl(TR, -180, -ET, L.lower, L.plaza, sand(12, 2));
-      cyl(C.riverR0, -180, -ET, L.riverBed, L.lower, rock(6, 1), true); cyl(C.riverR1, -180, -ET, L.riverBed, L.lower, rock(6, 1));
-      // the river's water
-      {
-        const wm = new THREE.MeshStandardMaterial({ map: A.tex.t_water ? A.tex.t_water.clone() : null, color: A.tex.t_water ? 0xffffff : 0x2f6e80, transparent: true, opacity: 0.8, roughness: 0.2, emissive: 0x0b2a34 });
-        if (wm.map) { wm.map.repeat.set(8, 1); wm.map.wrapS = wm.map.wrapT = THREE.RepeatWrapping; wm.map.needsUpdate = true; }
-        this.riverMesh = sector(C.riverR0, C.riverR1, -180, -ET, L.water, wm, 48);
-      }
-      // the bridge over the river (to the vault) and the two ramps
-      box(C.riverBridgeHw * 2, 0.5, C.riverR1 - C.riverR0 + 2, -(C.riverR0 + C.riverR1) / 2, L.lower - 0.25, 0, sand(1, 2), Math.PI / 2);
-      for (const s of [-1, 1]) box(0.3, 1.0, C.riverR1 - C.riverR0 + 2, -(C.riverR0 + C.riverR1) / 2, L.lower + 0.5, s * (C.riverBridgeHw - 0.15), goldPlain, Math.PI / 2);
-      for (const sgn of [1, -1]) {
-        const y1 = sgn > 0 ? L.terrace : L.lower, len = C.ramp.r1 - C.ramp.r0, mid = (C.ramp.r0 + C.ramp.r1) / 2;
-        // local x = b: the ramp runs along x and rises with +x on both sides (up toward +b, down toward -b)
-        const tilt = Math.atan2(Math.abs(y1 - L.plaza), len), slope = Math.hypot(len, y1 - L.plaza) + 0.4;
-        const rm = new THREE.Mesh(new THREE.BoxGeometry(slope, 0.4, C.ramp.hw * 2), sand(3, 2));
-        rm.position.set(sgn * mid, (L.plaza + y1) / 2 - 0.2, 0); rm.rotation.z = tilt; rm.receiveShadow = true; grp.add(rm);
-        for (const s of [-1, 1]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(slope, 1.0, 0.3), goldPlain); rail.position.set(sgn * mid, (L.plaza + y1) / 2 + 0.5, s * (C.ramp.hw - 0.15)); rail.rotation.z = tilt; grp.add(rail); }
-      }
-      // the cavern wall, the dome, the shaft of light
-      cyl(R, 0, 360, L.riverBed - 2, C.wallTop, rock(24, 4), true, 96);
-      {
-        const pts = [];
-        const N = 14;
-        for (let i = 0; i <= N; i++) { const t = i / N; const rr = R - (R - C.shaftR) * Math.sin(t * Math.PI / 2); const yy = C.wallTop + (C.cavernH - C.wallTop) * Math.sin(t * Math.PI / 2); pts.push(new THREE.Vector2(rr, yy)); }
-        const dome = new THREE.Mesh(new THREE.LatheGeometry(pts, 96), (() => { const m = rock(24, 4); m.side = THREE.BackSide; return m; })()); grp.add(dome);
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(C.shaftR, C.shaftR, C.peakH - C.cavernH + 2, 32, 1, true), (() => { const m = rock(4, 8); m.side = THREE.BackSide; return m; })());
-        shaft.position.y = (C.cavernH + C.peakH) / 2; grp.add(shaft);
-        const beam = new THREE.Mesh(new THREE.CylinderGeometry(C.shaftR * 0.9, C.shaftR * 1.3, C.cavernH - L.plaza, 32, 1, true),
-          new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.09, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-        beam.position.y = (C.cavernH + L.plaza) / 2; grp.add(beam); this.beam = beam;
-        const pool = new THREE.Mesh(new THREE.CircleGeometry(C.shaftR * 1.5, 40), new THREE.MeshBasicMaterial({ color: 0xffe3a0, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }));
-        pool.rotation.x = -Math.PI / 2; pool.position.y = L.dais + 0.03; grp.add(pool);
-      }
-      // the altar itself: a golden block with a gem, four braziers
-      box(3.2, 1.3, 1.8, 0, L.dais + 0.65, 0, gold);
-      const ag = new THREE.Mesh(new THREE.OctahedronGeometry(0.5), gem); ag.position.set(0, L.dais + 1.75, 0); grp.add(ag); this.altarGem = ag;
-      this.altarLocal = { a: 0, b: 0 };
-      for (const [ba, bb] of [[5, 5], [5, -5], [-5, 5], [-5, -5]]) this.addBrazier(bb, L.dais, ba);
-      w.addTree(...cityWorld(0, 0), 2.0);
-      // radial walls between the entry terrace and the two bands
-      for (const s of [-1, 1]) {
-        const th = s * ET * D2R;
-        const a0 = TR * Math.cos(th), b0 = TR * Math.sin(th), a1 = R * Math.cos(th), b1 = R * Math.sin(th);
-        wallSeg(a0, b0, a1, b1, 0.5);
-        const len = R - TR, ya = s > 0 ? L.terrace : L.lower, yb = L.court;
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(0.6, Math.abs(ya - yb), len), sand(1, 4));
-        wall.position.set((b0 + b1) / 2, (ya + yb) / 2, (a0 + a1) / 2); wall.rotation.y = -th; grp.add(wall);
-      }
-      // the throne hall (carved off the back of the cavern) and the vault (behind the river)
-      {
-        const T = C.throne, hw = T.hw, len = T.a1 - T.a0, ac = (T.a0 + T.a1) / 2, y = L.terrace, H = 14;
-        box(hw * 2 + 2, 0.4, len + 2, 0, y - 0.2, ac, sand(6, 6));
-        box(hw * 2 + 2, 1, len + 2, 0, y + H + 0.5, ac, rock(6, 6));
-        for (const s of [-1, 1]) { box(1, H, len + 2, s * (hw + 0.5), y + H / 2, ac, sand(2, 6)); wallSeg(T.a0 - 1, s * hw, T.a1 + 1, s * hw, 0.6); }
-        box(hw * 2 + 2, H, 1, 0, y + H / 2, T.a0 - 0.5, sand(6, 3)); wallSeg(T.a0, -hw, T.a0, hw, 0.6);
-        for (const s of [-1, 1]) { box(hw - T.doorHw, H, 1, s * (T.doorHw + (hw - T.doorHw) / 2), y + H / 2, T.a1 + 0.5, sand(3, 3)); wallSeg(T.a1, s * T.doorHw, T.a1, s * hw, 0.6); }
-        box(T.doorHw * 2 + 2, H - 8, 1.2, 0, y + 8 + (H - 8) / 2, T.a1 + 0.5, gold);
-        // dais + throne
-        box(8, 1.2, 5, 0, y + 0.6, T.a0 + 6, gold);
-        box(3, 5, 1, 0, y + 1.2 + 2.5, T.a0 + 4.3, gold); box(3, 1, 2.4, 0, y + 1.2 + 0.9, T.a0 + 5.6, goldPlain);
-        for (let i = 0; i < 4; i++) for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, H, 12), gold); p.position.set(s * (hw - 3), y + H / 2, T.a0 + 5 + i * 8); grp.add(p); w.addTree(...cityWorld(T.a0 + 5 + i * 8, s * (hw - 3)), 0.9); }
-        for (let i = 0; i < 3; i++) for (const s of [-1, 1]) this.addLantern(s * (hw - 1.2), y + 4, T.a0 + 8 + i * 9, false, true);
-        for (const s of [-1, 1]) this.addFlag(s * (hw - 1.5), y + 9, T.a0 + 3, s > 0 ? -90 : 90);
-        w.addTree(...cityWorld(T.a0 + 5.6, 0), 1.6);
-        this.throneLocal = { a: T.a0 + 8, b: 0 };
-        const V = C.vault, vhw = V.hw, vlen = V.b1 - V.b0, bc = -(V.b0 + V.b1) / 2, yv = L.lower, HV = 7;
-        box(vhw * 2 + 2, 0.4, vlen + 2, bc, yv - 0.2, 0, sand(6, 6), Math.PI / 2);
-        box(vhw * 2 + 2, 1, vlen + 2, bc, yv + HV + 0.5, 0, rock(6, 6), Math.PI / 2);
-        for (const s of [-1, 1]) { box(1, HV, vlen + 2, bc, yv + HV / 2, s * (vhw + 0.5), sand(2, 6), Math.PI / 2); wallSeg(s * vhw, -V.b0 + 1, s * vhw, -V.b1 - 1, 0.6); }
-        box(vhw * 2 + 2, HV, 1, -V.b1 - 0.5, yv + HV / 2, 0, sand(6, 2), Math.PI / 2); wallSeg(-vhw, -V.b1, vhw, -V.b1, 0.6);
-        for (const s of [-1, 1]) { box(vhw - V.doorHw, HV, 1, -V.b0 + 0.5, yv + HV / 2, s * (V.doorHw + (vhw - V.doorHw) / 2), sand(3, 2), Math.PI / 2); wallSeg(s * V.doorHw, -V.b0, s * vhw, -V.b0, 0.6); }
-        // the vault door: a golden slab that slides aside once unlocked
-        const door = box(V.doorHw * 2, HV - 1, 0.5, -V.b0, yv + (HV - 1) / 2, 0, gold, Math.PI / 2);
-        const dg = new THREE.Mesh(new THREE.OctahedronGeometry(0.4), gem); dg.position.set(-V.b0 + 0.5, yv + 3.2, 0); grp.add(dg);
-        this.vaultDoor = door; this.vaultDoorSeg = { a0: -V.doorHw, b0: -V.b0, a1: V.doorHw, b1: -V.b0, t: 0.5 }; this.walls.push(this.vaultDoorSeg);
-        this.vaultDoorLocal = { a: 0, b: -V.b0 + 2.5 };
-        for (const s of [-1, 1]) this.addLantern(-V.b0 - 2, yv + 3, s * (vhw - 1.5), false, true);
-        this.addLantern(-V.b1 + 2, yv + 3, 0, false, true);
-        // three treasure chests + a heap of coins on a plinth
-        this.vaultChests = [];
-        const chestA = A.glb.chest;
-        for (const [ca, cb] of [[-8, -(V.b1 - 5)], [0, -(V.b1 - 4)], [8, -(V.b1 - 5)]]) {
-          const [wx, wz] = cityWorld(ca, cb);
-          let mesh = null;
-          if (chestA) { mesh = chestA.model.clone(); mesh.position.set(wx, yv, wz); mesh.rotation.y = C.grpYaw + Math.PI; scene.add(mesh); }
-          const ch = { x: wx, z: wz, y: yv, opened: false, knife: false, mesh, snake: false, treasure: true, desert: true, vault: true };
-          w.chests.push(ch); this.vaultChests.push(ch);
-          w.addTree(wx, wz, 0.7);
-        }
-        const heap = new THREE.Mesh(new THREE.ConeGeometry(2.2, 1.2, 12), goldPlain); heap.position.set(bc, yv + 0.6, 0); grp.add(heap);
-      }
-      // the market stalls, the smith, the inn, the keeper's bench
-      for (const st of C.stalls) this.addStall(st);
-      {
-        const I = C.inn, y = L.terrace;
-        const [ia, ib] = [I.r * Math.cos(I.th * D2R), I.r * Math.sin(I.th * D2R)];
-        box(12, 0.3, 10, ib, y + 0.15, ia, sand(3, 3), -I.th * D2R);
-        for (const s of [-1, 1]) for (const t of [-1, 1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 5, 8), gold); const pa = ia + s * 4.5 * Math.cos(I.th * D2R) - t * 4.5 * Math.sin(I.th * D2R), pb = ib + s * 4.5 * Math.sin(I.th * D2R) + t * 4.5 * Math.cos(I.th * D2R); p.position.set(pb, y + 2.5, pa); grp.add(p); }
-        box(13, 0.4, 11, ib, y + 5.2, ia, gold, -I.th * D2R);
-        this.innBeds = [];
-        const bedA = A.glb.singlebed || A.glb.bedroll;
-        for (let k = -1; k <= 1; k++) {
-          const ba = ia - 2.5 * Math.cos(I.th * D2R) + k * 3.2 * -Math.sin(I.th * D2R), bb = ib - 2.5 * Math.sin(I.th * D2R) + k * 3.2 * Math.cos(I.th * D2R);
-          const [wx, wz] = cityWorld(ba, bb);
-          if (bedA) { const m = bedA.model.clone(); m.position.set(wx, y + 0.3, wz); m.rotation.y = C.grpYaw - I.th * D2R; scene.add(m); }
-          else box(1.2, 0.5, 2.2, bb, y + 0.55, ba, dark, -I.th * D2R);
-          this.innBeds.push({ x: wx, z: wz, y: y + 0.3 });
-        }
-        this.innLocal = { a: ia + 3 * Math.cos(I.th * D2R), b: ib + 3 * Math.sin(I.th * D2R) };
-        this.addLantern(ib + 5 * Math.cos(I.th * D2R), y + 4.6, ia - 5 * Math.sin(I.th * D2R), false, true);
-      }
-      // lanterns along both terraces and their lights
-      for (let th = ET + 12; th < 180; th += 24) { const rr = C.terraceR + 3; this.addLantern(rr * Math.sin(th * D2R), L.terrace + 0.1, rr * Math.cos(th * D2R), false, true, 3.5); }
-      for (let th = -ET - 12; th > -180; th -= 24) { const rr = C.terraceR + 3; this.addLantern(rr * Math.sin(th * D2R), L.lower + 0.1, rr * Math.cos(th * D2R), false, true, 3.5); }
-      for (let th = -160; th <= 160; th += 40) { const rr = 70; this.addLantern(rr * Math.sin(th * D2R), L.plaza, rr * Math.cos(th * D2R), false, true, 3.5); }
-      for (let th = 100; th < 180; th += 26) this.addFlag((C.wallR - 2) * Math.sin(th * D2R), L.terrace + 6, (C.wallR - 2) * Math.cos(th * D2R), -th);
-      // the entry terrace's gate arch into the cavern (a gold band)
-      box(C.tunnel.hw * 2 + 3, 1.2, 1.2, 0, L.court + C.tunnel.h + 0.6, C.tunnel.a0 - 0.5, gold);
-    }
-    // the map place, the safe spot the portals land you on
-    if (!CFG.locations.some((l) => l.id === "eternius")) {
-      // the marker sits on the mountain's heart (clear of the oasis label); the radius reaches the courtyard
-      CFG.locations.push({ id: "eternius", x: C.cx, z: C.cz, r: C.castle.a1 - 4 });
-      CFG.portals.arrivals.eternius = cityWorld(C.bridge.a1 + 6, 0);
-    }
+    buildCity(this);
     this.buildStatue();
     this.buildRex();
     this.buildNpcs();
-  }
-  addFlag(bx, y, az, faceDeg) {
-    const grp = this.grp, A = this.g.assets;
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 6, 6), this.mats.goldPlain); pole.position.set(bx, y + 3, az); grp.add(pole);
-    const tex = A.tex.t_flag;
-    const m = new THREE.MeshStandardMaterial({ map: tex || null, color: tex ? 0xffffff : 0x1f5a2a, side: THREE.DoubleSide, roughness: 0.9, emissive: 0x2a1c00, emissiveIntensity: 0 });
-    const f = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.4, 6, 4), m); f.position.set(bx, y + 4.4, az); f.rotation.y = faceDeg * D2R;
-    f.geometry.translate(0.9, 0, 0);
-    grp.add(f); this.flags.push(f);
-  }
-  addLantern(bx, y, az, night, cave, lit = 0) {
-    const grp = this.grp;
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.6, 6), this.mats.goldPlain); post.position.set(bx, y + 1.3, az); grp.add(post);
-    const cage = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.5), this.mats.goldPlain); cage.position.set(bx, y + 2.9, az); grp.add(cage);
-    const glow = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.5, 0.34), new THREE.MeshBasicMaterial({ color: 0xffd27a })); glow.position.set(bx, y + 2.9, az); grp.add(glow);
-    const [wx, wz] = cityWorld(az, bx);
-    this.lanterns.push({ glow, night });
-    if (lit) { const l = new THREE.PointLight(0xffc35a, lit, 34, 2); l.position.set(bx, y + 2.9, az); grp.add(l); this.lights.push({ l, night, on: lit }); }
-    else if (night) { const l = new THREE.PointLight(0xffc35a, 0, 26, 2); l.position.set(bx, y + 2.9, az); grp.add(l); this.lights.push({ l, night: true, on: 3.2 }); }
-    this.g.world.addTree(wx, wz, 0.25);
-  }
-  addBrazier(bx, y, az) {
-    const grp = this.grp;
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 2.2, 8), this.mats.goldPlain); stem.position.set(bx, y + 1.1, az); grp.add(stem);
-    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.35, 0.5, 10), this.mats.goldPlain); bowl.position.set(bx, y + 2.4, az); grp.add(bowl);
-    const flTex = new THREE.CanvasTexture(flameCanvas()); flTex.colorSpace = THREE.SRGBColorSpace;
-    const fm = new THREE.MeshBasicMaterial({ map: flTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
-    this.flames = this.flames || [];
-    for (const rot of [0, Math.PI / 2]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.5), fm); f.position.set(bx, y + 3.2, az); f.rotation.y = rot; grp.add(f); this.flames.push(f); }
-    const l = new THREE.PointLight(0xffa040, 2.2, 18, 2); l.position.set(bx, y + 3.2, az); grp.add(l);
-    this.g.world.addTree(...cityWorld(az, bx), 0.5);
-  }
-  addStall(st) {
-    const C = E(), L = C.levels, grp = this.grp, w = this.g.world;
-    const a = st.r * Math.cos(st.th * D2R), b = st.r * Math.sin(st.th * D2R), y = L.plaza, ry = st.th * D2R;
-    const box = (wd, h, d, x, yy, z, m) => { const mm = new THREE.Mesh(new THREE.BoxGeometry(wd, h, d), m); mm.position.set(x, yy, z); mm.rotation.y = ry; mm.castShadow = true; grp.add(mm); return mm; };
-    // a counter facing the altar, a striped awning on gold posts, wares on top
-    const cos = Math.cos(st.th * D2R), sin = Math.sin(st.th * D2R);
-    box(4.6, 1.1, 1.2, b, y + 0.55, a, this.mats.sand(2, 1));
-    box(4.8, 0.12, 1.4, b, y + 1.16, a, this.mats.gold);
-    for (const s of [-1, 1]) { const pa = a + 1.2 * cos + s * 2.2 * -sin, pb = b + 1.2 * sin + s * 2.2 * cos; const p = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 3.2, 6), this.mats.goldPlain); p.position.set(pb, y + 1.6, pa); grp.add(p); }
-    const back = box(4.6, 3.2, 0.3, b + 1.6 * sin, y + 1.6, a + 1.6 * cos, this.mats.sand(2, 1));
-    const aw = new THREE.MeshStandardMaterial({ color: st.color || 0x2f7a3a, roughness: 0.9, side: THREE.DoubleSide });
-    const awn = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 3.0), aw); awn.position.set(b + 0.4 * sin, y + 3.3, a + 0.4 * cos); awn.rotation.set(-Math.PI / 2 + 0.35, ry, 0, "YXZ"); grp.add(awn);
-    const wares = st.wares || 0xa0522d;
-    for (let i = -1; i <= 1; i++) { const ob = new THREE.Mesh(i === 0 ? new THREE.SphereGeometry(0.28, 8, 6) : new THREE.BoxGeometry(0.5, 0.4, 0.4), new THREE.MeshStandardMaterial({ color: wares, roughness: 0.8 })); ob.position.set(b + i * 1.3 * cos, y + 1.4, a - i * 1.3 * sin); grp.add(ob); }
-    if (st.id === "smith") { const anvil = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 0.5), this.mats.dark); anvil.position.set(b - 3.0 * cos, y + 0.3 + 0.5, a + 3.0 * sin); grp.add(anvil); }
-    this.addLantern(b + 2.6 * cos - 0.4 * sin, y, a - 2.6 * sin - 0.4 * cos, false, true, 0);
-    const [wx, wz] = cityWorld(a, b);
-    w.addTree(wx, wz, 2.3);
-    // the keeper stands behind the counter, facing the altar
-    const [kx, kz] = cityWorld(a + 1.1 * cos, b + 1.1 * sin);
-    this.stalls.push({ ...st, x: wx, z: wz, y, keeperX: kx, keeperZ: kz });
   }
   buildStatue() {
     const C = E(), A = this.g.assets, S = C.statue, [x, z] = cityWorld(S.a, S.b), y = C.levels.court;
@@ -542,54 +255,105 @@ export class EterniusCity {
     this.g.world.addTree(x, z, 2.6);
     this.statueWorld = { x, z };
   }
-  // the chained beast: a T-Rex in every rule, green, in golden armour, held by a chain
+  // the chained beast: a T-Rex in every rule, with its own green hide, heavy golden armour, held by a golden chain
   buildRex() {
     const C = E(), R = C.chainRex, A = this.g.assets, g = this.g;
     const [px, pz] = cityWorld(R.a, R.b), y = C.levels.court;
-    const ctx = g.ctx;
     if (!A.glb.trex) return;
-    // a green copy of the T-Rex model
     const asset = { model: A.glb.trex.model.clone(), anims: A.glb.trex.anims };
-    asset.model.traverse((o) => { if (o.isMesh && o.material) { o.material = o.material.clone(); o.material.color = new THREE.Color(0x5cb84e); o.material.emissive = new THREE.Color(0x0c2a0a); o.material.emissiveIntensity = 0.6; } });
+    const green = A.tex.t_trexgreen;
+    asset.model.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      o.material = o.material.clone();
+      if (green) { const t = green.clone(); t.colorSpace = THREE.SRGBColorSpace; t.flipY = o.material.map ? o.material.map.flipY : false; t.needsUpdate = true; o.material.map = t; o.material.color = new THREE.Color(0xffffff); }
+      else { o.material.color = new THREE.Color(0x4f8a2e); }
+      o.material.emissive = new THREE.Color(0x061a06); o.material.emissiveIntensity = 0.5;
+    });
     const [sx, sz] = cityWorld(R.a + 4, R.b);
-    const rex = new Creature("trex", asset, sx, sz, ctx, { chained: { x: px, z: pz, r: R.reach }, zone: "chained" });
+    const rex = new Creature("trex", asset, sx, sz, g.ctx, { chained: { x: px, z: pz, r: R.reach }, zone: "chained" });
     rex.hp = rex.maxHp = Infinity; rex.chained = true; rex.chain = { x: px, z: pz, r: R.reach };
-    // the golden armour: a collar, a back plate, two shoulder plates, gems
-    const gold = this.mats.goldPlain, gem = this.mats.gem, H = rex.cfg.height || CFG.trex.height || 5.4;
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.14, 8, 20), gold); collar.position.set(0, H * 0.62, H * 0.22); collar.rotation.x = Math.PI / 2 - 0.5; rex.group.add(collar);
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 2.6), gold); plate.position.set(0, H * 0.86, -H * 0.02); plate.rotation.x = 0.12; rex.group.add(plate);
-    for (const s of [-1, 1]) { const sh = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), gold); sh.position.set(s * 0.95, H * 0.74, H * 0.12); rex.group.add(sh); }
-    const gm = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), gem); gm.position.set(0, H * 0.93, 0.6); rex.group.add(gm);
     g.creatures.push(rex);
-    this.rex = rex; this.rexCollar = collar;
-    // the post and the chain
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 3.2, 10), this.mats.dark); post.position.set(px, y + 1.6, pz); g.scene.add(post);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.1, 8, 16), gold); ring.position.set(px, y + 3.0, pz); ring.rotation.x = Math.PI / 2; g.scene.add(ring);
-    g.world.addTree(px, pz, 0.6);
-    const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1, 6), this.mats.dark); g.scene.add(chain); this.chainMesh = chain;
-    this.postTop = new THREE.Vector3(px, y + 3.0, pz);
-    // a warning stone
+    this.rex = rex;
+    this.armourRex(rex);
+    // the post and the chain: a golden ring on an ornate post, links that hang between post and collar
+    const gold = this.mats.goldPlain, gem = this.mats.gem;
+    const postAsset = A.glb.et_chainpost;
+    if (postAsset) { const m = postAsset.model.clone(); m.position.set(px, y, pz); m.rotation.y = C.grpYaw; g.scene.add(m); }
+    else {
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.4, 0.5, 8), this.mats.sand(1, 1)); base.position.set(px, y + 0.25, pz); g.scene.add(base);
+      const step = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 0.4, 8), gold); step.position.set(px, y + 0.7, pz); g.scene.add(step);
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.55, 3.2, 8), this.mats.gold); shaft.position.set(px, y + 2.5, pz); g.scene.add(shaft);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.9, 8), this.mats.goldBright); cap.position.set(px, y + 4.5, pz); g.scene.add(cap);
+      for (let k = 0; k < 4; k++) { const gg = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), gem); gg.position.set(px + Math.sin(k * 1.57) * 0.5, y + 3.2, pz + Math.cos(k * 1.57) * 0.5); g.scene.add(gg); }
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.1, 8, 16), gold); ring.position.set(px, y + 3.6, pz); ring.rotation.x = Math.PI / 2; g.scene.add(ring);
+    }
+    g.world.addTree(px, pz, 0.8);
+    this.postTop = new THREE.Vector3(px, y + 3.6, pz);
+    const linkGeo = new THREE.TorusGeometry(0.22, 0.06, 6, 10);
+    this.chainLinks = [];
+    for (let i = 0; i < 26; i++) { const l = new THREE.Mesh(linkGeo, this.mats.goldBright); g.scene.add(l); this.chainLinks.push(l); }
     this.rexSign = { x: px + (sx - px) * 0.2, z: pz + (sz - pz) * 0.2 };
+  }
+  // heavy golden armour fitted to the beast's bones: crest, collar, chest plate, back and tail plates, shoulders, greaves
+  armourRex(rex) {
+    const rig = rex.body && rex.body.userData && rex.body.userData.rig;
+    const skinned = rex.body && rex.body.children && rex.body.children[0];
+    const gold = this.mats.gold, goldP = this.mats.goldPlain, gem = this.mats.gem;
+    if (!rig || !skinned || !skinned.geometry || !skinned.geometry.boundingBox) {
+      const H = rex.cfg.height || 5.4;
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.14, 8, 20), goldP); collar.position.set(0, H * 0.62, H * 0.22); collar.rotation.x = Math.PI / 2 - 0.5; rex.group.add(collar);
+      this.rexCollar = collar; return;
+    }
+    const bb = skinned.geometry.boundingBox, size = new THREE.Vector3(); bb.getSize(size);
+    const spine = rig.head.parent, head = rig.head, tail = rig.tail;
+    const at = (bone, mesh, mx, my, mz) => {
+      // the mesh's position is given in model space; a bone's rest position is the spine's plus its own offset
+      const bx = spine.position.x + (bone === spine ? 0 : bone.position.x), by = spine.position.y + (bone === spine ? 0 : bone.position.y), bz = spine.position.z + (bone === spine ? 0 : bone.position.z);
+      mesh.position.set(mx - bx, my - by, mz - bz); bone.add(mesh); return mesh;
+    };
+    const w = size.x, h = size.y, len = size.z, z0 = bb.min.z, y0 = bb.min.y;
+    // the head: a crest running back from the brow, a gem in the forehead, cheek plates
+    const crest = new THREE.Mesh(new THREE.ConeGeometry(0.34, 1.9, 4), gold); crest.rotation.x = -Math.PI / 2 + 0.35;
+    at(head, crest, 0, y0 + h * 0.96, z0 + len * 0.86);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(w * 0.55, 0.18, 0.9), gold); brow.rotation.x = 0.35; at(head, brow, 0, y0 + h * 0.9, z0 + len * 0.88);
+    const fg = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), gem); at(head, fg, 0, y0 + h * 0.905, z0 + len * 0.925);
+    for (const s of [-1, 1]) { const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 1.1), goldP); cheek.rotation.x = 0.2; at(head, cheek, s * w * 0.38, y0 + h * 0.74, z0 + len * 0.85); }
+    // the neck collar (with the ring the chain holds), the chest plate
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(w * 0.42, 0.16, 8, 20), goldP); collar.rotation.x = Math.PI / 2 - 0.55;
+    at(head, collar, 0, y0 + h * 0.66, z0 + len * 0.7);
+    this.rexCollar = collar;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.06, 6, 12), goldP); ring.position.set(0, -0.25, w * 0.42 + 0.1); collar.add(ring); this.rexRing = ring;
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(w * 0.6, 1.4, 0.2), gold); chest.rotation.x = 0.3; at(spine, chest, 0, y0 + h * 0.5, z0 + len * 0.64);
+    // plates along the back and down the tail, shoulder guards, greaves on both shins
+    for (let k = 0; k < 4; k++) { const p = new THREE.Mesh(new THREE.BoxGeometry(w * (0.5 - k * 0.05), 0.18, len * 0.07), gold); at(spine, p, 0, y0 + h * (0.9 - k * 0.055), z0 + len * (0.6 - k * 0.085)); const gg = new THREE.Mesh(new THREE.OctahedronGeometry(0.13), gem); at(spine, gg, 0, y0 + h * (0.93 - k * 0.055), z0 + len * (0.6 - k * 0.085)); }
+    if (tail) for (let k = 0; k < 3; k++) { const p = new THREE.Mesh(new THREE.BoxGeometry(w * (0.32 - k * 0.06), 0.14, len * 0.06), gold); at(tail, p, 0, y0 + h * (0.55 - k * 0.06), z0 + len * (0.26 - k * 0.09)); }
+    for (const s of [-1, 1]) { const sh = new THREE.Mesh(new THREE.SphereGeometry(w * 0.2, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), gold); at(spine, sh, s * w * 0.42, y0 + h * 0.7, z0 + len * 0.55); }
+    if (rig.legs) rig.legs.forEach((leg, i) => {
+      const gr = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.15, w * 0.17, h * 0.16, 10, 1, true), gold.clone()); gr.material.side = THREE.DoubleSide;
+      const lx = spine.position.x + leg.position.x, lz = spine.position.z + leg.position.z;
+      at(leg, gr, lx, y0 + h * 0.2, lz + len * 0.02);
+      const gg = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), gem); at(leg, gg, lx + (i ? 1 : -1) * w * 0.17, y0 + h * 0.22, lz + len * 0.02);
+    });
   }
   buildNpcs() {
     const C = E(), L = C.levels, A = this.g.assets, scene = this.g.scene;
-    const K = C.castle;
+    const K = C.castle, S = STR.et;
     const mk = (kind, a, b, y, faceA, faceB, role, opts = {}) => {
       const id = { male: "et_male", female: "et_female", spear: "et_guardspear", sword: "et_guardsword", king: "et_king" }[kind];
       const asset = A.glb[id];
       const [x, z] = cityWorld(a, b);
       let body;
-      if (asset) body = asset.model.clone();
+      if (asset) body = riggedHumanoid(asset.model) || asset.model.clone();
       else { body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 2.0, 4, 8), new THREE.MeshStandardMaterial({ color: 0x6c9c3a })); body.position.y = 1.5; const g2 = new THREE.Group(); g2.add(body); body = g2; }
       const [fx, fz] = cityWorld(faceA, faceB);
       const yaw = Math.atan2(fx - x, fz - z);
       body.position.set(x, y, z); body.rotation.y = yaw; scene.add(body);
-      const npc = { kind, role, body, x, z, y, yaw0: yaw, yaw, name: opts.name || (kind === "female" ? "Eternial woman" : kind === "male" ? "Eternial man" : "Eternial guard"), lines: opts.lines, walk: opts.walk || null, t: Math.random() * 10, h: CFG.modelScale[id] || 3, ...opts };
+      const npc = { kind, role, body, x, z, y, yaw0: yaw, yaw, name: opts.name || (kind === "female" ? "Eternial woman" : kind === "male" ? "Eternial man" : "Eternial guard"), lines: opts.lines, walk: opts.walk || null, t: Math.random() * 10, h: CFG.modelScale[id] || 3, speed: 0, ...opts };
       this.npcs.push(npc);
       if (!npc.walk) this.g.world.addTree(x, z, 0.55);
       return npc;
     };
-    const S = STR.et;
+    this.mkNpc = mk;
     // courtyard: two spear guards at the gate, two sword guards at the mountain gate, a few citizens
     mk("spear", K.a1 - 3, 8, L.court, K.a1 + 40, 8, "guard", { lines: S.guardLines });
     mk("spear", K.a1 - 3, -8, L.court, K.a1 + 40, -8, "guard", { lines: S.guardLines });
@@ -598,29 +362,45 @@ export class EterniusCity {
     mk("female", 234, 24, L.court, C.statue.a, C.statue.b, "citizen", { lines: S.femaleLines });
     mk("male", 241, -22, L.court, C.statue.a, C.statue.b, "citizen", { lines: S.maleLines });
     mk("male", 214, 46, L.court, 214, 30, "citizen", { lines: S.maleLines });
-    // the cavern: stall keepers, the innkeeper, the keeper of tales, the king, guards, walkers
+    // the cavern: stall keepers, the innkeeper, the keeper of tales, the king and his court, guards, walkers
     for (const st of this.stalls) {
       const { a, b } = cityLocal(st.keeperX, st.keeperZ);
-      const npc = mk(st.kind || "male", a, b, L.plaza, 0, 0, "stall", { name: st.name, stall: st, lines: st.lines ? STR.et[st.lines] : S.maleLines });
+      const npc = mk(st.kind || "male", a, b, L.plaza, 0, 0, "stall", { name: st.name, stall: st, lines: st.lines ? STR.et[st.lines] : S.maleLines, style: "busy" });
       st.npc = npc;
     }
     mk("spear", C.entryRampA - 4, 12, L.plaza, C.entryA + 40, 12, "guard", { lines: S.guardLines });
     mk("spear", C.entryRampA - 4, -12, L.plaza, C.entryA + 40, -12, "guard", { lines: S.guardLines });
     mk("sword", C.throne.a1 + 3, 6, L.terrace, C.throne.a1 + 40, 6, "guard", { lines: S.guardLines });
     mk("sword", C.throne.a1 + 3, -6, L.terrace, C.throne.a1 + 40, -6, "guard", { lines: S.guardLines });
-    mk("king", this.throneLocal.a, 0, L.terrace + 1.2, this.throneLocal.a + 30, 0, "king", { name: S.kingName, lines: S.kingLines });
+    mk("king", this.throneLocal.a - 0.6, 0, L.terrace + 1.2, this.throneLocal.a + 30, 0, "king", { name: S.kingName, lines: S.kingLines });
+    for (const s of [-1, 1]) mk("spear", C.throne.a0 + 8.5, s * 5.2, L.terrace + 1.2, C.throne.a1, s * 5.2, "guard", { lines: S.guardLines });
+    mk("male", C.advisor.a, C.advisor.b, L.terrace, C.advisor.a + 10, -4, "advisor", { name: S.advisorName, lines: S.advisorLines });
     mk("female", this.innLocal.a, this.innLocal.b, L.terrace + 0.3, 0, 0, "inn", { name: S.innName, lines: S.innLines });
     const KP = C.keeper; mk("male", KP.r * Math.cos(KP.th * D2R), KP.r * Math.sin(KP.th * D2R), L.lower, 0, 0, "keeper", { name: S.keeperName, lines: S.keeperLines });
-    // citizens who stroll the plaza between the stalls
+    // someone at home in each of the carved rooms
+    for (const rm of this.rooms || []) mk(rm.kind, rm.npc.a, rm.npc.b, rm.y, rm.npc.faceA, rm.npc.faceB, "citizen", { lines: S.homeLines, name: rm.kind === "female" ? S.homeFemale : S.homeMale });
+    // citizens who stroll the plaza between the stalls — never across the altar, never through a stall
     const stallAngles = C.stalls.map((s) => s.th);
-    const way = (n) => { const out = []; for (let i = 0; i < n; i++) { let th, r; for (let k = 0; k < 40; k++) { th = -150 + Math.random() * 300; r = 22 + Math.random() * 45; if (stallAngles.every((sa) => Math.abs(sa - th) > 22 || r < 30)) break; } out.push([r * Math.cos(th * D2R), r * Math.sin(th * D2R)]); } return out; };
+    const way = (n) => {
+      const out = []; let lastTh = -150 + Math.random() * 300;
+      for (let i = 0; i < n; i++) {
+        let th = lastTh, r = 30;
+        for (let k = 0; k < 40; k++) {
+          th = lastTh + (Math.random() - 0.5) * 150; if (th > 180) th -= 360; if (th < -180) th += 360;
+          r = 22 + Math.random() * 40;
+          if (stallAngles.every((sa) => Math.abs(((sa - th + 540) % 360) - 180) > 22 || r < 32)) break;
+        }
+        lastTh = th; out.push([r * Math.cos(th * D2R), r * Math.sin(th * D2R)]);
+      }
+      return out;
+    };
     for (let i = 0; i < 5; i++) {
-      const pts = way(4); const [a, b] = pts[0];
+      const pts = way(5); const [a, b] = pts[0];
       mk(i % 2 ? "female" : "male", a, b, L.plaza, pts[1][0], pts[1][1], "citizen", { lines: i % 2 ? S.femaleLines : S.maleLines, walk: { pts, i: 1, wait: 0, speed: 0.85 } });
     }
     // two citizens on the terraces, looking down
     mk("female", -20, C.terraceR + 8, L.terrace, 0, 0, "citizen", { lines: S.femaleLines });
-    mk("male", -60, -(C.terraceR + 6), L.lower, 0, 0, "citizen", { lines: S.maleLines });
+    mk("male", -70, -(C.terraceR + 8), L.lower, 0, 0, "citizen", { lines: S.maleLines });
   }
 
   // ---------------- per frame ----------------
@@ -629,63 +409,84 @@ export class EterniusCity {
     this.t += dt;
     const near = Math.hypot(p.pos.x - C.cx, p.pos.z - C.cz) < C.mountainR + 420;
     if (!near) return;
-    // lanterns and flags glow at night in the courtyard; the cavern's lights never go out
     const night = g.isNight ? 1 : 0;
     // inside the mountain the day's fog would swallow the far wall: push it back while you are in
     const P = this.polar(p.pos.x, p.pos.z);
-    if (g.scene.fog && this.inMountainRooms(P.a, P.b, P.r) && p.pos.y < 24) { g.scene.fog.near = Math.max(g.scene.fog.near, 150); g.scene.fog.far = Math.max(g.scene.fog.far, 460); }
+    const inRooms = this.inMountainRooms(P.a, P.b, P.r) && p.pos.y < 24;
+    if (g.scene.fog && inRooms) { g.scene.fog.near = Math.max(g.scene.fog.near, 150); g.scene.fog.far = Math.max(g.scene.fog.far, 460); }
     for (const L of this.lights) if (L.night) L.l.intensity = L.on * (night ? 1 : 0);
     for (const f of this.flags) { f.material.emissiveIntensity = night * 0.6; f.rotation.z = Math.sin(this.t * 1.7 + f.position.x) * 0.06; }
-    if (this.altarGem) this.altarGem.rotation.y += dt;
+    if (this.altarGem) { this.altarGem.rotation.y += dt; this.altarGem.position.y = C.levels.dais + 10.4 + Math.sin(this.t * 1.3) * 0.25; }
     if (this.flames) this.flames.forEach((f, i) => { const k = 1 + 0.12 * Math.sin(this.t * 9 + i * 1.7); f.scale.set(k, 1 / k + 0.15 * Math.sin(this.t * 6 + i), 1); });
-    if (this.beam) this.beam.material.opacity = 0.07 + 0.03 * Math.sin(this.t * 0.7) * (1 - night * 0.7);
+    // the shaft of light: warm and strong by day, a dim moon-white by night
+    if (this.beam) {
+      const k = g.world.nightK || 0;
+      const col = new THREE.Color(0xffe9b0).lerp(new THREE.Color(0xd6e2ff), k);
+      const op = (0.07 + 0.03 * Math.sin(this.t * 0.7)) * (1 - k * 0.72);
+      this.beam.material.color.copy(col); this.beam.material.opacity = op;
+      if (this.rays) this.rays.forEach((r2, i) => { r2.material.color.copy(col); r2.material.opacity = op * 0.5 * (0.7 + 0.3 * Math.sin(this.t * 0.4 + i)); r2.rotation.y += dt * 0.02; });
+      if (this.pool) { this.pool.material.color.copy(col); this.pool.material.opacity = 0.16 * (1 - k * 0.72); }
+    }
     if (this.lakeMesh && this.lakeMesh.material.map) this.lakeMesh.material.map.offset.set(this.t * 0.01, this.t * 0.007);
     if (this.riverMesh && this.riverMesh.material.map) this.riverMesh.material.map.offset.set(this.t * 0.05, 0);
-    // the chain follows the beast
-    if (this.rex && this.chainMesh) {
-      const r = this.rex, from = this.postTop;
-      const to = new THREE.Vector3(r.group.position.x, r.group.position.y + (r.cfg.height || 5.4) * 0.62, r.group.position.z);
-      const mid = from.clone().add(to).multiplyScalar(0.5); const len = from.distanceTo(to);
-      this.chainMesh.position.copy(mid); this.chainMesh.scale.set(1, Math.max(0.1, len), 1);
-      this.chainMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize());
+    // the mountain gate's doors swing open as you come near, and close behind you
+    if (this.gate) {
+      const [gx, gz] = cityWorld(this.gateLocal.a, this.gateLocal.b);
+      const want = Math.hypot(p.pos.x - gx, p.pos.z - gz) < C.gate.openR ? 1 : 0;
+      this.gate.open += (want - this.gate.open) * Math.min(1, dt * 1.6);
+      for (const { hinge, s } of this.gate.leaves) hinge.rotation.y = s * this.gate.open * 1.62;
+      this.gate.seg.off = this.gate.open > 0.55;
     }
-    // the Eternials: strollers walk their rounds, everyone turns to face you when you come close
+    // the chain hangs between the post and the beast's collar
+    if (this.rex && this.chainLinks) {
+      const from = this.postTop, to = new THREE.Vector3();
+      if (this.rexRing) this.rexRing.getWorldPosition(to); else if (this.rexCollar) this.rexCollar.getWorldPosition(to);
+      else to.set(this.rex.group.position.x, this.rex.group.position.y + 3.3, this.rex.group.position.z);
+      const n = this.chainLinks.length, d = from.distanceTo(to), sag = Math.max(0.3, (this.rex.chain.r + 4 - d) * 0.35);
+      const dir = to.clone().sub(from); const yaw = Math.atan2(dir.x, dir.z);
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n, l = this.chainLinks[i];
+        l.position.lerpVectors(from, to, t); l.position.y -= sag * Math.sin(t * Math.PI);
+        l.rotation.set(0, yaw, 0); if (i % 2) l.rotateX(Math.PI / 2); else l.rotateY(Math.PI / 2);
+      }
+    }
+    // the Eternials: strollers walk their rounds, everyone breathes, shifts and looks around; heads turn to a visitor
     for (const n of this.npcs) {
       n.t += dt;
       const d = Math.hypot(p.pos.x - n.x, p.pos.z - n.z);
-      let targetYaw = n.yaw0;
+      let targetYaw = n.yaw0, walking = false;
       if (n.walk) {
         const W = n.walk;
-        if (d < 4) { W.wait = 0.6; }
+        if (d < 3.5) { W.wait = Math.max(W.wait, 0.8); }
         else if (W.wait > 0) W.wait -= dt;
         else {
           const [ta, tb] = W.pts[W.i]; const [tx, tz] = cityWorld(ta, tb);
           const dx = tx - n.x, dz = tz - n.z, dd = Math.hypot(dx, dz);
-          if (dd < 0.6) { W.i = (W.i + 1) % W.pts.length; W.wait = 2 + Math.random() * 4; }
-          else { const st = Math.min(dd, W.speed * dt); n.x += dx / dd * st; n.z += dz / dd * st; n.yaw0 = Math.atan2(dx, dz); }
+          if (dd < 0.6) { W.i = (W.i + 1) % W.pts.length; W.wait = 2 + Math.random() * 5; }
+          else { const st = Math.min(dd, W.speed * dt); n.x += dx / dd * st; n.z += dz / dd * st; n.yaw0 = Math.atan2(dx, dz); walking = true; n.speed = W.speed; }
           n.body.position.x = n.x; n.body.position.z = n.z;
-          n.body.position.y = n.y + Math.abs(Math.sin(n.t * 6)) * 0.05;
+          const fy = this.floorH(n.x, n.z, n.y); n.y = fy === null ? n.y : fy;
+          n.body.position.y = n.y;
         }
       }
       if (d < 5.5 && n.role !== "king") targetYaw = Math.atan2(p.pos.x - n.x, p.pos.z - n.z);
       const dy = ((targetYaw - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
       n.yaw += Math.max(-2.5 * dt, Math.min(2.5 * dt, dy));
       n.body.rotation.y = n.yaw;
-      if (!n.walk) n.body.position.y = n.y + Math.sin(n.t * 1.3) * 0.012;   // breathing
+      // a glance at a visitor a little further out (the body turns only when you are close)
+      let headTurn = 0;
+      if (d >= 5.5 && d < 12) { const want = Math.atan2(p.pos.x - n.x, p.pos.z - n.z); headTurn = ((want - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; }
+      if (n.body.userData.hrig) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm");
+      else if (!n.walk) n.body.position.y = n.y + Math.sin(n.t * 1.3) * 0.012;
     }
-    // the keeper tells the next chapter once you have walked away and come back
     if (!this.keeperReady) { const k = this.npcs.find((n) => n.role === "keeper"); if (k && Math.hypot(p.pos.x - k.x, p.pos.z - k.z) > 25) this.keeperReady = true; }
-    // the warning in front of the chained beast
     if (this.rex && !this.rex.dead) {
       const dr = Math.hypot(p.pos.x - this.rex.chain.x, p.pos.z - this.rex.chain.z);
       if (dr < this.rex.chain.r + 12 && dr > this.rex.chain.r + 3 && !this._warned) { this._warned = true; g.ui.toast(STR.et.rexWarn); }
       if (dr > this.rex.chain.r + 20) this._warned = false;
     }
   }
-  onMorning() {
-    // a fresh task from the king each day (an unfinished one stays)
-    if (!this.task || this.task.done) this.newTask();
-  }
+  onMorning() { if (!this.task || this.task.done) this.newTask(); }
   newTask() {
     const T = E().tasks, g = this.g;
     const pick = T[Math.floor(g.rng() * T.length)];
@@ -703,32 +504,35 @@ export class EterniusCity {
     const g = this.g, C = E(), S = STR.et;
     if (Math.hypot(p.pos.x - C.cx, p.pos.z - C.cz) > C.mountainR + 300) return;
     for (const n of this.npcs) {
+      if (n.role === "stall") {
+        const st = n.stall, d = Math.hypot(p.pos.x - st.frontX, p.pos.z - st.frontZ);
+        if (d < 3.4) consider(st.frontX, st.frontZ, st.y, `${S.trade} ${n.name} [${STR.interact}]`, () => this.openStall(st));
+        continue;
+      }
       const d = Math.hypot(p.pos.x - n.x, p.pos.z - n.z);
       if (d > 4.2) continue;
-      if (n.role === "stall") consider(n.x, n.z, n.y, `${S.trade} ${n.name} [${STR.interact}]`, () => this.openStall(n.stall));
-      else if (n.role === "king") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openKing());
+      if (n.role === "king") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openKing());
       else if (n.role === "keeper") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openKeeper());
       else if (n.role === "inn") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openInn());
+      else if (n.role === "advisor") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openAdvisor(n));
       else consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.talk(n));
     }
     // the altar: once a day, hunger AND health
     {
-      const [ax, az] = cityWorld(0, 0), ay = C.levels.dais;
-      if (Math.hypot(p.pos.x - ax, p.pos.z - az) < 4.5) consider(ax, az, ay, `${STR.prayPrompt} [${STR.interact}]`, () => {
+      const [ax, az] = cityWorld(this.altarLocal.a, this.altarLocal.b), ay = C.levels.dais;
+      if (Math.hypot(p.pos.x - ax, p.pos.z - az) < 4.2) consider(ax, az, ay, `${STR.prayPrompt} [${STR.interact}]`, () => {
         if (this.prayedDay === g.dayNum) { g.ui.toast(STR.prayedAlready); g.audio.sDeny(); return; }
         this.prayedDay = g.dayNum; p.hu = 100; p.hp = 100;
         g.ui.toast(S.prayed); g.audio.sPickup();
       });
     }
-    // the inn's beds
     for (const b of this.innBeds || []) {
-      if (Math.hypot(p.pos.x - b.x, p.pos.z - b.z) < 2.6) consider(b.x, b.z, b.y, `${S.sleepFor.replace("%n", C.innPrice)} [${STR.interact}]`, () => {
+      if (Math.hypot(p.pos.x - b.x, p.pos.z - b.z) < 3.0) consider(b.x, b.z, b.y, `${S.sleepFor.replace("%n", C.innPrice)} [${STR.interact}]`, () => {
         if (!g.isNight) return g.ui.toast(STR.sleepNotNight);
         if (this.coins < C.innPrice) { g.ui.toast(S.noCoins); g.audio.sDeny(); return; }
         this.coins -= C.innPrice; g.ui.coins(this.coins); g.sleep();
       });
     }
-    // the vault door
     {
       const [vx, vz] = cityWorld(this.vaultDoorLocal.a, this.vaultDoorLocal.b);
       if (!this.vaultOpen && Math.hypot(p.pos.x - vx, p.pos.z - vz) < 3.5) consider(vx, vz, C.levels.lower, `${S.vaultOpen} [${STR.interact}]`, () => {
@@ -741,24 +545,33 @@ export class EterniusCity {
     // fishing in the river below
     const sel = p.inv.selected();
     if (sel && sel.id === "fishing_rod" && !g.fishing) {
-      const P = this.polar(p.pos.x, p.pos.z);
-      const bank = P.b < 0 && Math.abs(P.th) > C.entryTh && ((P.r > C.riverR0 - 3 && P.r < C.riverR0) || (P.r > C.riverR1 && P.r < C.riverR1 + 3));
-      if (bank && Math.abs(p.pos.y - C.levels.lower) < 2) consider(p.pos.x, p.pos.z, p.pos.y, `${S.fish} [${STR.interact}]`, () => { g.fishing = { x: p.pos.x, z: p.pos.z, t: C.fishTime }; g.ui.toast(S.fishing); });
+      const src = this.waterSource(p.pos.x, p.pos.z, p.pos.y);
+      if (src && src.name === "cavern") consider(p.pos.x, p.pos.z, p.pos.y, `${S.fish} [${STR.interact}]`, () => { g.fishing = { x: p.pos.x, z: p.pos.z, t: C.fishTime }; g.ui.toast(S.fishing); });
     }
   }
   talk(n) {
     const g = this.g, lines = n.lines || STR.et.maleLines;
     n.lineI = ((n.lineI ?? -1) + 1) % lines.length;
-    const s = g.npcPanel(n.name, [lines[n.lineI]]);
+    g.npcPanel(n.name, [lines[n.lineI]]);
     g.audio.sSelect && g.audio.sSelect();
+  }
+  openAdvisor(n) {
+    const g = this.g, S = STR.et;
+    if (!this.task) this.newTask();
+    const T = this.task;
+    const need = T.need.map(([id, k]) => `${k} × ${id === "cookedMeat" ? S.cookedMeat : STR.items[id].name}`).join(", ");
+    n.lineI = ((n.lineI ?? -1) + 1) % S.advisorLines.length;
+    const lines = [S.advisorLines[n.lineI]];
+    lines.push(T.done ? S.advisorDone : S.advisorTask.replace("%need", need).replace("%r", T.reward));
+    if (!this.keyGiven) lines.push(S.advisorKey.replace("%n", Math.max(0, E().vaultTasks - this.tasksDone)));
+    g.npcPanel(n.name, lines);
   }
   openInn() {
     const g = this.g, S = STR.et, C = E();
     g.npcPanel(S.innName, S.innLines.map((l) => l.replace("%n", C.innPrice)));
   }
   openKeeper() {
-    const g = this.g, S = STR.et;
-    const ch = S.chapters;
+    const g = this.g, S = STR.et, ch = S.chapters;
     let text;
     if (this.chapter >= ch.length) text = [S.keeperDone];
     else if (!this.keeperReady) text = [S.keeperLater];
@@ -798,37 +611,44 @@ export class EterniusCity {
     if (id === "cookedMeat") { for (const m of CFG.cookedMeat) { while (n > 0 && p.inv.count(m) > 0) { p.inv.remove(m, 1); n--; } } return; }
     p.inv.remove(id, n);
   }
-  // ---------------- trade ----------------
+  // ---------------- trade: a grid of cards — icon, name, price ----------------
   openStall(st) {
     const g = this.g, p = g.player, S = STR.et, C = E();
     g.menuOpen = true;
     const price = (id) => C.prices[id];
     const name = (id) => id === "fill_water" ? S.fillWater : (STR.items[id] ? STR.items[id].name : id);
+    const icon = (id) => { const u = iconUrl(id === "fill_water" ? "water_bottle" : id); return u ? `<img src="${u}" alt="">` : `<span class="noicon"></span>`; };
+    const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
     const rows = [];
     if (st.sells && st.sells.length) {
-      rows.push(`<div style="font-weight:700;margin:6px 0 2px">${S.buyHead}</div>`);
-      for (const id of st.sells) rows.push(`<div class="trow"><span>${name(id)}</span><span>${price(id)} ${S.coinsShort}</span><button data-buy="${id}">${S.buy}</button></div>`);
+      rows.push(`<div class="shopHead">${S.buyHead}</div><div class="shopGrid">`);
+      for (const id of st.sells) rows.push(`<button class="shopCard" data-buy="${id}">${icon(id)}<span class="nm">${esc(name(id))}${C.bundles[id] ? ` ×${C.bundles[id]}` : ""}</span><span class="pr">${price(id)} ${S.coinsShort}</span></button>`);
+      rows.push(`</div>`);
     }
     const sellable = [];
     for (const s of p.inv.slots) if (s && st.buys && st.buys[s.id] !== undefined && !sellable.includes(s.id)) sellable.push(s.id);
-    rows.push(`<div style="font-weight:700;margin:10px 0 2px">${S.sellHead}</div>`);
-    if (st.rare) rows.push(`<div style="font-size:12px;opacity:.85;margin-bottom:4px">${S.rareWarn}</div>`);
-    if (!sellable.length) rows.push(`<div style="font-size:13px;opacity:.7">${st.rare ? S.nothingRare : S.nothingToSell}</div>`);
-    for (const id of sellable) rows.push(`<div class="trow"><span>${name(id)} × ${p.inv.count(id)}</span><span>${st.buys[id]} ${S.coinsShort}</span><button data-sell="${id}">${S.sell}</button></div>`);
+    rows.push(`<div class="shopHead">${S.sellHead}</div>`);
+    if (st.rare) rows.push(`<div class="shopNote">${S.rareWarn}</div>`);
+    if (!sellable.length) rows.push(`<div class="shopNote dim">${st.rare ? S.nothingRare : S.nothingToSell}</div>`);
+    else {
+      rows.push(`<div class="shopGrid">`);
+      for (const id of sellable) rows.push(`<button class="shopCard sell" data-sell="${id}">${icon(id)}<span class="nm">${esc(name(id))} <span class="cnt">×${p.inv.count(id)}</span></span><span class="pr">${st.buys[id]} ${S.coinsShort}</span></button>`);
+      rows.push(`</div>`);
+    }
     const s = g.ui.screen(`
-      <h1 style="font-size:24px;margin-bottom:2px">${st.name}</h1>
-      <div style="font-size:13px;opacity:.85;margin-bottom:6px">${STR.et[st.blurb] || ""}</div>
-      <div id="purse" style="font-size:16px;font-weight:700;margin-bottom:6px">${S.purse.replace("%n", this.coins)}</div>
-      <div style="max-width:560px;width:92vw;max-height:52vh;overflow:auto;text-align:left">${rows.join("")}</div>
+      <h1 style="font-size:24px;margin-bottom:2px">${esc(st.name)}</h1>
+      <div style="font-size:13px;opacity:.85;margin-bottom:4px">${STR.et[st.blurb] || ""}</div>
+      <div id="purse" class="purse">${S.purse.replace("%n", this.coins)}</div>
+      <div class="shopWrap">${rows.join("")}</div>
       <button id="pnlClose" style="margin-top:8px">${STR.close}</button>`);
     s.querySelector("#pnlClose").addEventListener("click", () => { g.ui.closeScreen(); g.resume(); });
-    const refresh = () => { g.ui.closeScreen(); this.openStall(st); };
+    const refresh = () => { const sc = s.querySelector(".shopWrap").scrollTop; g.ui.closeScreen(); this.openStall(st); const w2 = document.querySelector("#screen .shopWrap"); if (w2) w2.scrollTop = sc; };
     s.querySelectorAll("[data-buy]").forEach((b) => b.addEventListener("click", () => {
       const id = b.dataset.buy, cost = price(id);
       if (this.coins < cost) { g.ui.toast(S.noCoins); g.audio.sDeny(); return; }
       if (id === "fill_water") {
         if (!p.inv.has("water_bottle")) { g.ui.toast(S.noBottle); g.audio.sDeny(); return; }
-        g.desert.bottle.water = 100;
+        g.desert.bottle.water = CFG.desert.thirst.bottleTime;
       } else if (!p.inv.add(id, C.bundles[id] || 1)) { g.ui.toast(STR.inventoryFull); g.audio.sDeny(); return; }
       this.coins -= cost; g.ui.coins(this.coins); g.ui.renderHotbar(p.inv); g.audio.sPickup();
       g.ui.toast(S.bought.replace("%i", name(id)));
@@ -836,7 +656,7 @@ export class EterniusCity {
     }));
     s.querySelectorAll("[data-sell]").forEach((b) => b.addEventListener("click", () => {
       const id = b.dataset.sell, val = st.buys[id];
-      if (st.rare && b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = S.sellSure.replace("%n", val); setTimeout(() => { if (document.body.contains(b)) { b.dataset.armed = "0"; b.textContent = S.sell; } }, 3500); return; }
+      if (st.rare && b.dataset.armed !== "1") { b.dataset.armed = "1"; b.querySelector(".pr").textContent = S.sellSure.replace("%n", val); b.classList.add("armed"); setTimeout(() => { if (document.body.contains(b)) { b.dataset.armed = "0"; b.classList.remove("armed"); b.querySelector(".pr").textContent = `${val} ${S.coinsShort}`; } }, 3500); return; }
       if (p.inv.count(id) < 1) return;
       p.inv.remove(id, 1);
       this.coins += val; g.ui.coins(this.coins); g.ui.renderHotbar(p.inv); g.audio.sPickup();
@@ -844,42 +664,66 @@ export class EterniusCity {
       refresh();
     }));
   }
-  // ---------------- the map ----------------
+  // ---------------- the map: a drawn mountain, the castle, the lake, the bridge ----------------
   paint(c, tx, ty, s, mini) {
-    const C = E(), W = CFG.world;
+    const C = E(), W = CFG.world, K = C.castle, LK = C.lake;
     c.save();
     c.beginPath(); c.rect(tx(-W.square), ty(-W.square), 2 * W.square * s, 2 * W.square * s); c.clip();
-    c.beginPath(); c.arc(tx(C.cx), ty(C.cz), C.mountainR * s, 0, Math.PI * 2); c.fillStyle = mini ? "rgba(122,98,70,.9)" : "#8a6f4e"; c.fill();
-    c.beginPath(); c.arc(tx(C.cx), ty(C.cz), C.mountainR * 0.55 * s, 0, Math.PI * 2); c.fillStyle = mini ? "rgba(150,124,92,.9)" : "#a08360"; c.fill();
-    const [lx, lz] = cityWorld(C.lake.a, 0);
-    c.beginPath(); c.arc(tx(lx), ty(lz), C.lake.r * s, 0, Math.PI * 2); c.fillStyle = "rgba(94,122,128,.85)"; c.fill();
-    // the castle: a golden square
-    const K = C.castle, corners = [[K.a0, -K.hw], [K.a1, -K.hw], [K.a1, K.hw], [K.a0, K.hw]].map(([a, b]) => cityWorld(a, b));
+    // the mountain: an irregular massif, lighter toward the peaks, ridge lines running out from the heart
+    const mx = tx(C.cx), mz = ty(C.cz), R = C.mountainR * s;
+    c.beginPath();
+    for (let i = 0; i <= 48; i++) { const th = (i / 48) * Math.PI * 2; const rr = R * (0.94 + 0.05 * Math.sin(3 * th + 0.8) + 0.03 * Math.sin(7 * th + 2)); const px = mx + Math.cos(th) * rr, py = mz + Math.sin(th) * rr; i ? c.lineTo(px, py) : c.moveTo(px, py); }
+    c.closePath();
+    const gr = c.createRadialGradient(mx - R * 0.15, mz - R * 0.15, R * 0.05, mx, mz, R);
+    gr.addColorStop(0, mini ? "rgba(178,150,110,.95)" : "#b89870"); gr.addColorStop(0.55, mini ? "rgba(140,112,80,.95)" : "#8e6f4e"); gr.addColorStop(1, mini ? "rgba(98,78,56,.95)" : "#5f4a36");
+    c.fillStyle = gr; c.fill();
+    c.strokeStyle = mini ? "rgba(40,30,20,.6)" : "#3e2f22"; c.lineWidth = mini ? 1 : 1.4; c.stroke();
+    c.lineWidth = mini ? 0.8 : 1.1; c.strokeStyle = mini ? "rgba(60,44,30,.7)" : "rgba(62,47,34,.85)";
+    for (const [pa, pb, ph] of C.peaks) {
+      const [wx, wz] = cityWorld(pa, pb), px = tx(wx), py = ty(wz);
+      c.beginPath(); c.moveTo(mx, mz); c.lineTo(px, py); c.stroke();
+      c.beginPath(); c.moveTo(px - 3, py + 3); c.lineTo(px, py - 4 * (ph / C.peakH) - 1); c.lineTo(px + 3, py + 3); c.closePath(); c.fillStyle = mini ? "rgba(70,52,36,.9)" : "#4a3828"; c.fill();
+    }
+    c.beginPath(); c.arc(mx, mz, Math.max(2, C.shaftR * s), 0, Math.PI * 2); c.fillStyle = "#2a2018"; c.fill();
+    // the lake and the moat
+    const [lx, lz] = cityWorld(LK.a, 0);
+    c.fillStyle = "rgba(94,132,142,.9)"; c.strokeStyle = "#3a5a6a"; c.lineWidth = 1;
+    c.beginPath(); c.arc(tx(lx), ty(lz), LK.r * s, 0, Math.PI * 2); c.fill(); c.stroke();
+    { const m = [[LK.moatA0, -LK.moatHw], [LK.moatA1, -LK.moatHw], [LK.moatA1, LK.moatHw], [LK.moatA0, LK.moatHw]].map(([a, b]) => cityWorld(a, b)); c.beginPath(); m.forEach(([x, z], i) => (i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z)))); c.closePath(); c.fill(); c.stroke(); }
+    // the castle: walls, four corner towers, the gate towers, the great dome; the bridge across the lake
+    const corners = [[K.a0, -K.hw], [K.a1, -K.hw], [K.a1, K.hw], [K.a0, K.hw]].map(([a, b]) => cityWorld(a, b));
     c.beginPath(); corners.forEach(([x, z], i) => (i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z)))); c.closePath();
-    c.fillStyle = "rgba(214,172,52,.95)"; c.fill(); c.strokeStyle = "rgba(58,50,38,.7)"; c.lineWidth = 1; c.stroke();
+    c.fillStyle = "rgba(226,190,96,.95)"; c.fill(); c.strokeStyle = "rgba(58,50,38,.85)"; c.lineWidth = mini ? 1 : 1.5; c.stroke();
+    const tower = (a, b, rad, col) => { const [x, z] = cityWorld(a, b); c.beginPath(); c.arc(tx(x), ty(z), rad, 0, Math.PI * 2); c.fillStyle = col; c.fill(); c.strokeStyle = "rgba(58,50,38,.9)"; c.lineWidth = 1; c.stroke(); };
+    for (const [a, b] of [[K.a0, -K.hw], [K.a1, -K.hw], [K.a1, K.hw], [K.a0, K.hw]]) tower(a, b, mini ? 2 : 3.2, "#d8a83a");
+    for (const b of [-(C.gate.hw + 6.5), C.gate.hw + 6.5]) tower(K.a1, b, mini ? 1.6 : 2.6, "#e8c050");
+    tower(K.a0 - 5, 0, mini ? 2.4 : 4, "#f0cc58");
+    if (!mini) { for (const bb of [-K.hw + 12, -K.hw + 30, K.hw - 12, K.hw - 30]) { const [x, z] = cityWorld((K.a0 + K.a1) / 2, bb); c.beginPath(); c.moveTo(tx(x) - 2, ty(z) + 2); c.lineTo(tx(x), ty(z) - 3); c.lineTo(tx(x) + 2, ty(z) + 2); c.closePath(); c.fillStyle = "#c89a30"; c.fill(); } }
+    { const [x0, z0] = cityWorld(C.bridge.a0, 0), [x1, z1] = cityWorld(C.bridge.a1, 0); c.beginPath(); c.moveTo(tx(x0), ty(z0)); c.lineTo(tx(x1), ty(z1)); c.strokeStyle = "#c8a870"; c.lineWidth = mini ? 2 : 3; c.stroke(); c.strokeStyle = "rgba(58,50,38,.9)"; c.lineWidth = mini ? 0.6 : 1; c.stroke(); }
     c.restore();
   }
 }
 
-function flameCanvas() {
-  const cv = document.createElement("canvas"); cv.width = 64; cv.height = 96;
-  const c = cv.getContext("2d");
-  const gr = c.createRadialGradient(32, 62, 4, 32, 58, 34);
-  gr.addColorStop(0, "rgba(255,240,190,1)"); gr.addColorStop(0.35, "rgba(255,170,60,0.9)"); gr.addColorStop(0.7, "rgba(230,80,20,0.45)"); gr.addColorStop(1, "rgba(0,0,0,0)");
-  c.fillStyle = gr; c.beginPath(); c.moveTo(32, 4); c.bezierCurveTo(50, 30, 58, 60, 32, 92); c.bezierCurveTo(6, 60, 14, 30, 32, 4); c.fill();
-  return cv;
-}
-
-// the three Eternial weapons, built from gold and green stone (no generated model yet)
+// the three Eternial weapons: the generated scans stand upright (blade down for the dagger and the sword, blade up for the
+// spear) — they are turned to lie along -x with the grip at the origin, the frame the hand and the throw code expect.
+// A gold-and-green-stone stand-in is built for any weapon whose model has not landed.
 export function buildEternialWeapons(assets) {
+  const wrap = (id, H, bladeUp, gripX) => {
+    const a = assets.glb[id]; if (!a || a.wrapped) return !!a;
+    const g = new THREE.Group(); const m = a.model;
+    g.add(m); g.rotation.z = bladeUp ? Math.PI / 2 : -Math.PI / 2; g.position.x = bladeUp ? gripX : -(H - gripX);
+    const outer = new THREE.Group(); outer.add(g);
+    assets.glb[id] = { model: outer, anims: [], wrapped: true }; return true;
+  };
+  const haveD = wrap("etdagger3d", 0.95, false, 0.3), haveS = wrap("etsword3d", 1.6, false, 0.36), haveP = wrap("etspear3d", 2.6, true, 1.2);
   const gold = new THREE.MeshStandardMaterial({ color: 0xe0b230, metalness: 0.7, roughness: 0.28, emissive: 0x3a2a06 });
   const gem = new THREE.MeshStandardMaterial({ color: 0x2fdc5a, emissive: 0x1fbf46, emissiveIntensity: 1.2, roughness: 0.2 });
   const mk = (kind) => {
     const g = new THREE.Group();
     const add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const mm = new THREE.Mesh(geo, m); mm.position.set(x, y, z); mm.rotation.set(rx, ry, rz); g.add(mm); return mm; };
     if (kind === "dagger") {
-      add(new THREE.CylinderGeometry(0.035, 0.045, 0.34, 8), gold, 0, 0, 0, 0, 0, Math.PI / 2);          // grip along x
-      add(new THREE.ConeGeometry(0.06, 0.62, 4), gold, -0.5, 0, 0, 0, 0, Math.PI / 2).scale.set(1, 1, 0.35); // blade toward -x
+      add(new THREE.CylinderGeometry(0.035, 0.045, 0.34, 8), gold, 0, 0, 0, 0, 0, Math.PI / 2);
+      add(new THREE.ConeGeometry(0.06, 0.62, 4), gold, -0.5, 0, 0, 0, 0, Math.PI / 2).scale.set(1, 1, 0.35);
       add(new THREE.OctahedronGeometry(0.05), gem, 0.2, 0, 0);
       add(new THREE.BoxGeometry(0.05, 0.2, 0.08), gold, -0.19, 0, 0);
     } else if (kind === "sword") {
@@ -897,7 +741,7 @@ export function buildEternialWeapons(assets) {
     }
     return { model: g, anims: [] };
   };
-  assets.glb.etdagger3d = mk("dagger");
-  assets.glb.etsword3d = mk("sword");
-  assets.glb.etspear3d = mk("spear");
+  if (!haveD) assets.glb.etdagger3d = mk("dagger");
+  if (!haveS) assets.glb.etsword3d = mk("sword");
+  if (!haveP) assets.glb.etspear3d = mk("spear");
 }

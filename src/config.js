@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=39";
+export const ASSET_V = "?v=40";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -437,7 +437,7 @@ export const CFG = {
     // update 37: arched decks (arch = the rise in the middle) with solid rails railT thick — enter only from the ends
     bridge: { halfWidth: 1.8, overhang: 7, deckY: 0.6, arch: 1.3, railT: 0.5, endY: 0.03 },   // update 38: endY — both ends meet the ground
     tent: { fromBridge: 32, along: 6, zoneR: 5 },        // Idris's tent: on the desert bank of the MIDDLE bridge
-    oasis: { x: -600, z: 792, r: 9, palmX: -586, palmZ: 780, shadeR: 5 },   // update 39: shifted with the tent (+170, -98)   // update 38: 150 m deeper into the corner
+    oasis: { x: -352, z: 924, r: 9, palmX: -338, palmZ: 912, shadeR: 5 },   // update 40: the farthest sand from river, city and tent (the castle lake is an oasis too)   // update 39: shifted with the tent (+170, -98)   // update 38: 150 m deeper into the corner
     dune: { base: 0.35, fadeIn: 30, a1: 0.9, a2: 0.8, a3: 0.9, a4: 1.4, a5: 1.3 },   // rolling ridges, 2-5 m; a4/a5 are the crests you hide behind
     cactusCount: 60, cactusSpacing: 30, cactusFailChance: 0.2, cactusDmg: 10,   // update 37: same density over the bigger sand
     chestCount: 8, chestCountNew: 10, chestSpacing: 60,   // update 37: six more, all in the desert's new outer part
@@ -538,7 +538,9 @@ export const CFG = {
   fireflies: { clusters: 9, per: 11, litClusters: 5 },
   respawnTime: 60,
 
-  modelScale: { trex: 5.4, werewolf: 1.9, pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
+  modelScale: { et_bed: 2.0, et_lamppost: 4.6, et_torchbearer: 5.2, et_chainpost: 3.6, et_ceilinglamp: 1.8, et_throne: 4.2, et_gate: 10,   // update 40
+    etdagger3d: 0.95, etsword3d: 1.6, etspear3d: 2.6,   // update 40: the generated weapons (upright scans; turned to lie along -x in buildEternialWeapons)
+    trex: 5.4, werewolf: 1.9, pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
     bedroll: 0.45, hutbed: 0.95, kitchen: 1.5, bill: 1.75, storagechest: 0.8, boulder: 1.9,
     door: 2.05, table: 0.9, chair: 1.05, lantern: 0.5, croc: 0.72, dinoegg: 1.15,
     metaldoor: 2.3, beaconlamp: 2.4,
@@ -574,7 +576,8 @@ export const CFG = {
     et_male: 3.1, et_female: 2.8, et_guardspear: 3.1, et_guardsword: 3.1, et_king: 3.2, et_statue: 9,   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
-  modelYaw: { trex: 0, werewolf: 0, pig: 0, chicken: 0, tree: 0, appletree: 0, chest: 0, statue: 0,
+  modelYaw: { et_bed: Math.PI,   // update 40: the bed scan has its headboard at -z; the city puts the head at +z
+    trex: 0, werewolf: 0, pig: 0, chicken: 0, tree: 0, appletree: 0, chest: 0, statue: 0,
     bedroll: 0, hutbed: 0, kitchen: 0, bill: 0, storagechest: 0, boulder: 0,
     door: 0, table: 0, chair: 0, lantern: 0, croc: 0, dinoegg: 0,
     spino: Math.PI,    // the image_to_3d rebuild came out tail-first
@@ -631,40 +634,54 @@ export const CFG = {
   eternius: {
     cx: -885, cz: 885,                                   // the mountain's heart
     ux: 0.70710678, uz: -0.70710678, vx: -0.70710678, vz: -0.70710678, grpYaw: 2.35619449,   // a: toward the north-east, b: toward the north-west
-    mountainR: 205, cliffW: 3, cliffH: 34, peakR: 40, peakH: 150,
+    mountainR: 205, cliffW: 4, cliffH: 34, peakR: 40, peakH: 150,   // update 40: cliffW 4 — still far too steep to climb (8.5 m per metre)
     wallR: 118, terraceR: 92, cavernH: 46, wallTop: 22, shaftR: 14,
+    // update 40: the mountain is a craggy ridge cluster now (see eternius_build.js), the shaft mouth is ragged
+    peaks: [[0, 0, 150], [-48, 30, 118], [38, -52, 108], [62, 40, 92], [-70, -44, 96], [12, 78, 84]],   // [a, b, height]
     entryA: 68, entryRampA: 56, entryTh: 60,
-    ramp: { hw: 5, r0: 82, r1: 96 },
+    // update 40: real staircases — 0.3 m risers, the floor is quantized to the treads
+    stairRise: 0.3,
+    stairs: { up: { r0: 64, r1: 96, hw: 6 }, down: { r0: 68, r1: 96, hw: 6 } },
+    // the upper terrace runs on past the throne door to -150 deg; a grand stair drops to the lower gallery by -125 deg
+    split: { stairTh0: -150, stairTh1: -125, landing: 3 },
+    riverTh: { th0: -123, th1: -62 },                    // the river runs between two arched culverts
+    culvert: { depth: 7, w: 8, h: 4 },
+    // enterable homes carved into the cavern wall (theta in degrees; level = the terrace they open onto)
+    rooms: [{ th: 100, level: "terrace", kind: "female" }, { th: 162, level: "terrace", kind: "male" },
+            { th: -108, level: "lower", kind: "male" }, { th: 38, level: "court", kind: "female" }],
+    room: { depth: 9, hw: 4.5, h: 5, doorHw: 1.4 },
+    facadeStep: 9, facadeH: 8,                            // house fronts every 9 m along the cavern wall
     riverR0: 104, riverR1: 112, riverBridgeHw: 3,
-    levels: { court: 2, plaza: -4, dais: -2, terrace: 8, lower: -14, riverBed: -19, water: -17.5 },
+    levels: { court: 2, plaza: -4, dais: -2.2, terrace: 8, lower: -14, riverBed: -19, water: -15.2 },   // update 40: the water within reach of the bank
     tunnel: { a0: 118, a1: 206, hw: 5, h: 9 },
     castle: { a0: 205, a1: 250, hw: 60, wallH: 14 },
-    gate: { hw: 5, h: 10 },
-    lake: { a: 296, r: 42, depth: 3 },
-    bridge: { a0: 252, a1: 340, hw: 3, arch: 1.2 },
+    gate: { hw: 5, h: 10, openR: 16 },                   // update 40: the mountain gate's golden doors swing open within openR
+    lake: { a: 296, r: 46, depth: 3, moatA0: 250, moatA1: 263, moatHw: 72 },   // update 40: a moat band along the castle front — no way round the bridge
+    bridge: { a0: 250, a1: 344, hw: 3, arch: 1.2 },      // update 40: the deck starts ON the castle sill
     flatA: 280, flatR: 140,                              // the dunes go flat this far around the castle
     statue: { a: 226, b: 0 },
     chainRex: { a: 222, b: -40, reach: 15 },             // the chained beast, in the courtyard's south-east wing
     altar: { r: 10 },
     throne: { a0: -152, a1: -116, hw: 20, doorHw: 4 },
     vault: { b0: 118, b1: 142, hw: 18, doorHw: 2.2 },
-    inn: { r: 104, th: 135 }, keeper: { r: 100, th: -135 },
+    inn: { r: 104, th: 135 }, keeper: { r: 100, th: -112 },   // update 40: the keeper moved off the grand stair
+    advisor: { a: -140, b: 7 },
     innPrice: 5, fishTime: 4, vaultTasks: 3,
     stalls: [
       { id: "food", name: "Neferu's kitchen", kind: "female", r: 44, th: -50, color: 0x2f7a3a, wares: 0xb0402a, blurb: "foodBlurb", lines: "foodLines",
         sells: ["apple", "egg", "blueberries", "cooked_pork", "cooked_chicken", "cooked_fish", "chocolate", "energy_drink", "fishing_rod", "fill_water"],
         buys: { apple: 1, egg: 1, blueberries: 1, lemon: 1, raw_pork: 1, raw_chicken: 1, raw_fish: 1, raw_beef: 1, raw_goat: 1, raw_wolf: 1, cooked_pork: 2, cooked_chicken: 2, cooked_fish: 2, cooked_eggs: 2, cooked_beef: 3, cooked_goat: 3, cooked_wolf: 3, cooked_trex: 5, chocolate: 2, bowl_yogurt: 3, bowl_yogurt_blueberries: 5 } },
       { id: "tools", name: "Khamet's tools", kind: "male", r: 44, th: -18, color: 0x8a5a2a, wares: 0x555a60, blurb: "toolsBlurb", lines: "toolsLines",
-        sells: ["knife", "hammer", "axe", "rope", "torch", "tinderbox", "bandage", "needle", "thread", "arrow", "climbing_anchor", "bowl"],
-        buys: { knife: 3, hammer: 4, axe: 10, rope: 1, torch: 1, tinderbox: 2, bandage: 1, needle: 1, thread: 1, arrow: 1, climbing_anchor: 5, pestle: 4, spear: 6, bowl: 1, crossbow: 40 } },
+        sells: ["knife", "hammer", "axe", "rope", "torch", "tinderbox", "bandage", "needle", "thread", "arrow", "bowl"],   // update 40: no climbing anchor
+        buys: { knife: 3, hammer: 4, axe: 10, rope: 1, torch: 1, tinderbox: 2, bandage: 1, needle: 1, thread: 1, arrow: 1, pestle: 4, spear: 6, bowl: 1, crossbow: 40 } },
       { id: "rare", name: "Sethra's rarities", kind: "female", r: 44, th: 18, color: 0x3a2a6a, wares: 0xc9a227, blurb: "rareBlurb", lines: "rareLines", rare: true, sells: [],
         buys: { silver_dagger: 100, holy_water: 250, unholy_water: 250, trex_dagger: 25, imp_dagger: 500, fossil: 750, gold_statuette: 2500, trex_tooth: 15, imp_tooth: 60, unholy_tiara: 300, silver_bar: 40, croc_skin: 20, wolf_fur: 8, goat_horn: 6, wolf_tooth: 6 } },
       { id: "smith", name: "Ankhu the smith", kind: "male", r: 44, th: 52, color: 0x6a2a1a, wares: 0xd9ad2e, blurb: "smithBlurb", lines: "smithLines",
-        sells: ["et_dagger", "et_sword", "et_spear"], buys: { et_dagger: 30, et_sword: 60, et_spear: 45 } },
+        sells: ["et_dagger", "et_sword", "et_spear"], buys: { et_dagger: 75, et_sword: 250, et_spear: 175 } },   // update 40: dearer
     ],
     prices: { apple: 1, egg: 1, blueberries: 2, cooked_pork: 3, cooked_chicken: 3, cooked_fish: 3, chocolate: 4, energy_drink: 3, fishing_rod: 12, fill_water: 2,
-      knife: 8, hammer: 10, axe: 25, rope: 4, torch: 3, tinderbox: 5, bandage: 4, needle: 3, thread: 2, arrow: 6, climbing_anchor: 12, bowl: 3,
-      et_dagger: 60, et_sword: 120, et_spear: 90 },
+      knife: 8, hammer: 10, axe: 25, rope: 4, torch: 3, tinderbox: 5, bandage: 4, needle: 3, thread: 2, arrow: 6, bowl: 3,
+      et_dagger: 150, et_sword: 500, et_spear: 350 },   // update 40: the weapons take work to earn
     bundles: { arrow: 5 },
     tasks: [
       { need: [["apple", 5]], reward: 15 }, { need: [["cookedMeat", 3]], reward: 18 }, { need: [["branch", 8]], reward: 10 },

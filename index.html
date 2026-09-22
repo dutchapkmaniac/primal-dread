@@ -45,6 +45,19 @@ canvas{display:block}
 #coins{position:fixed;top:98px;left:18px;font-weight:800;font-size:15px;color:#f0c85a;text-shadow:0 1px 3px #000;background:rgba(0,0,0,.38);padding:4px 11px;border-radius:12px;pointer-events:none}
 .trow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:3px 0;font-size:14px}
 .trow button{font-size:12px;padding:5px 12px}
+/* update 40: the stalls trade from a grid of cards */
+.shopWrap{max-width:760px;width:94vw;max-height:58vh;overflow:auto;text-align:left;padding:2px 6px}
+.shopHead{font-weight:700;margin:8px 0 4px;color:#e2d6b4;letter-spacing:1px;text-transform:uppercase;font-size:12px}
+.shopNote{font-size:12px;opacity:.85;margin:0 0 6px;color:#d8c8a0}.shopNote.dim{opacity:.6}
+.shopGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.purse{font-size:16px;font-weight:700;margin-bottom:4px;color:#f0c440}
+.screen button.shopCard{margin:0;padding:8px 6px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;line-height:1.2;
+  background:linear-gradient(180deg,#3a3122,#1e1810);border:1px solid #8a6a2c;color:#e8dcb8;border-radius:8px;letter-spacing:0;text-transform:none;min-height:104px}
+.screen button.shopCard:hover{filter:brightness(1.2);border-color:#e0b230}
+.screen button.shopCard.sell{border-color:#4f8a4a}.screen button.shopCard.armed{border-color:#e05a3a;background:linear-gradient(180deg,#4a2a1e,#2a160e)}
+.shopCard img,.shopCard .noicon{width:44px;height:44px;object-fit:contain;image-rendering:auto;display:block}
+.shopCard .nm{text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis}.shopCard .cnt{opacity:.7}
+.shopCard .pr{color:#f0c440;font-weight:700;font-size:12px}
 #hunt2{position:fixed;top:92px;left:50%;transform:translateX(-50%);width:min(420px,70vw);display:none;text-align:center;pointer-events:none}
 #hunt2 .nm{font-size:11px;letter-spacing:3px;font-weight:800;color:#c8d8c0;text-shadow:0 1px 3px #000}
 #hunt2 .tr{height:10px;margin-top:3px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.14)}
@@ -174,7 +187,7 @@ body.touch #bars{left:70px}
   <div id="clock" class="glass"><div class="day"></div><div class="tod"></div></div>
   <div id="drunk" class="glass"></div>
   <div id="helper" class="glass"></div>
-  <div id="miniWrap"><img id="compass" src="./assets/ui_compass.png?v=39" alt="compass"><canvas id="minimap" width="158" height="158"></canvas></div>
+  <div id="miniWrap"><img id="compass" src="./assets/ui_compass.png?v=40" alt="compass"><canvas id="minimap" width="158" height="158"></canvas></div>
   <div id="goal" class="glass"></div>
   <div id="hunt"><div class="nm"></div><div class="tr"><i></i></div></div>
   <div id="hunt2"><div class="nm"></div><div class="tr"><i></i></div></div>
@@ -209,8 +222,8 @@ addEventListener("error", (e) => window.__errs.push((e.message || "?") + " @ " +
 addEventListener("unhandledrejection", (e) => window.__errs.push("rejection: " + String((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
 </script>
 <script type="importmap">
-{"imports":{"three":"./vendor/three.module.js?v=39","three/addons/loaders/GLTFLoader.js":"./vendor/GLTFLoader.js?v=39","three/addons/utils/BufferGeometryUtils.js":"./vendor/BufferGeometryUtils.js?v=39","three/addons/utils/SkeletonUtils.js":"./vendor/SkeletonUtils.js?v=39"}}
+{"imports":{"three":"./vendor/three.module.js?v=40","three/addons/loaders/GLTFLoader.js":"./vendor/GLTFLoader.js?v=40","three/addons/utils/BufferGeometryUtils.js":"./vendor/BufferGeometryUtils.js?v=40","three/addons/utils/SkeletonUtils.js":"./vendor/SkeletonUtils.js?v=40"}}
 </script>
-<script type="module" src="./src/main.js?v=39"></script>
+<script type="module" src="./src/main.js?v=40"></script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { CFG } from "./config.js";
 import { Desert } from "./desert.js";   // update 36
@@ -286,10 +287,14 @@ export class World {
     // ground — sized for the map plus the frontier ring
     // update 37: sized for the 916 m square, with a hole where the temple's cellar stairs go down
     {
-      const H = 1000, S = CFG.portals.basement.stairs;
+      const H = 1300, S = CFG.portals.basement.stairs;   // update 40: wide enough that the mountain's hole lies inside the outline (earcut drops a hole that crosses it)
       const shape = new THREE.Shape(); shape.moveTo(-H, -H); shape.lineTo(H, -H); shape.lineTo(H, H); shape.lineTo(-H, H); shape.closePath();
       const hole = new THREE.Path(); hole.moveTo(S.x0, -S.z1); hole.lineTo(S.x1, -S.z1); hole.lineTo(S.x1, -S.z0); hole.lineTo(S.x0, -S.z0); hole.closePath();
       shape.holes.push(hole);
+      // update 40: the castle lake and its moat are dug below the grass plane — cut the grass away under them
+      { const lk = new THREE.Path(); lakeOutline(3).forEach(([a, b], i) => { const [x, z] = etWorld(a, b); i ? lk.lineTo(x, -z) : lk.moveTo(x, -z); }); lk.closePath(); shape.holes.push(lk); }
+      // and under the mountain: the cavern city's floors lie below the grass plane
+      { const ET = CFG.eternius, mh = new THREE.Path(), rr = ET.mountainR - 1; for (let i = 0; i < 48; i++) { const t = (i / 48) * Math.PI * 2, x = ET.cx + Math.cos(t) * rr, y = -ET.cz + Math.sin(t) * rr; i ? mh.lineTo(x, y) : mh.moveTo(x, y); } mh.closePath(); shape.holes.push(mh); }
       // ShapeGeometry's UVs are metres: one tile per 5.7 m, as the old 280-over-1600 plane had
       const ground = new THREE.Mesh(new THREE.ShapeGeometry(shape, 1), mat("t_grass", 0.175, 0.175, 0x4a5540));
       ground.rotation.x = -Math.PI / 2;
