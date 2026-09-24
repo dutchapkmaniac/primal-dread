@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=43";
+export const ASSET_V = "?v=44";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -646,15 +646,15 @@ export const CFG = {
     stairs: { up: { r0: 64, r1: 92, hw: 6 }, down: { r0: 68, r1: 92, hw: 6 } },   // update 42: the top tread meets the terrace edge (the floor used to run on over the last four treads)
     // the upper terrace runs on past the throne door to -150 deg; a grand stair drops to the lower gallery by -125 deg
     split: { stairTh0: -150, stairTh1: -125, landing: 3 },
-    riverTh: { th0: -128, th1: -62 },                    // update 43: the river now runs OUT of the grand stair (an open channel through its lowest steps, then a lit arch) to one culvert
-    culvert: { depth: 14, w: 8, h: 6.2, wallUp: 5.2 },   // update 43: the arch springs from the water, the wall stands 5 m above the gallery; lights inside
+    riverTh: { th0: -133, th1: -60.6 },   // update 44: the river runs right up to the radial wall, the culvert's face is flush with it                    // update 43: the river now runs OUT of the grand stair (an open channel through its lowest steps, then a lit arch) to one culvert
+    culvert: { depth: 30, w: 8, h: 6.2, wallUp: 5.2, lit: 18 },   // update 44: 30 m of sandstone tunnel, lamps for the first 18 m, then the dark   // update 43: the arch springs from the water, the wall stands 5 m above the gallery; lights inside
     // enterable homes carved into the cavern wall (theta in degrees; level = the terrace they open onto)
     rooms: [{ th: 100, level: "terrace", kind: "female" }, { th: 162, level: "terrace", kind: "male" },
             { th: -108, level: "lower", kind: "male" }, { th: 38, level: "court", kind: "female" }],
     room: { depth: 9, hw: 4.5, h: 5, doorHw: 1.4 },
     facadeStep: 9, facadeH: 8,                            // house fronts every 9 m along the cavern wall
-    riverR0: 104, riverR1: 112, riverBridgeHw: 3, riverBridgeArch: 2.8, riverBridgeExt: 3, riverBridgeTh: -84,   // update 43: shorter, and off the vault's axis
-    riverChanDeg: 3.2,                                   // update 43: the open channel through the grand stair's lowest steps spans this many degrees before the arch
+    riverR0: 104, riverR1: 112, riverBridgeHw: 3, riverBridgeArch: 2.8, riverBridgeExt: 3, riverBridgeExtOut: 0.6, riverBridgeTh: -84,   // update 43: shorter, and off the vault's axis
+    riverChanDeg: 7.8,   // update 44: the open channel runs up the stair until the steps clear the tunnel's vault, the arch sits there                                   // update 43: the open channel through the grand stair's lowest steps spans this many degrees before the arch
     levels: { court: 2, plaza: -4, dais: -2.2, terrace: 8, lower: -14, riverBed: -19, water: -15.2 },   // update 40: the water within reach of the bank
     tunnel: { a0: 118, a1: 206, hw: 5, h: 9 },
     castle: { a0: 205, a1: 250, hw: 60, wallH: 14 },
@@ -663,14 +663,14 @@ export const CFG = {
     bridge: { a0: 250, a1: 344, hw: 3, arch: 1.2 },      // update 40: the deck starts ON the castle sill
     flatA: 280, flatR: 140,                              // the dunes go flat this far around the castle
     statue: { a: 226, b: 0 },
-    chainRex: { a: 227, b: -34, reach: 25.5, collarTilt: 0.35 },   // update 43: the collar leans back along the neck
+    chainRex: { a: 227, b: -34, reach: 25.5, collarTilt: 0, collarPitch: 40 },   // update 44: the cuff's axis runs up the neck, 40 degrees off the facing   // update 43: the collar leans back along the neck
     altar: { r: 10 },
     throne: { a0: -152, a1: -116, hw: 20, doorHw: 4 },
     vault: { b0: 118, b1: 142, hw: 18, doorHw: 2.2 },
     inn: { r: 104, th: 135 }, keeper: { r: 100, th: -112 },   // update 40: the keeper moved off the grand stair
     advisor: { a: -134, b: 8.5 },   // update 43: beside the dais, not in it
     innPrice: 5, fishTime: 4, vaultTasks: 3,
-    guard: { hp: 140, dmg: 14, warnDmg: 10, speed: 3.4, hitEvery: 1.3, reach: 2.6, chaseR: 45, coins: [8, 15] },   // update 42: strike a guard once and he warns you, twice and it is a fight
+    guard: { hp: 450, dmg: 14, warnDmg: 10, speed: 3.4, hitEvery: 1.3, reach: 2.6, chaseR: 45, coins: [8, 15], respawn: 20, atkDur: 0.8, beastHits: 3 },   // update 44: ten Eternal-dagger blows, back on duty after 20 s, three strikes fell a desert hunter   // update 42: strike a guard once and he warns you, twice and it is a fight
     stalls: [
       { id: "food", name: "Neferu's kitchen", kind: "female", r: 44, th: -50, limit: 5,   // update 42: five of each a day color: 0x2f7a3a, wares: 0xb0402a, blurb: "foodBlurb", lines: "foodLines",
         sells: ["apple", "egg", "blueberries", "cooked_pork", "cooked_chicken", "cooked_fish", "chocolate", "energy_drink", "fishing_rod", "fill_water"],

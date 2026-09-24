@@ -42,7 +42,7 @@ canvas{display:block}
 #hunt .tr{height:10px;margin-top:3px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.14);
   border-radius:5px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.5)}
 #hunt .tr i{display:block;height:100%;width:100%;background:linear-gradient(180deg,#c8452e,#7a2114);transition:width .2s}
-#coins{position:fixed;top:98px;left:18px;font-weight:800;font-size:15px;color:#f0c85a;text-shadow:0 1px 3px #000;background:rgba(0,0,0,.38);padding:4px 11px;border-radius:12px;pointer-events:none}
+#coins{position:fixed;top:14px;left:230px;font-weight:800;font-size:15px;color:#f0c85a;text-shadow:0 1px 3px #000;background:rgba(0,0,0,.38);padding:4px 11px;border-radius:12px;pointer-events:none}
 .trow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:3px 0;font-size:14px}
 .trow button{font-size:12px;padding:5px 12px}
 /* update 40: the stalls trade from a grid of cards */
@@ -187,7 +187,7 @@ body.touch #bars{left:70px}
   <div id="clock" class="glass"><div class="day"></div><div class="tod"></div></div>
   <div id="drunk" class="glass"></div>
   <div id="helper" class="glass"></div>
-  <div id="miniWrap"><img id="compass" src="./assets/ui_compass.png?v=43" alt="compass"><canvas id="minimap" width="158" height="158"></canvas></div>
+  <div id="miniWrap"><img id="compass" src="./assets/ui_compass.png?v=44" alt="compass"><canvas id="minimap" width="158" height="158"></canvas></div>
   <div id="goal" class="glass"></div>
   <div id="hunt"><div class="nm"></div><div class="tr"><i></i></div></div>
   <div id="hunt2"><div class="nm"></div><div class="tr"><i></i></div></div>
@@ -222,8 +222,8 @@ addEventListener("error", (e) => window.__errs.push((e.message || "?") + " @ " +
 addEventListener("unhandledrejection", (e) => window.__errs.push("rejection: " + String((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
 </script>
 <script type="importmap">
-{"imports":{"three":"./vendor/three.module.js?v=43","three/addons/loaders/GLTFLoader.js":"./vendor/GLTFLoader.js?v=43","three/addons/utils/BufferGeometryUtils.js":"./vendor/BufferGeometryUtils.js?v=43","three/addons/utils/SkeletonUtils.js":"./vendor/SkeletonUtils.js?v=43"}}
+{"imports":{"three":"./vendor/three.module.js?v=44","three/addons/loaders/GLTFLoader.js":"./vendor/GLTFLoader.js?v=44","three/addons/utils/BufferGeometryUtils.js":"./vendor/BufferGeometryUtils.js?v=44","three/addons/utils/SkeletonUtils.js":"./vendor/SkeletonUtils.js?v=44"}}
 </script>
-<script type="module" src="./src/main.js?v=43"></script>
+<script type="module" src="./src/main.js?v=44"></script>
 </body>
 </html>

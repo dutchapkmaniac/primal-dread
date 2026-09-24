@@ -291,8 +291,17 @@ export class UI {
   coins(n) {
     const el = $("#coins");
     if (!el) return;
-    el.hidden = !(n > 0);
+    this._coins = n;
+    el.hidden = !(n > 0 && this._coinsShow !== false);
     el.textContent = `\u25c8 ${n}`;
+  }
+  // update 44: the purse only shows in the desert, on its own island to the right of the bars
+  coinsVisible(show) {
+    const el = $("#coins"), bars = $("#bars");
+    if (!el) return;
+    this._coinsShow = show;
+    el.hidden = !(this._coins > 0 && show);
+    if (bars && !el.hidden) { const r = bars.getBoundingClientRect(); el.style.left = `${Math.round(r.right + 10)}px`; el.style.top = `${Math.round(r.top)}px`; }
   }
   // update 38: the second bar — the hunter Elisia's dark form is fighting
   huntBar2(name, frac) {

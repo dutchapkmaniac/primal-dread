@@ -85,7 +85,7 @@ export function riggedHumanoid(sourceGroup, opts = {}) {
 }
 
 // state: "idle" | "walk"; speed in m/s; `faceYaw` = an extra head turn (radians) toward whoever is close
-export function driveHumanoid(group, state, speed, dt, headTurn = 0, style = "calm") {
+export function driveHumanoid(group, state, speed, dt, headTurn = 0, style = "calm", fx = null) {
   const R = group.userData.hrig;
   if (!R) return;
   const moving = state === "walk" && speed > 0.05;
@@ -125,11 +125,35 @@ export function driveHumanoid(group, state, speed, dt, headTurn = 0, style = "ca
   // update 42: the citizens' scans hold their arms a little wide — armIn (set per rig, 0 for the king and the guards)
   // brings them in to the sides; it is SET on top of this frame's pose, never accumulated
   R.arms[0].rotation.z += R.armIn; R.arms[1].rotation.z -= R.armIn;
+  // update 44: the guards fight — poses laid over this frame's idle/walk pose, driven by a 0..1 progress each.
+  // attack: the weapon arm (right) winds up over the head, the chest coils back, then the blow sweeps down and
+  // forward as the chest and hips unwind, the shield arm up; then it recovers. block: both arms snap up in front,
+  // the chest leans back, the knees give a little, then it eases out.
+  if (fx) {
+    if (fx.attack > 0) {
+      const k = fx.attack;
+      let sw, ch, tw;
+      if (k < 0.42) { const q = k / 0.42, e = q * q; sw = -2.6 * e; ch = -0.16 * e; tw = 0.4 * e; }
+      else if (k < 0.62) { const q = (k - 0.42) / 0.2; sw = -2.6 + 2.2 * q; ch = -0.16 + 0.42 * q; tw = 0.4 - 0.85 * q; }
+      else { const q = (k - 0.62) / 0.38; sw = -0.4 * (1 - q); ch = 0.26 * (1 - q); tw = -0.45 * (1 - q); }
+      R.arms[1].rotation.x = sw; R.arms[1].rotation.z = -0.3 - R.armIn; R.fore[1].rotation.x = k < 0.42 ? -1.0 : -0.25;
+      R.arms[0].rotation.x = -0.9; R.fore[0].rotation.x = -1.1; R.arms[0].rotation.z = 0.35 + R.armIn;
+      R.chest.rotation.x = ch; R.chest.rotation.y = tw; R.hips.rotation.y = tw * 0.45;
+      R.legs[0].rotation.x = -0.28; R.legs[1].rotation.x = 0.22; R.knees[0].rotation.x = -0.3;
+    }
+    if (fx.block > 0) {
+      const e = Math.sin(Math.min(1, fx.block) * Math.PI);
+      R.arms[0].rotation.x = -1.55 * e; R.fore[0].rotation.x = -1.35 * e; R.arms[0].rotation.z = 0.25 * e + R.armIn;
+      R.arms[1].rotation.x = -1.25 * e; R.fore[1].rotation.x = -1.2 * e; R.arms[1].rotation.z = -0.25 * e - R.armIn;
+      R.chest.rotation.x = -0.24 * e; R.hips.position.y = R.hipsY0 - R.H * 0.022 * e;
+      R.knees[0].rotation.x = -0.35 * e; R.knees[1].rotation.x = -0.35 * e; R.legs[0].rotation.x = 0.18 * e; R.legs[1].rotation.x = 0.18 * e;
+    }
+  }
   // the head: turns toward a visitor, otherwise glances around slowly
   R.lookT -= dt;
   if (R.lookT <= 0) { R.lookT = 3 + Math.random() * 5; R.lookTarget = (Math.random() - 0.5) * 0.5; }
   R.look += (R.lookTarget - R.look) * Math.min(1, dt * 0.9);
   const want = headTurn !== 0 ? Math.max(-0.7, Math.min(0.7, headTurn)) : R.look;
   R.head.rotation.y += (want - R.head.rotation.y) * Math.min(1, dt * 3);
-  R.head.rotation.x = Math.sin(t * 0.5 + R.phase) * 0.02;
+  R.head.rotation.x = Math.sin(t * 0.5 + R.phase) * 0.02 + (fx && fx.block > 0 ? 0.22 * Math.sin(Math.min(1, fx.block) * Math.PI) : 0);
 }

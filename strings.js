@@ -379,7 +379,7 @@ export const STR = {
     rareWarn: "Warning: everything sold here is rare. Sold is sold — the Eternials never sell these back.",
     nothingToSell: "Nothing in your pack that this stall wants.", nothingRare: "Nothing rare in your pack.",
     leftToday: "%n left today", soldOut: "Sold out for today. Come back at dawn.",
-    guardWarn: "The guard strikes back. \"That was a warning, outsider.\"", guardFight: "The guards draw steel!", guardDown: "The guard falls. You take %n coins from his belt.", guardCalm: "The guards let you be.", noHitNpc: "The Eternial steps back and stares at you.",
+    guardWarn: "The guard strikes back. \"That was a warning, outsider.\"", guardFight: "The guards draw steel!", guardDown: "The guard falls. You take %n coins from his belt.", guardBack: "A fresh guard takes the post.", guardBeast: "The guards cut the beast down.", guardCalm: "The guards let you be.", noHitNpc: "The Eternial steps back and stares at you.",
     bought: "Bought: %i", sold: "Sold %i for %n coins", noBottle: "You need a water bottle for that.", fillWater: "Fill your water bottle",
     prayed: "You pray at the golden altar. Your hunger and your wounds are gone.",
     sleepFor: "Sleep at the inn — %n coins", rexWarn: "A chained beast. Keep away from its reach.",

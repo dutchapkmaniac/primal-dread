@@ -27,7 +27,7 @@ const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_in
   // update 36: the desert's sand
   "t_sand", "t_riversand",   // update 37: the river bank
   "t_sandstone", "t_goldpanel", "t_cavern", "t_flag",
-  "t_trexgreen", "t_goldlattice", "t_greencarpet", "t_mountain"];   // update 39/40: Eternius City
+  "t_trexgreen", "t_goldlattice", "t_greencarpet", "t_mountain", "t_relief"];   // update 44: the jackal relief on the river wall   // update 39/40: Eternius City
 // ONE word per situation for the mobile context button, resolved from the
 // prompt label's leading constant. Built ONCE — update 26 profiling caught the
 // per-frame rebuild of this table as the main-thread's top garbage source.
@@ -1158,6 +1158,8 @@ class Game {
     this.updateMusic();
     this.updateChickenSound();
     this.ui.bars(this.player.hp, this.player.en, this.player.hu);
+    this.coinsT = (this.coinsT || 0) - dt;
+    if (this.coinsT <= 0) { this.coinsT = 0.4; this.ui.coinsVisible(!!(this.world.desert && this.world.desert.inDesert(this.player.pos.x, this.player.pos.z))); }   // update 44: the purse belongs to the desert
   }
 
   updateDayNight(dt) {

@@ -179,6 +179,11 @@ export class EterniusCity {
     const C = E(), P = this.polar(x, z);
     return P.r < C.mountainR + 30 || (P.a > C.mountainR - 10 && P.a < C.bridge.a1 + 25 && Math.abs(P.b) < C.lake.rSide + 20);
   }
+  // update 44: inside the castle walls or the mountain — the bridge is as far as a desert beast comes
+  inCastle(x, z) {
+    const C = E(), K = C.castle, P = this.polar(x, z);
+    return P.r < C.mountainR + 2 || (P.a > K.a0 - 6 && P.a < K.a1 + 2.5 && Math.abs(P.b) < K.hw + 3.5);
+  }
   // update 42: a blow aimed at an Eternial. A citizen steps back. A guard strikes back once as a warning; the second blow
   // starts a fight — he and every guard near him come for you until you are gone, or he is down (a few coins on his belt)
   hitNpc(player, K, weapon, fx, fz) {
@@ -193,14 +198,15 @@ export class EterniusCity {
     if (!best) return false;
     if (best.role !== "guard") { if (!this._npcHitT || g.time - this._npcHitT > 2) { this._npcHitT = g.time; g.ui.toast(S.noHitNpc); } g.audio.sDeny(); return true; }
     const n = best; n.hits = (n.hits || 0) + 1; g.audio.sHit();
-    if (n.hostile) {
+    n.blockT = 0.45;   // update 44: he throws his arms up against the blow
+    if (n.hostile && n.war) {
       n.hp -= K.dmg;
       if (n.hp <= 0) this.guardDown(n);
       return true;
     }
     if (n.hits === 1) { player.damage(G.warnDmg, "guard", new THREE.Vector3(n.x, n.y, n.z)); g.ui.toast(S.guardWarn); n.warnT = g.time; return true; }
     // the second blow: he and the guards around him draw steel
-    for (const o of this.npcs) if (o.role === "guard" && !o.dead && Math.hypot(o.x - n.x, o.z - n.z) < 30) { o.hostile = true; o.hp = o.hp || G.hp; o.atkT = 0.4; }
+    for (const o of this.npcs) if (o.role === "guard" && !o.dead && Math.hypot(o.x - n.x, o.z - n.z) < 30) { o.hostile = true; o.war = true; o.beast = null; o.hp = o.hp || G.hp; o.atkT = 0.4; }
     n.hp = (n.hp || G.hp) - K.dmg;
     g.ui.toast(S.guardFight);
     if (n.hp <= 0) this.guardDown(n);
@@ -208,11 +214,19 @@ export class EterniusCity {
   }
   guardDown(n) {
     const G = E().guard, g = this.g;
-    n.dead = true; n.hostile = false;
+    n.dead = true; n.hostile = false; n.war = false; n.beast = null; n.strike = undefined; n.blockT = 0;
     n.body.rotation.x = -Math.PI / 2; n.body.position.y = n.y + 0.35;
     const coins = G.coins[0] + Math.floor(g.rng() * (G.coins[1] - G.coins[0] + 1));
     this.coins += coins; g.ui.coins(this.coins); g.ui.toast(STR.et.guardDown.replace("%n", coins));
-    setTimeout(() => { g.scene.remove(n.body); const i = this.npcs.indexOf(n); if (i >= 0) this.npcs.splice(i, 1); }, 25000);
+    n.respawnT = G.respawn || 20;   // update 44: back on duty after 20 s (see update)
+  }
+  // update 44: the fallen guard rises at his post, whole again
+  guardRespawn(n) {
+    const G = E().guard, g = this.g;
+    n.dead = false; n.hostile = false; n.war = false; n.beast = null; n.hits = 0; n.hp = G.hp; n.respawnT = undefined;
+    n.x = n.homeX; n.z = n.homeZ; const fy = this.floorH(n.x, n.z, n.y); if (fy !== null) n.y = fy;
+    n.body.rotation.x = 0; n.body.position.set(n.x, n.y, n.z); n.yaw0 = n.yawHome !== undefined ? n.yawHome : n.yaw0; n.yaw = n.yaw0; n.body.rotation.y = n.yaw;
+    if (Math.hypot(g.player.pos.x - n.x, g.player.pos.z - n.z) < 45) g.ui.toast(STR.et.guardBack);
   }
   isSafe(x, z, y) {
     if (!this.inside(x, z, y)) return false;
@@ -395,11 +409,24 @@ export class EterniusCity {
       const m = this.warmProp ? this.warmProp(A.glb.et_collar.model.clone()) : A.glb.et_collar.model.clone(); const mb = new THREE.Box3().setFromObject(m), ms = new THREE.Vector3(); mb.getSize(ms);
       const wrap = new THREE.Group(); m.position.y -= ms.y / 2; wrap.add(m);
       const sc = (rad * 2 * 1.12) / Math.max(ms.x, ms.z); wrap.scale.setScalar(sc);
-      wrap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      const AX = E().chainRex.collarAxis || [0, 1, 0];
+      wrap.quaternion.setFromUnitVectors(new THREE.Vector3(AX[0], AX[1], AX[2]).normalize(), dir);
       wrap.rotateX(-(E().chainRex.collarTilt || 0));   // update 43: leans back along the neck
+      if (E().chainRex.collarRoll) wrap.rotateY(E().chainRex.collarRoll);
+      this.rexCollarDir = dir.clone(); this.rexCollarWrap = wrap;
       collar = wrap;
     } else { collar = new THREE.Mesh(new THREE.TorusGeometry(rad * 1.08, 0.16, 8, 24), goldP); collar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir); }
     at(head, collar, 0, cy, cz);
+    // update 44: the cuff's axis is aimed along the neck in WORLD space — forward and up by collarPitch degrees off the
+    // beast's facing — instead of the bind-space guess, which sat the cuff across the neck like a wheel
+    if (this.rexCollarWrap === collar) {
+      rex.group.rotation.y = rex.yaw; rex.group.updateMatrixWorld(true);   // the group's facing must be the beast's before the world frame is read
+      const pitch = (E().chainRex.collarPitch !== undefined ? E().chainRex.collarPitch : 40) * Math.PI / 180;
+      const f = new THREE.Vector3(Math.sin(rex.yaw), 0, Math.cos(rex.yaw)), axisW = f.multiplyScalar(Math.cos(pitch)).add(new THREE.Vector3(0, Math.sin(pitch), 0)).normalize();
+      const qp = new THREE.Quaternion(); collar.parent.getWorldQuaternion(qp); qp.invert();
+      collar.quaternion.copy(qp).multiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axisW));
+      if (E().chainRex.collarTilt) collar.rotateX(-E().chainRex.collarTilt);
+    }
     this.rexCollar = collar;
     // the ring the chain holds: on the collar's underside, toward the chest
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.06, 6, 12), goldP); ring.position.set(0, -(rad * 1.12 + 0.2), -0.1); ring.rotation.y = Math.PI / 2;
@@ -487,11 +514,19 @@ export class EterniusCity {
     const P = this.polar(p.pos.x, p.pos.z);
     const inRooms = this.inMountainRooms(P.a, P.b, P.r) && p.pos.y < 24;
     if (g.scene.fog && inRooms) { g.scene.fog.near = Math.max(g.scene.fog.near, 150); g.scene.fog.far = Math.max(g.scene.fog.far, 460); }
-    for (const L of this.lights) if (L.night) L.l.intensity = L.on * (night ? 1 : 0);
+    for (const L of this.lights) {
+      if (!L.night) continue;
+      let k = night;
+      if (L.green && night) { const e = L.l.matrixWorld.elements, dl = Math.hypot(e[12] - p.pos.x, e[14] - p.pos.z); const nr = Math.max(0, Math.min(1, 1 - (dl - 3) / 11)); k = 1 + 1.8 * nr * nr; if (L.halo) L.halo.material.opacity = 0.12 + 0.3 * nr; }   // update 44: it flares as you pass
+      else if (L.halo) L.halo.material.opacity = night ? 0.12 : 0;
+      L.l.intensity = L.on * k;
+    }
     for (const f of this.flags) { f.material.emissiveIntensity = night * 0.6; f.rotation.z = Math.sin(this.t * 1.7 + f.position.x) * 0.06; }
     for (const f of this.banners || []) f.material.emissiveIntensity = night * 0.6;
     if (this.altarGem) { this.altarGem.rotation.y += dt * 0.5; if (this.altarHalo) this.altarHalo.material.opacity = 0.11 + 0.06 * Math.sin(this.t * 2.1); }   // update 43: the crystal turns in its socket
-    if (this.altarLines) for (const L of this.altarLines) L.m.emissiveIntensity = 0.75 + 0.75 * (0.5 + 0.5 * Math.sin(this.t * 2.4 - L.phase));   // update 43: a pulse runs round the channels
+    if (this.altarGlow) { const k = 1.15 + 0.85 * (0.5 + 0.5 * Math.sin(this.t * 2.2)); for (const m of this.altarGlow) m.emissiveIntensity = k; for (const l of this.altarGlowLights || []) l.intensity = 2.2 + 1.6 * (k - 1.15); }   // update 44: the carvings breathe emerald light
+    for (const m of this.tunnelWater || []) if (m.material.map) m.material.map.offset.y = this.t * 0.22;   // update 44: the tunnel water runs out toward the river
+    for (const sw of this.swing || []) { sw.g.rotation.z = Math.sin(this.t * 0.75 + sw.ph) * 0.05; sw.g.rotation.x = Math.sin(this.t * 0.55 + sw.ph * 1.7) * 0.035; }   // update 44: the hanging lanterns sway
     if (this.flames) this.flames.forEach((f, i) => { const k = 1 + 0.12 * Math.sin(this.t * 9 + i * 1.7); f.scale.set(k, 1 / k + 0.15 * Math.sin(this.t * 6 + i), 1); });
     // the shaft of light: warm and strong by day, a dim moon-white by night
     if (this.beam) {
@@ -531,38 +566,69 @@ export class EterniusCity {
       // update 43: the links follow the catenary but never go under the ground — the slack coils on the flagstones at the
       // post; the whole chain sways a little, more when the beast moves; each link faces along the curve, every other turned
       const n = this.chainLinks.length, d = from.distanceTo(to), total = n * this.chainPitch, ground = C.levels.court;
-      const sagNat = Math.max(0.2, (total - d) * 0.32), sagMax = Math.max(0.2, Math.min(from.y, to.y) - ground - 0.3);
+      // update 44: a modest hang, never to the ground; the slack is wound INSIDE the post (a winch) — the links that
+      // are not on the curve are simply not shown, nothing lies on the flagstones
+      const sagNat = 0.55 + Math.max(0, total - d) * 0.07, sagMax = Math.max(0.2, Math.min(from.y, to.y) - ground - 0.35);
       const sag = Math.min(sagNat, sagMax);
-      const used = Math.sqrt(d * d + (2.2 * sag) * (2.2 * sag)) + 0.6, nCoil = Math.max(0, Math.min(n - 8, Math.floor((total - used) / this.chainPitch)));
-      const nCurve = n - nCoil, sway = 0.18 + 0.22 * Math.min(1, (this.rex.speed || 0) / 2);
+      const used = Math.sqrt(d * d + (2.1 * sag) * (2.1 * sag)) + 0.2;
+      const nCurve = Math.max(4, Math.min(n, Math.round(used / this.chainPitch))), sway = 0.18 + 0.22 * Math.min(1, (this.rex.speed || 0) / 2);
       const hx = -(to.z - from.z), hz = to.x - from.x, hl = Math.hypot(hx, hz) || 1;
       const pt = (t) => { const v = new THREE.Vector3().lerpVectors(from, to, t); const w2 = Math.sin(t * Math.PI); v.y -= sag * w2; const sw = Math.sin(this.t * 1.4 + t * 2.2) * sway * w2; v.x += hx / hl * sw; v.z += hz / hl * sw; return v; };
       const nxt = new THREE.Vector3();
       for (let i = 0; i < n; i++) {
         const l = this.chainLinks[i];
-        if (i < nCurve) { const t = (i + 0.5) / nCurve; l.position.copy(pt(t)); nxt.copy(pt(Math.min(1, t + 0.5 / nCurve))); l.lookAt(nxt); if (i % 2) l.rotateX(Math.PI / 2); else l.rotateY(Math.PI / 2); }
-        else { const k = i - nCurve, ang = k * 0.62, rr = 1.25 + k * 0.045; l.position.set(from.x + Math.cos(ang) * rr, ground + 0.12 + (k % 2) * 0.05, from.z + Math.sin(ang) * rr); l.rotation.set(Math.PI / 2, 0, -ang); if (k % 2) l.rotateY(Math.PI / 2); }
+        if (i < nCurve) { l.visible = true; const t = (i + 0.5) / nCurve; l.position.copy(pt(t)); nxt.copy(pt(Math.min(1, t + 0.5 / nCurve))); l.lookAt(nxt); if (i % 2) l.rotateX(Math.PI / 2); else l.rotateY(Math.PI / 2); }
+        else { l.visible = false; l.position.copy(from); }
       }
     }
     // the Eternials: strollers walk their rounds    // the Eternials: strollers walk their rounds, everyone breathes, shifts and looks around; heads turn to a visitor
     const GD = C.guard;
+    // update 44: a desert hunter inside the walls is a beast to be cut down — the nearest free guard takes it
+    this.beastT = (this.beastT || 0) - dt;
+    if (this.beastT <= 0) {
+      this.beastT = 0.5;
+      for (const cr of g.creatures || []) {
+        if (cr.dead || cr.chain || !(cr.type === "remotus" || cr.type === "altai" || cr.type === "trex")) continue;
+        if (!this.inCastle(cr.pos.x, cr.pos.z)) continue;
+        if (this.npcs.some((o) => o.beast === cr && !o.dead)) continue;
+        let best = null, bd = 70;
+        for (const o of this.npcs) { if (o.role !== "guard" || o.dead || o.beast || o.war) continue; const dq = Math.hypot(o.x - cr.pos.x, o.z - cr.pos.z); if (dq < bd) { bd = dq; best = o; } }
+        if (best) { best.beast = cr; best.hostile = true; best.hp = best.hp || GD.hp; best.atkT = 0.3; }
+      }
+    }
     for (const n of this.npcs) {
       n.t += dt;
-      if (n.dead) continue;
+      if (n.dead) { if (n.respawnT !== undefined) { n.respawnT -= dt; if (n.respawnT <= 0) this.guardRespawn(n); } continue; }
       const d = Math.hypot(p.pos.x - n.x, p.pos.z - n.z);
       let targetYaw = n.yaw0, walking = false;
-      if (n.hostile) {   // update 42: a guard at war — he comes for you, strikes when he reaches you, goes home when you are far
+      n.blockT = Math.max(0, (n.blockT || 0) - dt);
+      if (n.hostile) {   // update 42/44: a guard at war — he comes for you (or the beast), winds up and strikes, goes home when it is over
+        let beast = n.beast && !n.beast.dead && this.inCastle(n.beast.pos.x, n.beast.pos.z) ? n.beast : null;
+        if (n.beast && !beast) { n.beast = null; }
         const dh = Math.hypot(p.pos.x - n.homeX, p.pos.z - n.homeZ);
-        let tx, tz;
-        if (dh < GD.chaseR) { tx = p.pos.x; tz = p.pos.z; n.calmT = 0; }
+        let tx, tz, atFoe = false;
+        if (beast) { tx = beast.pos.x; tz = beast.pos.z; n.calmT = 0; atFoe = true; }
+        else if (n.war && dh < GD.chaseR) { tx = p.pos.x; tz = p.pos.z; n.calmT = 0; atFoe = true; }
         else { tx = n.homeX; tz = n.homeZ; n.calmT = (n.calmT || 0) + dt; }
         const dx = tx - n.x, dz = tz - n.z, dd = Math.hypot(dx, dz);
-        const stopAt = tx === p.pos.x ? GD.reach - 0.6 : 0.4;
-        if (dd > stopAt) { const st = Math.min(dd - stopAt, GD.speed * dt); n.x += dx / dd * st; n.z += dz / dd * st; walking = true; n.speed = GD.speed; n.body.position.x = n.x; n.body.position.z = n.z; const fy = this.floorH(n.x, n.z, n.y); if (fy !== null) { n.y = fy; n.body.position.y = n.y; } }
-        n.yaw0 = Math.atan2(dx, dz);
+        const reach = beast ? GD.reach + 1.4 : GD.reach;
+        const stopAt = atFoe ? reach - 0.7 : 0.4;
+        const striking = n.strike !== undefined;
+        if (!striking && dd > stopAt) { const st = Math.min(dd - stopAt, GD.speed * dt); n.x += dx / dd * st; n.z += dz / dd * st; walking = true; n.speed = GD.speed; n.body.position.x = n.x; n.body.position.z = n.z; const fy = this.floorH(n.x, n.z, n.y); if (fy !== null) { n.y = fy; n.body.position.y = n.y; } }
+        if (dd > 0.3) n.yaw0 = Math.atan2(dx, dz);
         n.atkT = (n.atkT || 0) - dt;
-        if (tx === p.pos.x && d < GD.reach && n.atkT <= 0) { n.atkT = GD.hitEvery; p.damage(GD.dmg, "guard", new THREE.Vector3(n.x, n.y, n.z)); }
-        if (n.calmT > 6 && dd < 1) { n.hostile = false; n.hits = 0; n.hp = GD.hp; n.yaw0 = n.yawHome !== undefined ? n.yawHome : n.yaw0; if (!this.npcs.some((o) => o.hostile)) g.ui.toast(STR.et.guardCalm); }
+        if (atFoe && dd < reach + 0.3 && n.atkT <= 0 && !striking && n.blockT <= 0) { n.atkT = GD.hitEvery + GD.atkDur; n.strike = 0; n.strikeHit = false; }
+        if (striking) {
+          n.strike += dt / GD.atkDur;
+          if (!n.strikeHit && n.strike > 0.52) {   // the blow lands as the arm comes down
+            n.strikeHit = true;
+            if (beast) { if (dd < reach + 1.2) { beast.guardHits = (beast.guardHits || 0) + 1; g.audio.sHit(); if (beast.guardHits >= GD.beastHits) { beast.die(g); n.beast = null; if (Math.hypot(p.pos.x - n.x, p.pos.z - n.z) < 60) g.ui.toast(STR.et.guardBeast); } } }
+            else if (atFoe && dd < reach + 0.9) p.damage(GD.dmg, "guard", new THREE.Vector3(n.x, n.y, n.z));
+          }
+          if (n.strike >= 1) n.strike = undefined;
+        }
+        if (!beast && !n.war && !striking && dd < 1) { n.hostile = false; n.calmT = 0; n.yaw0 = n.yawHome !== undefined ? n.yawHome : n.yaw0; }   // the hunt is over and he is back at his post
+        if (n.war && n.calmT > 6 && dd < 1) { n.hostile = false; n.war = false; n.hits = 0; n.hp = GD.hp; n.yaw0 = n.yawHome !== undefined ? n.yawHome : n.yaw0; if (!this.npcs.some((o) => o.war)) g.ui.toast(STR.et.guardCalm); }
       } else if (n.walk) {
         const W = n.walk;
         if (d < 3.5) { W.wait = Math.max(W.wait, 0.8); }
@@ -584,7 +650,8 @@ export class EterniusCity {
       // a glance at a visitor a little further out (the body turns only when you are close)
       let headTurn = 0;
       if (d >= 5.5 && d < 12) { const want = Math.atan2(p.pos.x - n.x, p.pos.z - n.z); headTurn = ((want - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; }
-      if (n.body.userData.hrig) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm");
+      if (n.body.userData.hrig) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm",
+        (n.strike !== undefined || n.blockT > 0) ? { attack: n.strike !== undefined ? Math.min(1, n.strike) : 0, block: n.blockT > 0 ? 1 - n.blockT / 0.45 : 0 } : null);   // update 44
       else if (!n.walk) n.body.position.y = n.y + Math.sin(n.t * 1.3) * 0.012;
     }
     if (!this.keeperReady) { const k = this.npcs.find((n) => n.role === "keeper"); if (k && Math.hypot(p.pos.x - k.x, p.pos.z - k.z) > 25) this.keeperReady = true; }
@@ -628,8 +695,10 @@ export class EterniusCity {
     }
     // the altar: once a day, hunger AND health
     {
-      const [ax, az] = cityWorld(this.altarLocal.a, this.altarLocal.b), ay = C.levels.dais;
-      if (Math.hypot(p.pos.x - ax, p.pos.z - az) < 4.2) consider(ax, az, ay, `${STR.prayPrompt} [${STR.interact}]`, () => {
+      const [cx, cz] = cityWorld(0, 0), ay = C.levels.dais, DRa = this.altarR || 4.3;   // update 44: from every side
+      const dA = Math.hypot(p.pos.x - cx, p.pos.z - cz), ux = (cx - p.pos.x) / (dA || 1), uz = (cz - p.pos.z) / (dA || 1);
+      const ax = p.pos.x + ux * Math.max(0, dA - DRa), az = p.pos.z + uz * Math.max(0, dA - DRa);
+      if (dA < DRa + 4.6 && p.pos.y > ay - 2) consider(ax, az, ay + 2.5, `${STR.prayPrompt} [${STR.interact}]`, () => {
         if (this.prayedDay === g.dayNum) { g.ui.toast(STR.prayedAlready); g.audio.sDeny(); return; }
         this.prayedDay = g.dayNum; p.hu = 100; p.hp = 100;
         g.ui.toast(S.prayed); g.audio.sPickup();

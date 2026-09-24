@@ -120,6 +120,8 @@ export class Creature {
     const r = Math.max(0.4, this.cfg.height * 0.18);
     // update 42: the werewolves never set foot in Eternius — the mountain, the castle, the bridge
     if (this.type === "werewolf" && !this.caveWolf && w.city && w.city.inZone(x, z) && !w.city.inZone(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
+    // update 44: the desert's hunters (and any wandering T-Rex) stop at the castle's sill — the bridge is as far as they come
+    if ((this.type === "remotus" || this.type === "altai" || (this.type === "trex" && !this.chain)) && w.city && w.city.inCastle(x, z) && !w.city.inCastle(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
     // update 29: the raiding werewolf leaps every fence — only the world's edge holds it
     if (this.raid) {
       const sqr = CFG.world.square - 2;
