@@ -26,7 +26,7 @@ export function riggedHumanoid(sourceGroup, opts = {}) {
   // update 41: measured on the scans — the torso is 0.12 H wide at the chest, the shoulder joint sits at 0.15 H,
   // the hands hang at 0.42–0.5 H. Claims go by these, not by a share of the model's width: the old 0.21 W
   // shoulder put the hands (below hip height) on the LEG bones — they swung behind the back and stretched.
-  const kneeY = bb.min.y + H * 0.27, shoulderX = H * 0.15, elbowY = bb.min.y + H * 0.62, armX = H * 0.145, armLow = bb.min.y + H * 0.36;
+  const kneeY = bb.min.y + H * 0.27, shoulderX = H * 0.15, elbowY = bb.min.y + H * 0.62, armX = H * 0.133, armLow = bb.min.y + H * 0.36;
 
   const hips = new THREE.Bone(); hips.position.set(cx, hipY, cz);
   const chest = new THREE.Bone(); chest.position.set(0, chestY - hipY, 0); hips.add(chest);
@@ -52,7 +52,10 @@ export function riggedHumanoid(sourceGroup, opts = {}) {
       blend2(i, I.head, k, I.chest, 1 - k);
     } else if (y > armLow && Math.abs(x) > armX && y < neckY + fade) {   // arms: out past the torso, down to the hands
       const s = x < 0 ? 0 : 1;
-      const k = Math.min(1, (Math.abs(x) - armX) / (H * 0.03));
+      // update 43: the whole arm belongs to the arm bone (a 1 cm blend, not 6 — the wide blend left the inner half of the
+      // upper arm with the chest and pinched it when the arm turned in); only the shoulder cap fades into the chest
+      let k = Math.min(1, (Math.abs(x) - armX) / (H * 0.012));
+      if (y > shoulderY - 0.02 * H) k *= Math.max(0, Math.min(1, (neckY + fade - y) / (0.09 * H)));
       if (y < elbowY - fade) blend2(i, I.foreL + s, k, I.armL + s, 0);
       else if (y < elbowY + fade) { const q = (elbowY + fade - y) / (2 * fade); blend2(i, I.foreL + s, k * q, I.armL + s, k * (1 - q)); }
       else blend2(i, I.armL + s, k, I.chest, 1 - k);

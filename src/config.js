@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=42";
+export const ASSET_V = "?v=43";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -538,7 +538,7 @@ export const CFG = {
   fireflies: { clusters: 9, per: 11, litClusters: 5 },
   respawnTime: 60,
 
-  modelScale: { et_door: 4.0, et_fence: 1.4, et_collar: 1.0, et_vaultdoor: 6.0, et_censer: 1.4,   // update 42 (Higgsfield text-to-3D)
+  modelScale: { et_door: 4.0, et_fence: 1.8, et_collar: 1.0, et_vaultdoor: 6.0, et_censer: 1.4, et_bench: 2.4, et_altar: 13.5,   // update 43: fences a third taller, the giants' bench, the altar   // update 42 (Higgsfield text-to-3D)
     et_bed: 2.0, et_lamppost: 4.6, et_torchbearer: 5.2, et_chainpost: 3.6, et_ceilinglamp: 1.8, et_throne: 4.2, et_gate: 10,   // update 40
     etdagger3d: 0.95, etsword3d: 1.6, etspear3d: 2.6,   // update 40: the generated weapons (upright scans; turned to lie along -x in buildEternialWeapons)
     trex: 5.4, trexgreen: 5.4, werewolf: 1.9, pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
@@ -646,14 +646,15 @@ export const CFG = {
     stairs: { up: { r0: 64, r1: 92, hw: 6 }, down: { r0: 68, r1: 92, hw: 6 } },   // update 42: the top tread meets the terrace edge (the floor used to run on over the last four treads)
     // the upper terrace runs on past the throne door to -150 deg; a grand stair drops to the lower gallery by -125 deg
     split: { stairTh0: -150, stairTh1: -125, landing: 3 },
-    riverTh: { th0: -123, th1: -62 },                    // the river runs between two arched culverts
-    culvert: { depth: 14, w: 8, h: 6.5, wallUp: 4 },   // update 42: a real end wall with a boat-high arch, no grate
+    riverTh: { th0: -128, th1: -62 },                    // update 43: the river now runs OUT of the grand stair (an open channel through its lowest steps, then a lit arch) to one culvert
+    culvert: { depth: 14, w: 8, h: 6.2, wallUp: 5.2 },   // update 43: the arch springs from the water, the wall stands 5 m above the gallery; lights inside
     // enterable homes carved into the cavern wall (theta in degrees; level = the terrace they open onto)
     rooms: [{ th: 100, level: "terrace", kind: "female" }, { th: 162, level: "terrace", kind: "male" },
             { th: -108, level: "lower", kind: "male" }, { th: 38, level: "court", kind: "female" }],
     room: { depth: 9, hw: 4.5, h: 5, doorHw: 1.4 },
     facadeStep: 9, facadeH: 8,                            // house fronts every 9 m along the cavern wall
-    riverR0: 104, riverR1: 112, riverBridgeHw: 3, riverBridgeArch: 3.2, riverBridgeExt: 5,   // update 42: an arched bridge a boat passes under
+    riverR0: 104, riverR1: 112, riverBridgeHw: 3, riverBridgeArch: 2.8, riverBridgeExt: 3, riverBridgeTh: -84,   // update 43: shorter, and off the vault's axis
+    riverChanDeg: 3.2,                                   // update 43: the open channel through the grand stair's lowest steps spans this many degrees before the arch
     levels: { court: 2, plaza: -4, dais: -2.2, terrace: 8, lower: -14, riverBed: -19, water: -15.2 },   // update 40: the water within reach of the bank
     tunnel: { a0: 118, a1: 206, hw: 5, h: 9 },
     castle: { a0: 205, a1: 250, hw: 60, wallH: 14 },
@@ -662,12 +663,12 @@ export const CFG = {
     bridge: { a0: 250, a1: 344, hw: 3, arch: 1.2 },      // update 40: the deck starts ON the castle sill
     flatA: 280, flatR: 140,                              // the dunes go flat this far around the castle
     statue: { a: 226, b: 0 },
-    chainRex: { a: 227, b: -34, reach: 25.5 },           // update 42: twice the ground to roam (the castle walls stop it)
+    chainRex: { a: 227, b: -34, reach: 25.5, collarTilt: 0.35 },   // update 43: the collar leans back along the neck
     altar: { r: 10 },
     throne: { a0: -152, a1: -116, hw: 20, doorHw: 4 },
     vault: { b0: 118, b1: 142, hw: 18, doorHw: 2.2 },
     inn: { r: 104, th: 135 }, keeper: { r: 100, th: -112 },   // update 40: the keeper moved off the grand stair
-    advisor: { a: -140, b: 7 },
+    advisor: { a: -134, b: 8.5 },   // update 43: beside the dais, not in it
     innPrice: 5, fishTime: 4, vaultTasks: 3,
     guard: { hp: 140, dmg: 14, warnDmg: 10, speed: 3.4, hitEvery: 1.3, reach: 2.6, chaseR: 45, coins: [8, 15] },   // update 42: strike a guard once and he warns you, twice and it is a fight
     stalls: [

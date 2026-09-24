@@ -276,7 +276,7 @@ export class Creature {
 
   pickWanderTarget() {
     const rng = this.ctx.rng;
-    if (this.chain) { const a = rng() * Math.PI * 2, d = rng() * this.chain.r * 0.8; return [this.chain.x + Math.cos(a) * d, this.chain.z + Math.sin(a) * d]; }   // update 39
+    if (this.chain) { const a = rng() * Math.PI * 2, d = (0.3 + rng() * 0.65) * this.chain.r; return [this.chain.x + Math.cos(a) * d, this.chain.z + Math.sin(a) * d]; }   // update 43: it uses the whole circle
     // update 29: cows graze their own pasture, nothing else aims INTO the farm
     if (this.type === "cow") {
       const P = CFG.farm.pasture, SH = CFG.farm.shed;
@@ -867,7 +867,10 @@ export class Creature {
     // hunt already started before you slipped in.
     const losClear = !w.losBlocked(this.pos.x, this.pos.z, p.pos.x, p.pos.z);
     const campShield = w.inCamp(p.pos.x, p.pos.z) && this.state !== "chase" && this.state !== "window";
-    const detected = !playerSafe && !campShield
+    // update 43: the chained beast only minds you INSIDE its circle — its chain grew, its temper did not
+    const chainOK = !this.chain || Math.hypot(p.pos.x - this.chain.x, p.pos.z - this.chain.z) < this.chain.r + 1.5;
+    if (this.chain && !chainOK && this.state === "chase") { this.state = "wander"; this.target = null; }
+    const detected = chainOK && !playerSafe && !campShield
       && ((d < noiseR && (losClear || d < noiseR * 0.5)) || (d < this.cfg.sightR * escortMult && losClear));
 
     if (this.state === "chase") {

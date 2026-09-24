@@ -108,6 +108,8 @@ export class EterniusCity {
     }
     return null;
   }
+  // update 43: distance across the river bridge's axis (the bridge sits at riverBridgeTh, not on the vault's line)
+  bridgeT(a, b) { const th = E().riverBridgeTh * D2R; return Math.abs(-a * Math.sin(th) + b * Math.cos(th)); }
   grandStairY(th) {
     const G = this.grandStair, L = E().levels;
     if (!G) return L.terrace;
@@ -122,7 +124,13 @@ export class EterniusCity {
   }
   roomH(a, b, r, th) {
     const C = E(), L = C.levels, rise = C.stairRise, S = C.split;
-    const T = C.throne; if (a > T.a0 - 1 && a < T.a1 + 1 && Math.abs(b) < T.hw + 1) return L.terrace;
+    const T = C.throne; if (a > T.a0 - 1 && a < T.a1 + 1 && Math.abs(b) < T.hw + 1) {   // update 43: the dais is a floor, three steps up
+      const da = a - T.a0, ab = Math.abs(b);
+      if (da > 3.8 && da < 12 && ab < 6.6) return L.terrace + 1.2;
+      if (da > 2.4 && da < 12 && ab < 7.8) return L.terrace + 0.8;
+      if (da > 1.0 && da < 12 && ab < 9.0) return L.terrace + 0.4;
+      return L.terrace;
+    }
     const V = C.vault; if (Math.abs(a) < V.hw + 1 && b < -V.b0 + 1 && b > -V.b1 - 1) return L.lower;
     const home = this.inHome(a, b, 1); if (home) return L[home.level];
     if (a > C.tunnel.a0 - 1) return L.court;                                   // the tunnel and the gate
@@ -147,11 +155,11 @@ export class EterniusCity {
       if (th < S.stairTh1) return this.grandStairY(th);
       // the lower gallery, the river through it, the bridge over the river
       const RT = C.riverTh;
-      if (Math.abs(a) <= C.riverBridgeHw + 0.3 && th > RT.th0 && th < RT.th1) {   // update 42: the arched bridge
+      if (this.bridgeT(a, b) <= C.riverBridgeHw + 0.3) {   // update 43: the arched bridge, at its own angle
         const rb0 = C.riverR0 - C.riverBridgeExt, rb1 = C.riverR1 + C.riverBridgeExt;
         if (r > rb0 && r < rb1) return L.lower + C.riverBridgeArch * Math.sin((r - rb0) / (rb1 - rb0) * Math.PI);
       }
-      if (r > C.riverR0 && r < C.riverR1 && th > RT.th0 && th < RT.th1 && Math.abs(a) > C.riverBridgeHw) return L.riverBed;
+      if (r > C.riverR0 && r < C.riverR1 && th > RT.th0 && th < RT.th1) return L.riverBed;
       return L.lower;
     }
     const nD = Math.round((L.dais - L.plaza) / rise), runD = 0.6, edge = C.altar.r + nD * runD;
@@ -219,7 +227,7 @@ export class EterniusCity {
       const rr = r < C.riverR0 ? C.riverR0 : C.riverR1, [wx, wz] = cityWorld(rr * Math.cos(th * D2R), rr * Math.sin(th * D2R));
       return { x: wx, z: wz, y: L.water, name: "cavern" };
     }
-    const n = lakeNorm(a, b), onBridge = Math.abs(b) < C.bridge.hw + 0.4 && a > C.bridge.a0 - 1 && a < C.bridge.a1 + 1;
+    const n = lakeNorm(a, b), onBridge = Math.abs(b) < C.bridge.hw + 0.4 && a > C.bridge.a0 - 1 && a < C.bridge.a1 + 1;   // (the lake bridge)
     if (!onBridge && n > 0.92 && n < 1.28 && y < 6) return { x, z, y: L.court - 2.05, name: "lake" };
     return null;
   }
@@ -263,7 +271,7 @@ export class EterniusCity {
       }
       // the river: banks, not water — unless on the bridge
       const rb = Math.hypot(a, b), thb = Math.atan2(b, a) / D2R, RT = C.riverTh;
-      if (thb > RT.th0 - 2 && thb < RT.th1 + 2 && rb > C.riverR0 - r && rb < C.riverR1 + r && Math.abs(a) > C.riverBridgeHw - 0.2) {
+      if (thb > RT.th0 - 2 && thb < RT.th1 + 2 && rb > C.riverR0 - r && rb < C.riverR1 + r && this.bridgeT(a, b) > C.riverBridgeHw - 0.2) {
         const mid = (C.riverR0 + C.riverR1) / 2;
         const side = rb < mid ? C.riverR0 - r : C.riverR1 + r;
         const k = side / rb; a *= k; b *= k; moved = true;
@@ -384,10 +392,11 @@ export class EterniusCity {
     const dir = new THREE.Vector3(0, yc(kB) - yc(kA), zc(kB) - zc(kA)).normalize();   // the neck's axis, chest to skull
     let collar;
     if (A.glb.et_collar) {
-      const m = A.glb.et_collar.model.clone(); const mb = new THREE.Box3().setFromObject(m), ms = new THREE.Vector3(); mb.getSize(ms);
+      const m = this.warmProp ? this.warmProp(A.glb.et_collar.model.clone()) : A.glb.et_collar.model.clone(); const mb = new THREE.Box3().setFromObject(m), ms = new THREE.Vector3(); mb.getSize(ms);
       const wrap = new THREE.Group(); m.position.y -= ms.y / 2; wrap.add(m);
       const sc = (rad * 2 * 1.12) / Math.max(ms.x, ms.z); wrap.scale.setScalar(sc);
       wrap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      wrap.rotateX(-(E().chainRex.collarTilt || 0));   // update 43: leans back along the neck
       collar = wrap;
     } else { collar = new THREE.Mesh(new THREE.TorusGeometry(rad * 1.08, 0.16, 8, 24), goldP); collar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir); }
     at(head, collar, 0, cy, cz);
@@ -418,10 +427,10 @@ export class EterniusCity {
     this.mkNpc = mk;
     // courtyard: two spear guards at the gate, two sword guards at the mountain gate, a few citizens
     // update 42: the gate guards stand in front of the towers, not inside them
-    mk("spear", K.a1 - 6.5, 7.2, L.court, K.a1 + 40, 7.2, "guard", { lines: S.guardLines });
-    mk("spear", K.a1 - 6.5, -7.2, L.court, K.a1 + 40, -7.2, "guard", { lines: S.guardLines });
-    mk("sword", K.a0 + 6.5, 7.2, L.court, K.a1, 7.2, "guard", { lines: S.guardLines });
-    mk("sword", K.a0 + 6.5, -7.2, L.court, K.a1, -7.2, "guard", { lines: S.guardLines });
+    mk("spear", K.a1 - 9, 4.4, L.court, K.a1 + 40, 4.4, "guard", { lines: S.guardLines });   // update 43: on the gold way, looking out through the gate
+    mk("spear", K.a1 - 9, -4.4, L.court, K.a1 + 40, -4.4, "guard", { lines: S.guardLines });
+    mk("sword", K.a0 + 9, 4.4, L.court, K.a1, 4.4, "guard", { lines: S.guardLines });
+    mk("sword", K.a0 + 9, -4.4, L.court, K.a1, -4.4, "guard", { lines: S.guardLines });
     mk("female", 234, 24, L.court, C.statue.a, C.statue.b, "citizen", { lines: S.femaleLines });
     mk("male", 241, -22, L.court, C.statue.a, C.statue.b, "citizen", { lines: S.maleLines });
     mk("male", 214, 46, L.court, 214, 30, "citizen", { lines: S.maleLines });
@@ -481,7 +490,8 @@ export class EterniusCity {
     for (const L of this.lights) if (L.night) L.l.intensity = L.on * (night ? 1 : 0);
     for (const f of this.flags) { f.material.emissiveIntensity = night * 0.6; f.rotation.z = Math.sin(this.t * 1.7 + f.position.x) * 0.06; }
     for (const f of this.banners || []) f.material.emissiveIntensity = night * 0.6;
-    if (this.altarGem) { this.altarGem.rotation.y += dt * 0.6; const k = 1 + 0.06 * Math.sin(this.t * 2.1); this.altarGem.scale.set(0.8 * k, 1.35 * k, 0.8 * k); if (this.altarHalo) this.altarHalo.material.opacity = 0.12 + 0.06 * Math.sin(this.t * 2.1); }   // update 42: the emerald sits IN the spire's tip and breathes
+    if (this.altarGem) { this.altarGem.rotation.y += dt * 0.5; if (this.altarHalo) this.altarHalo.material.opacity = 0.11 + 0.06 * Math.sin(this.t * 2.1); }   // update 43: the crystal turns in its socket
+    if (this.altarLines) for (const L of this.altarLines) L.m.emissiveIntensity = 0.75 + 0.75 * (0.5 + 0.5 * Math.sin(this.t * 2.4 - L.phase));   // update 43: a pulse runs round the channels
     if (this.flames) this.flames.forEach((f, i) => { const k = 1 + 0.12 * Math.sin(this.t * 9 + i * 1.7); f.scale.set(k, 1 / k + 0.15 * Math.sin(this.t * 6 + i), 1); });
     // the shaft of light: warm and strong by day, a dim moon-white by night
     if (this.beam) {
@@ -493,7 +503,7 @@ export class EterniusCity {
       if (this.pool) { this.pool.material.color.copy(col); this.pool.material.opacity = 0.16 * (1 - k * 0.72); }
     }
     if (this.lakeMesh && this.lakeMesh.material.map) this.lakeMesh.material.map.offset.set(this.t * 0.01, this.t * 0.007);
-    if (this.riverMesh && this.riverMesh.material.map) this.riverMesh.material.map.offset.set(this.t * 0.05, 0);
+    if (this.riverMesh && this.riverMesh.material.map) this.riverMesh.material.map.offset.set(-this.t * 0.07, 0);   // update 43: along the river, counter-clockwise
     // the mountain gate's doors swing open as you come near, and close behind you
     if (this.gate) {
       const [gx, gz] = cityWorld(this.gateLocal.a, this.gateLocal.b);
@@ -518,18 +528,23 @@ export class EterniusCity {
       const from = this.postTop, to = new THREE.Vector3();
       if (this.rexRing) this.rexRing.getWorldPosition(to); else if (this.rexCollar) this.rexCollar.getWorldPosition(to);
       else to.set(this.rex.group.position.x, this.rex.group.position.y + 3.3, this.rex.group.position.z);
-      // update 42: the links follow the catenary and face along it, every other one turned a quarter — a chain, not beads
-      const n = this.chainLinks.length, d = from.distanceTo(to), total = n * this.chainPitch;
-      const sag = Math.max(0.2, (total - d) * 0.32);
-      const pt = (t) => { const v = new THREE.Vector3().lerpVectors(from, to, t); v.y -= sag * Math.sin(t * Math.PI); return v; };
+      // update 43: the links follow the catenary but never go under the ground — the slack coils on the flagstones at the
+      // post; the whole chain sways a little, more when the beast moves; each link faces along the curve, every other turned
+      const n = this.chainLinks.length, d = from.distanceTo(to), total = n * this.chainPitch, ground = C.levels.court;
+      const sagNat = Math.max(0.2, (total - d) * 0.32), sagMax = Math.max(0.2, Math.min(from.y, to.y) - ground - 0.3);
+      const sag = Math.min(sagNat, sagMax);
+      const used = Math.sqrt(d * d + (2.2 * sag) * (2.2 * sag)) + 0.6, nCoil = Math.max(0, Math.min(n - 8, Math.floor((total - used) / this.chainPitch)));
+      const nCurve = n - nCoil, sway = 0.18 + 0.22 * Math.min(1, (this.rex.speed || 0) / 2);
+      const hx = -(to.z - from.z), hz = to.x - from.x, hl = Math.hypot(hx, hz) || 1;
+      const pt = (t) => { const v = new THREE.Vector3().lerpVectors(from, to, t); const w2 = Math.sin(t * Math.PI); v.y -= sag * w2; const sw = Math.sin(this.t * 1.4 + t * 2.2) * sway * w2; v.x += hx / hl * sw; v.z += hz / hl * sw; return v; };
       const nxt = new THREE.Vector3();
       for (let i = 0; i < n; i++) {
-        const t = (i + 0.5) / n, l = this.chainLinks[i];
-        l.position.copy(pt(t)); nxt.copy(pt(Math.min(1, t + 0.5 / n)));
-        l.lookAt(nxt); if (i % 2) l.rotateX(Math.PI / 2); else l.rotateY(Math.PI / 2);
+        const l = this.chainLinks[i];
+        if (i < nCurve) { const t = (i + 0.5) / nCurve; l.position.copy(pt(t)); nxt.copy(pt(Math.min(1, t + 0.5 / nCurve))); l.lookAt(nxt); if (i % 2) l.rotateX(Math.PI / 2); else l.rotateY(Math.PI / 2); }
+        else { const k = i - nCurve, ang = k * 0.62, rr = 1.25 + k * 0.045; l.position.set(from.x + Math.cos(ang) * rr, ground + 0.12 + (k % 2) * 0.05, from.z + Math.sin(ang) * rr); l.rotation.set(Math.PI / 2, 0, -ang); if (k % 2) l.rotateY(Math.PI / 2); }
       }
     }
-    // the Eternials: strollers walk their rounds, everyone breathes, shifts and looks around; heads turn to a visitor
+    // the Eternials: strollers walk their rounds    // the Eternials: strollers walk their rounds, everyone breathes, shifts and looks around; heads turn to a visitor
     const GD = C.guard;
     for (const n of this.npcs) {
       n.t += dt;

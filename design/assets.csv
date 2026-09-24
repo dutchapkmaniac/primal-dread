@@ -209,3 +209,5 @@ et_fence,model,assets/models/et_fence.glb,Higgsfield tripo_3d text-to-3D 2026-09
 et_collar,model,assets/models/et_collar.glb,Higgsfield tripo_3d text-to-3D 2026-09-24,"update 42: the chained beast's golden collar, fitted to its neck (job 9ca4fe47)"
 et_vaultdoor,model,assets/models/et_vaultdoor.glb,Higgsfield tripo_3d text-to-3D 2026-09-24,"update 42: the treasury's vault door with the scarab lock (job 32a2f5e7)"
 et_censer,model,assets/models/et_censer.glb,Higgsfield tripo_3d text-to-3D 2026-09-24,"update 42: censers hung on chains from the rim of the light hole (job 297c170d)"
+et_bench,model,assets/models/et_bench.glb,Higgsfield tripo_3d text-to-3D 2026-09-24,"update 43: giants' stone bench with gold trim and gems, the castle courtyard (job dc340043)"
+et_altar,model,assets/models/et_altar.glb,Higgsfield nano_banana_pro -> image_to_3d (24k) 2026-09-24,"update 43: the golden altar under the light hole — drum with the sun disc and channels, crystalline spire (job 1bdf25e2)"

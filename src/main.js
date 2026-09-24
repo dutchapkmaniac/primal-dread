@@ -62,7 +62,7 @@ const verbFor = (label) => {
   return STR.mobUse;
 };
 
-const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_vaultdoor", "et_censer", "werewolf", "pig", "chicken", "tree", "appletree", "chest", "statue",
+const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_vaultdoor", "et_censer", "et_bench", "et_altar", "werewolf", "pig", "chicken", "tree", "appletree", "chest", "statue",
   "bedroll", "hutbed", "kitchen", "bill", "storagechest", "boulder",
   "door", "table", "chair", "lantern", "croc", "dinoegg", "metaldoor", "beaconlamp",
   "nest", "barrel", "closet", "woodchest", "trapdoor", "knife3d", "machete3d", "torch3d",
