@@ -524,7 +524,14 @@ export class EterniusCity {
     for (const f of this.flags) { f.material.emissiveIntensity = night * 0.6; f.rotation.z = Math.sin(this.t * 1.7 + f.position.x) * 0.06; }
     for (const f of this.banners || []) f.material.emissiveIntensity = night * 0.6;
     if (this.altarGem) { this.altarGem.rotation.y += dt * 0.5; if (this.altarHalo) this.altarHalo.material.opacity = 0.11 + 0.06 * Math.sin(this.t * 2.1); }   // update 43: the crystal turns in its socket
-    if (this.altarGlow) { const k = 1.15 + 0.85 * (0.5 + 0.5 * Math.sin(this.t * 2.2)); for (const m of this.altarGlow) m.emissiveIntensity = k; for (const l of this.altarGlowLights || []) l.intensity = 2.2 + 1.6 * (k - 1.15); }   // update 44: the carvings breathe emerald light
+    if (this.altarGlow) {   // update 45: gold light breathing between 60 and 100 %, never out; a green moment when you pray
+      const pulse = 0.62 + 0.38 * (0.5 + 0.5 * Math.sin(this.t * 1.6)), base = 1.75 * pulse;
+      let gf = 0; if (this.altarFlash > 0) { this.altarFlash -= dt; const e = 3 - this.altarFlash; gf = e < 0.5 ? e / 0.5 : e < 1.0 ? 1 : Math.max(0, 1 - (e - 1.0) / 2.0); }
+      const col = new THREE.Color(1, 1, 1).lerp(new THREE.Color(0.25, 1.0, 0.45), gf);
+      for (const m of this.altarGlow) { m.emissiveIntensity = base + 0.5 * gf; m.emissive.copy(col); }
+      const lc = new THREE.Color(0xffcf60).lerp(new THREE.Color(0x40ff80), gf);
+      for (const l of this.altarGlowLights || []) { l.intensity = 2.0 + 1.5 * (pulse - 0.62) / 0.38 + 1.5 * gf; l.color.copy(lc); }
+    }
     for (const m of this.tunnelWater || []) if (m.material.map) m.material.map.offset.y = this.t * 0.22;   // update 44: the tunnel water runs out toward the river
     for (const sw of this.swing || []) { sw.g.rotation.z = Math.sin(this.t * 0.75 + sw.ph) * 0.05; sw.g.rotation.x = Math.sin(this.t * 0.55 + sw.ph * 1.7) * 0.035; }   // update 44: the hanging lanterns sway
     if (this.flames) this.flames.forEach((f, i) => { const k = 1 + 0.12 * Math.sin(this.t * 9 + i * 1.7); f.scale.set(k, 1 / k + 0.15 * Math.sin(this.t * 6 + i), 1); });
@@ -697,10 +704,12 @@ export class EterniusCity {
     {
       const [cx, cz] = cityWorld(0, 0), ay = C.levels.dais, DRa = this.altarR || 4.3;   // update 44: from every side
       const dA = Math.hypot(p.pos.x - cx, p.pos.z - cz), ux = (cx - p.pos.x) / (dA || 1), uz = (cz - p.pos.z) / (dA || 1);
-      const ax = p.pos.x + ux * Math.max(0, dA - DRa), az = p.pos.z + uz * Math.max(0, dA - DRa);
-      if (dA < DRa + 4.6 && p.pos.y > ay - 2) consider(ax, az, ay + 2.5, `${STR.prayPrompt} [${STR.interact}]`, () => {
+      // update 45: the prompt's point sits at the altar's base at YOUR height (it used to float 2.5 m up, past the
+      // reach rule — only a jump got you close enough); from ~2.5 m off the base, on any side, feet on the ground
+      const ax = p.pos.x + ux * Math.max(0, dA - (DRa + 1.5)), az = p.pos.z + uz * Math.max(0, dA - (DRa + 1.5));
+      if (dA < DRa + 1.5 + 3.2 && Math.abs(p.pos.y - ay) < 2.4) consider(ax, az, p.pos.y, `${STR.prayPrompt} [${STR.interact}]`, () => {
         if (this.prayedDay === g.dayNum) { g.ui.toast(STR.prayedAlready); g.audio.sDeny(); return; }
-        this.prayedDay = g.dayNum; p.hu = 100; p.hp = 100;
+        this.prayedDay = g.dayNum; p.hu = 100; p.hp = 100; this.altarFlash = 3;   // update 45: the carvings glow green for a moment
         g.ui.toast(S.prayed); g.audio.sPickup();
       });
     }
