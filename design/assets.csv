@@ -204,3 +204,8 @@ t_trexgreen,texture,assets/tex/t_trexgreen_basecolor.webp,"the chained beast's g
 t_goldlattice,texture,assets/tex/t_goldlattice_basecolor.webp,"golden lattice screen with transparent openings (gate tympanum, lamps) — nano_banana (u40)"
 t_greencarpet,texture,assets/tex/t_greencarpet_*.webp,"emerald carpet with gold lotus embroidery (throne hall, hallway, homes) — nano_banana + pipeline (u40)"
 t_mountain,texture,assets/tex/t_mountain_*.webp,"red desert mountain rock — nano_banana + pipeline (u40)"
+et_door,model,assets/models/et_door.glb,Higgsfield tripo_3d text-to-3D 2026-09-24,"update 42: green wooden door with a gold knob — every closed house front, doubled as the throne hall's gates (job 079fd78a)"
+et_fence,model,assets/models/et_fence.glb,Higgsfield tripo_3d text-to-3D 2026-09-24,"update 42: golden balustrade segment along the terrace edges and the grand stair (job 41195ce5)"
+et_collar,model,assets/models/et_collar.glb,Higgsfield tripo_3d text-to-3D 2026-09-24,"update 42: the chained beast's golden collar, fitted to its neck (job 9ca4fe47)"
+et_vaultdoor,model,assets/models/et_vaultdoor.glb,Higgsfield tripo_3d text-to-3D 2026-09-24,"update 42: the treasury's vault door with the scarab lock (job 32a2f5e7)"
+et_censer,model,assets/models/et_censer.glb,Higgsfield tripo_3d text-to-3D 2026-09-24,"update 42: censers hung on chains from the rim of the light hole (job 297c170d)"

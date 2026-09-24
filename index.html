@@ -54,7 +54,7 @@ canvas{display:block}
 .screen button.shopCard{margin:0;padding:8px 6px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;line-height:1.2;
   background:linear-gradient(180deg,#3a3122,#1e1810);border:1px solid #8a6a2c;color:#e8dcb8;border-radius:8px;letter-spacing:0;text-transform:none;min-height:104px}
 .screen button.shopCard:hover{filter:brightness(1.2);border-color:#e0b230}
-.screen button.shopCard.sell{border-color:#4f8a4a}.screen button.shopCard.armed{border-color:#e05a3a;background:linear-gradient(180deg,#4a2a1e,#2a160e)}
+.screen button.shopCard.sell{border-color:#4f8a4a}.screen button.shopCard.out{opacity:.45;filter:grayscale(.6)}.screen button.shopCard.armed{border-color:#e05a3a;background:linear-gradient(180deg,#4a2a1e,#2a160e)}
 .shopCard img,.shopCard .noicon{width:44px;height:44px;object-fit:contain;image-rendering:auto;display:block}
 .shopCard .nm{text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis}.shopCard .cnt{opacity:.7}
 .shopCard .pr{color:#f0c440;font-weight:700;font-size:12px}
@@ -187,7 +187,7 @@ body.touch #bars{left:70px}
   <div id="clock" class="glass"><div class="day"></div><div class="tod"></div></div>
   <div id="drunk" class="glass"></div>
   <div id="helper" class="glass"></div>
-  <div id="miniWrap"><img id="compass" src="./assets/ui_compass.png?v=41" alt="compass"><canvas id="minimap" width="158" height="158"></canvas></div>
+  <div id="miniWrap"><img id="compass" src="./assets/ui_compass.png?v=42" alt="compass"><canvas id="minimap" width="158" height="158"></canvas></div>
   <div id="goal" class="glass"></div>
   <div id="hunt"><div class="nm"></div><div class="tr"><i></i></div></div>
   <div id="hunt2"><div class="nm"></div><div class="tr"><i></i></div></div>
@@ -222,8 +222,8 @@ addEventListener("error", (e) => window.__errs.push((e.message || "?") + " @ " +
 addEventListener("unhandledrejection", (e) => window.__errs.push("rejection: " + String((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
 </script>
 <script type="importmap">
-{"imports":{"three":"./vendor/three.module.js?v=41","three/addons/loaders/GLTFLoader.js":"./vendor/GLTFLoader.js?v=41","three/addons/utils/BufferGeometryUtils.js":"./vendor/BufferGeometryUtils.js?v=41","three/addons/utils/SkeletonUtils.js":"./vendor/SkeletonUtils.js?v=41"}}
+{"imports":{"three":"./vendor/three.module.js?v=42","three/addons/loaders/GLTFLoader.js":"./vendor/GLTFLoader.js?v=42","three/addons/utils/BufferGeometryUtils.js":"./vendor/BufferGeometryUtils.js?v=42","three/addons/utils/SkeletonUtils.js":"./vendor/SkeletonUtils.js?v=42"}}
 </script>
-<script type="module" src="./src/main.js?v=41"></script>
+<script type="module" src="./src/main.js?v=42"></script>
 </body>
 </html>

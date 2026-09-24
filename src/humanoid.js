@@ -11,7 +11,7 @@ import * as THREE from "three";
 // The source model must stand upright, face +Z, feet at the bottom (what
 // normalizeModel() delivers).
 // ============================================================================
-export function riggedHumanoid(sourceGroup) {
+export function riggedHumanoid(sourceGroup, opts = {}) {
   let srcMesh = null;
   sourceGroup.traverse((o) => { if (o.isMesh && !srcMesh) srcMesh = o; });
   if (!srcMesh) return null;
@@ -77,7 +77,7 @@ export function riggedHumanoid(sourceGroup) {
   skinned.add(hips);
   skinned.bind(new THREE.Skeleton(bones));
   const g = new THREE.Group(); g.add(skinned);
-  g.userData.hrig = { hips, chest, head, arms, fore, legs, knees, H, hipsY0: hips.position.y, phase: Math.random() * 6.28, look: 0, lookT: 0, lookTarget: 0, shift: 0, shiftT: 2 + Math.random() * 4, shiftTarget: 0 };
+  g.userData.hrig = { hips, chest, head, arms, fore, legs, knees, H, hipsY0: hips.position.y, phase: Math.random() * 6.28, look: 0, lookT: 0, lookTarget: 0, shift: 0, shiftT: 2 + Math.random() * 4, shiftTarget: 0, armIn: opts.armIn || 0 };
   return g;
 }
 
@@ -119,8 +119,9 @@ export function driveHumanoid(group, state, speed, dt, headTurn = 0, style = "ca
     const sway = style === "busy" ? 0.06 : 0.025;
     R.arms[0].rotation.z = 0.04 + Math.sin(t * 0.8 + R.phase) * sway; R.arms[1].rotation.z = -0.04 - Math.sin(t * 0.8 + R.phase + 1) * sway;
   }
-  // update 41: the arms hang exactly as scanned (the user wants the original pose) — no extra lowering;
-  // the old `+= 0.34` also ACCUMULATED every walking frame and spun the arms
+  // update 42: the citizens' scans hold their arms a little wide — armIn (set per rig, 0 for the king and the guards)
+  // brings them in to the sides; it is SET on top of this frame's pose, never accumulated
+  R.arms[0].rotation.z += R.armIn; R.arms[1].rotation.z -= R.armIn;
   // the head: turns toward a visitor, otherwise glances around slowly
   R.lookT -= dt;
   if (R.lookT <= 0) { R.lookT = 3 + Math.random() * 5; R.lookTarget = (Math.random() - 0.5) * 0.5; }

@@ -147,6 +147,10 @@ export class EterniusCity {
       if (th < S.stairTh1) return this.grandStairY(th);
       // the lower gallery, the river through it, the bridge over the river
       const RT = C.riverTh;
+      if (Math.abs(a) <= C.riverBridgeHw + 0.3 && th > RT.th0 && th < RT.th1) {   // update 42: the arched bridge
+        const rb0 = C.riverR0 - C.riverBridgeExt, rb1 = C.riverR1 + C.riverBridgeExt;
+        if (r > rb0 && r < rb1) return L.lower + C.riverBridgeArch * Math.sin((r - rb0) / (rb1 - rb0) * Math.PI);
+      }
       if (r > C.riverR0 && r < C.riverR1 && th > RT.th0 && th < RT.th1 && Math.abs(a) > C.riverBridgeHw) return L.riverBed;
       return L.lower;
     }
@@ -162,6 +166,46 @@ export class EterniusCity {
     return P.a >= K.a0 && P.a <= K.a1 && Math.abs(P.b) < K.hw;
   }
   // a safe zone — except within the chained beast's reach
+  // update 42: the whole of Eternius — mountain, castle, lake and bridge — is closed to the werewolves
+  inZone(x, z) {
+    const C = E(), P = this.polar(x, z);
+    return P.r < C.mountainR + 30 || (P.a > C.mountainR - 10 && P.a < C.bridge.a1 + 25 && Math.abs(P.b) < C.lake.rSide + 20);
+  }
+  // update 42: a blow aimed at an Eternial. A citizen steps back. A guard strikes back once as a warning; the second blow
+  // starts a fight — he and every guard near him come for you until you are gone, or he is down (a few coins on his belt)
+  hitNpc(player, K, weapon, fx, fz) {
+    const G = E().guard, S = STR.et, g = this.g;
+    let best = null, bestD = 1e9;
+    for (const n of this.npcs) {
+      if (n.dead) continue;
+      const dx = n.x - player.pos.x, dz = n.z - player.pos.z, d = Math.hypot(dx, dz);
+      if (d > K.range + 1.4 || (dx * fx + dz * fz) / (d || 1) < K.arcCos) continue;
+      if (d < bestD) { best = n; bestD = d; }
+    }
+    if (!best) return false;
+    if (best.role !== "guard") { if (!this._npcHitT || g.time - this._npcHitT > 2) { this._npcHitT = g.time; g.ui.toast(S.noHitNpc); } g.audio.sDeny(); return true; }
+    const n = best; n.hits = (n.hits || 0) + 1; g.audio.sHit();
+    if (n.hostile) {
+      n.hp -= K.dmg;
+      if (n.hp <= 0) this.guardDown(n);
+      return true;
+    }
+    if (n.hits === 1) { player.damage(G.warnDmg, "guard", new THREE.Vector3(n.x, n.y, n.z)); g.ui.toast(S.guardWarn); n.warnT = g.time; return true; }
+    // the second blow: he and the guards around him draw steel
+    for (const o of this.npcs) if (o.role === "guard" && !o.dead && Math.hypot(o.x - n.x, o.z - n.z) < 30) { o.hostile = true; o.hp = o.hp || G.hp; o.atkT = 0.4; }
+    n.hp = (n.hp || G.hp) - K.dmg;
+    g.ui.toast(S.guardFight);
+    if (n.hp <= 0) this.guardDown(n);
+    return true;
+  }
+  guardDown(n) {
+    const G = E().guard, g = this.g;
+    n.dead = true; n.hostile = false;
+    n.body.rotation.x = -Math.PI / 2; n.body.position.y = n.y + 0.35;
+    const coins = G.coins[0] + Math.floor(g.rng() * (G.coins[1] - G.coins[0] + 1));
+    this.coins += coins; g.ui.coins(this.coins); g.ui.toast(STR.et.guardDown.replace("%n", coins));
+    setTimeout(() => { g.scene.remove(n.body); const i = this.npcs.indexOf(n); if (i >= 0) this.npcs.splice(i, 1); }, 25000);
+  }
   isSafe(x, z, y) {
     if (!this.inside(x, z, y)) return false;
     if (this.rex && Math.hypot(x - this.rex.chain.x, z - this.rex.chain.z) < this.rex.chain.r + 3) return false;
@@ -303,32 +347,54 @@ export class EterniusCity {
     }
     g.world.addTree(px, pz, 0.8);
     this.postTop = new THREE.Vector3(px, y + 3.6, pz);
-    const linkGeo = new THREE.TorusGeometry(0.22, 0.06, 6, 10);
-    this.chainLinks = [];
-    for (let i = 0; i < 26; i++) { const l = new THREE.Mesh(linkGeo, this.mats.goldBright); g.scene.add(l); this.chainLinks.push(l); }
+    // update 42: real chain links — elongated, alternating, laid along the curve (see update); as many as the chain is long
+    const linkGeo = new THREE.TorusGeometry(0.2, 0.065, 6, 10); linkGeo.scale(1.45, 1, 1);
+    this.chainPitch = 0.44; this.chainLinks = [];
+    const nLinks = Math.round((R.reach + 6) / this.chainPitch);
+    for (let i = 0; i < nLinks; i++) { const l = new THREE.Mesh(linkGeo, i % 5 === 0 ? this.mats.goldBright : this.mats.goldPlain); l.castShadow = true; g.scene.add(l); this.chainLinks.push(l); }
     this.rexSign = { x: px + (sx - px) * 0.2, z: pz + (sz - pz) * 0.2 };
   }
-  // update 41: no armour — the beast is naked but for the golden collar the chain holds (and its ring)
+  // update 42: no armour — the beast wears the generated golden collar (Higgsfield: et_collar), FITTED to its neck: the neck is
+  // measured on the mesh (the narrowest section between the chest and the skull), the collar sits there, tilted along the neck
   armourRex(rex) {
     const rig = rex.body && rex.body.userData && rex.body.userData.rig;
     const skinned = rex.body && rex.body.children && rex.body.children[0];
-    const goldP = this.mats.goldPlain;
+    const goldP = this.mats.goldPlain, A = this.g.assets;
     if (!rig || !skinned || !skinned.geometry || !skinned.geometry.boundingBox) {
       const H = rex.cfg.height || 5.4;
       const collar = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.14, 8, 20), goldP); collar.position.set(0, H * 0.62, H * 0.22); collar.rotation.x = Math.PI / 2 - 0.5; rex.group.add(collar);
       this.rexCollar = collar; return;
     }
-    const bb = skinned.geometry.boundingBox, size = new THREE.Vector3(); bb.getSize(size);
+    const geo = skinned.geometry, bb = geo.boundingBox, size = new THREE.Vector3(); bb.getSize(size);
     const spine = rig.head.parent, head = rig.head;
     const at = (bone, mesh, mx, my, mz) => {
       const bx = spine.position.x + (bone === spine ? 0 : bone.position.x), by = spine.position.y + (bone === spine ? 0 : bone.position.y), bz = spine.position.z + (bone === spine ? 0 : bone.position.z);
       mesh.position.set(mx - bx, my - by, mz - bz); bone.add(mesh); return mesh;
     };
-    const w = size.x, h = size.y, len = size.z, z0 = bb.min.z, y0 = bb.min.y;
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(w * 0.42, 0.16, 8, 20), goldP); collar.rotation.x = Math.PI / 2 - 0.55;
-    at(head, collar, 0, y0 + h * 0.66, z0 + len * 0.7);
+    // the neck: slice the mesh along z between the chest and the skull, take the narrowest slice
+    const pos = geo.attributes.position, z0 = bb.min.z, len = size.z, zA = z0 + len * 0.56, zB = z0 + len * 0.82, NS = 26;
+    const sl = []; for (let i = 0; i < NS; i++) sl.push({ xmin: 1e9, xmax: -1e9, ymin: 1e9, ymax: -1e9, n: 0 });
+    for (let i = 0; i < pos.count; i++) { const z = pos.getZ(i); if (z < zA || z > zB) continue; const k = Math.min(NS - 1, Math.floor((z - zA) / (zB - zA) * NS)), S = sl[k], x = pos.getX(i), y = pos.getY(i); S.n++; S.xmin = Math.min(S.xmin, x); S.xmax = Math.max(S.xmax, x); S.ymin = Math.min(S.ymin, y); S.ymax = Math.max(S.ymax, y); }
+    let best = -1, bestW = 1e9;
+    for (let k = 2; k < NS - 2; k++) { const S = sl[k]; if (S.n < 6) continue; const wdt = Math.max(S.xmax - S.xmin, (S.ymax - S.ymin) * 0.8); if (wdt < bestW) { bestW = wdt; best = k; } }
+    const zc = (k) => zA + (k + 0.5) / NS * (zB - zA), yc = (k) => (sl[k].ymin + sl[k].ymax) / 2;
+    const nk = best >= 0 ? best : Math.floor(NS / 2);
+    const cz = zc(nk), cy = yc(nk), rad = Math.max(sl[nk].xmax - sl[nk].xmin, sl[nk].ymax - sl[nk].ymin) / 2;
+    const kA = Math.max(0, nk - 3), kB = Math.min(NS - 1, nk + 3);
+    const dir = new THREE.Vector3(0, yc(kB) - yc(kA), zc(kB) - zc(kA)).normalize();   // the neck's axis, chest to skull
+    let collar;
+    if (A.glb.et_collar) {
+      const m = A.glb.et_collar.model.clone(); const mb = new THREE.Box3().setFromObject(m), ms = new THREE.Vector3(); mb.getSize(ms);
+      const wrap = new THREE.Group(); m.position.y -= ms.y / 2; wrap.add(m);
+      const sc = (rad * 2 * 1.12) / Math.max(ms.x, ms.z); wrap.scale.setScalar(sc);
+      wrap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      collar = wrap;
+    } else { collar = new THREE.Mesh(new THREE.TorusGeometry(rad * 1.08, 0.16, 8, 24), goldP); collar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir); }
+    at(head, collar, 0, cy, cz);
     this.rexCollar = collar;
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.06, 6, 12), goldP); ring.position.set(0, -0.25, w * 0.42 + 0.1); collar.add(ring); this.rexRing = ring;
+    // the ring the chain holds: on the collar's underside, toward the chest
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.06, 6, 12), goldP); ring.position.set(0, -(rad * 1.12 + 0.2), -0.1); ring.rotation.y = Math.PI / 2;
+    const ringHold = new THREE.Group(); ringHold.quaternion.copy(collar.quaternion); ringHold.add(ring); at(head, ringHold, 0, cy, cz); this.rexRing = ring;
   }
   buildNpcs() {
     const C = E(), L = C.levels, A = this.g.assets, scene = this.g.scene;
@@ -338,22 +404,24 @@ export class EterniusCity {
       const asset = A.glb[id];
       const [x, z] = cityWorld(a, b);
       let body;
-      if (asset) body = riggedHumanoid(asset.model) || asset.model.clone();
+      if (asset) body = riggedHumanoid(asset.model, { armIn: kind === "male" || kind === "female" ? 0.22 : 0 }) || asset.model.clone();   // update 42
       else { body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 2.0, 4, 8), new THREE.MeshStandardMaterial({ color: 0x6c9c3a })); body.position.y = 1.5; const g2 = new THREE.Group(); g2.add(body); body = g2; }
       const [fx, fz] = cityWorld(faceA, faceB);
       const yaw = Math.atan2(fx - x, fz - z);
       body.position.set(x, y, z); body.rotation.y = yaw; scene.add(body);
-      const npc = { kind, role, body, x, z, y, yaw0: yaw, yaw, name: opts.name || (kind === "female" ? "Eternial woman" : kind === "male" ? "Eternial man" : "Eternial guard"), lines: opts.lines, walk: opts.walk || null, t: Math.random() * 10, h: CFG.modelScale[id] || 3, speed: 0, ...opts };
+      const npc = { kind, role, body, x, z, y, yaw0: yaw, yawHome: yaw, yaw, name: opts.name || (kind === "female" ? "Eternial woman" : kind === "male" ? "Eternial man" : "Eternial guard"), lines: opts.lines, walk: opts.walk || null, t: Math.random() * 10, h: CFG.modelScale[id] || 3, speed: 0, ...opts };
       this.npcs.push(npc);
-      if (!npc.walk) this.g.world.addTree(x, z, 0.55);
+      npc.homeX = x; npc.homeZ = z;
+      if (!npc.walk) this.g.world.addTree(x, z, 0.55, "npc");   // update 42: tagged — a knife on an Eternial is not a knife on a tree
       return npc;
     };
     this.mkNpc = mk;
     // courtyard: two spear guards at the gate, two sword guards at the mountain gate, a few citizens
-    mk("spear", K.a1 - 3, 8, L.court, K.a1 + 40, 8, "guard", { lines: S.guardLines });
-    mk("spear", K.a1 - 3, -8, L.court, K.a1 + 40, -8, "guard", { lines: S.guardLines });
-    mk("sword", K.a0 + 3, 8, L.court, K.a1, 8, "guard", { lines: S.guardLines });
-    mk("sword", K.a0 + 3, -8, L.court, K.a1, -8, "guard", { lines: S.guardLines });
+    // update 42: the gate guards stand in front of the towers, not inside them
+    mk("spear", K.a1 - 6.5, 7.2, L.court, K.a1 + 40, 7.2, "guard", { lines: S.guardLines });
+    mk("spear", K.a1 - 6.5, -7.2, L.court, K.a1 + 40, -7.2, "guard", { lines: S.guardLines });
+    mk("sword", K.a0 + 6.5, 7.2, L.court, K.a1, 7.2, "guard", { lines: S.guardLines });
+    mk("sword", K.a0 + 6.5, -7.2, L.court, K.a1, -7.2, "guard", { lines: S.guardLines });
     mk("female", 234, 24, L.court, C.statue.a, C.statue.b, "citizen", { lines: S.femaleLines });
     mk("male", 241, -22, L.court, C.statue.a, C.statue.b, "citizen", { lines: S.maleLines });
     mk("male", 214, 46, L.court, 214, 30, "citizen", { lines: S.maleLines });
@@ -368,7 +436,8 @@ export class EterniusCity {
     mk("sword", C.throne.a1 + 3, 6, L.terrace, C.throne.a1 + 40, 6, "guard", { lines: S.guardLines });
     mk("sword", C.throne.a1 + 3, -6, L.terrace, C.throne.a1 + 40, -6, "guard", { lines: S.guardLines });
     mk("king", this.throneLocal.a - 0.6, 0, L.terrace + 1.2, this.throneLocal.a + 30, 0, "king", { name: S.kingName, lines: S.kingLines });
-    for (const s of [-1, 1]) mk("spear", C.throne.a0 + 8.5, s * 5.2, L.terrace + 1.2, C.throne.a1, s * 5.2, "guard", { lines: S.guardLines });
+    for (const s of [-1, 1]) mk("spear", C.throne.a0 + 13.6, s * 5.6, L.terrace, C.throne.a1, s * 5.6, "guard", { lines: S.guardLines });   // update 42: on the floor, in front of the fire columns
+    mk("spear", 3.4, -C.vault.b0 + 3.2, L.lower, 3.4, -C.vault.b0 + 40, "guard", { lines: S.guardLines });   // update 42: the vault has a guard
     mk("male", C.advisor.a, C.advisor.b, L.terrace, C.advisor.a + 10, -4, "advisor", { name: S.advisorName, lines: S.advisorLines });
     mk("female", this.innLocal.a, this.innLocal.b, L.terrace + 0.3, 0, 0, "inn", { name: S.innName, lines: S.innLines });
     const KP = C.keeper; mk("male", KP.r * Math.cos(KP.th * D2R), KP.r * Math.sin(KP.th * D2R), L.lower, 0, 0, "keeper", { name: S.keeperName, lines: S.keeperLines });
@@ -411,7 +480,8 @@ export class EterniusCity {
     if (g.scene.fog && inRooms) { g.scene.fog.near = Math.max(g.scene.fog.near, 150); g.scene.fog.far = Math.max(g.scene.fog.far, 460); }
     for (const L of this.lights) if (L.night) L.l.intensity = L.on * (night ? 1 : 0);
     for (const f of this.flags) { f.material.emissiveIntensity = night * 0.6; f.rotation.z = Math.sin(this.t * 1.7 + f.position.x) * 0.06; }
-    if (this.altarGem) { this.altarGem.rotation.y += dt; this.altarGem.position.y = C.levels.dais + 10.4 + Math.sin(this.t * 1.3) * 0.25; }
+    for (const f of this.banners || []) f.material.emissiveIntensity = night * 0.6;
+    if (this.altarGem) { this.altarGem.rotation.y += dt * 0.6; const k = 1 + 0.06 * Math.sin(this.t * 2.1); this.altarGem.scale.set(0.8 * k, 1.35 * k, 0.8 * k); if (this.altarHalo) this.altarHalo.material.opacity = 0.12 + 0.06 * Math.sin(this.t * 2.1); }   // update 42: the emerald sits IN the spire's tip and breathes
     if (this.flames) this.flames.forEach((f, i) => { const k = 1 + 0.12 * Math.sin(this.t * 9 + i * 1.7); f.scale.set(k, 1 / k + 0.15 * Math.sin(this.t * 6 + i), 1); });
     // the shaft of light: warm and strong by day, a dim moon-white by night
     if (this.beam) {
@@ -429,28 +499,56 @@ export class EterniusCity {
       const [gx, gz] = cityWorld(this.gateLocal.a, this.gateLocal.b);
       const want = Math.hypot(p.pos.x - gx, p.pos.z - gz) < C.gate.openR ? 1 : 0;
       this.gate.open += (want - this.gate.open) * Math.min(1, dt * 1.6);
-      for (const { hinge, s } of this.gate.leaves) hinge.rotation.y = s * this.gate.open * 1.62;
+      for (const { hinge, s } of this.gate.leaves) hinge.rotation.y = s * this.gate.open * 1.32;   // update 42: 76 degrees — the leaves stayed out of the tunnel walls
       this.gate.seg.off = this.gate.open > 0.55;
+    }
+    if (this.throneGate) {   // update 42: the throne hall's green gates swing inward as you come up the carpet
+      const TG = this.throneGate, [gx, gz] = cityWorld(TG.local.a, TG.local.b);
+      const want = Math.hypot(p.pos.x - gx, p.pos.z - gz) < 11 ? 1 : 0;
+      TG.open += (want - TG.open) * Math.min(1, dt * 1.5);
+      for (const { hinge, s } of TG.leaves) hinge.rotation.y = -s * TG.open * 1.45;
+      TG.seg.off = TG.open > 0.5;
+    }
+    for (const w of g.wolves || []) {   // update 42: a werewolf inside Eternius is put back outside its walls
+      if (w.dead || w.caveWolf || w.raid || !w.pos) continue;
+      if (this.inZone(w.pos.x, w.pos.z)) { const dx = w.pos.x - C.cx, dz = w.pos.z - C.cz, dd = Math.hypot(dx, dz) || 1, Rz = C.bridge.a1 + 70; w.pos.x = C.cx + dx / dd * Rz; w.pos.z = C.cz + dz / dd * Rz; if (w.group) { w.group.position.x = w.pos.x; w.group.position.z = w.pos.z; } w.target = null; }
     }
     // the chain hangs between the post and the beast's collar
     if (this.rex && this.chainLinks) {
       const from = this.postTop, to = new THREE.Vector3();
       if (this.rexRing) this.rexRing.getWorldPosition(to); else if (this.rexCollar) this.rexCollar.getWorldPosition(to);
       else to.set(this.rex.group.position.x, this.rex.group.position.y + 3.3, this.rex.group.position.z);
-      const n = this.chainLinks.length, d = from.distanceTo(to), sag = Math.max(0.3, (this.rex.chain.r + 4 - d) * 0.35);
-      const dir = to.clone().sub(from); const yaw = Math.atan2(dir.x, dir.z);
+      // update 42: the links follow the catenary and face along it, every other one turned a quarter — a chain, not beads
+      const n = this.chainLinks.length, d = from.distanceTo(to), total = n * this.chainPitch;
+      const sag = Math.max(0.2, (total - d) * 0.32);
+      const pt = (t) => { const v = new THREE.Vector3().lerpVectors(from, to, t); v.y -= sag * Math.sin(t * Math.PI); return v; };
+      const nxt = new THREE.Vector3();
       for (let i = 0; i < n; i++) {
         const t = (i + 0.5) / n, l = this.chainLinks[i];
-        l.position.lerpVectors(from, to, t); l.position.y -= sag * Math.sin(t * Math.PI);
-        l.rotation.set(0, yaw, 0); if (i % 2) l.rotateX(Math.PI / 2); else l.rotateY(Math.PI / 2);
+        l.position.copy(pt(t)); nxt.copy(pt(Math.min(1, t + 0.5 / n)));
+        l.lookAt(nxt); if (i % 2) l.rotateX(Math.PI / 2); else l.rotateY(Math.PI / 2);
       }
     }
     // the Eternials: strollers walk their rounds, everyone breathes, shifts and looks around; heads turn to a visitor
+    const GD = C.guard;
     for (const n of this.npcs) {
       n.t += dt;
+      if (n.dead) continue;
       const d = Math.hypot(p.pos.x - n.x, p.pos.z - n.z);
       let targetYaw = n.yaw0, walking = false;
-      if (n.walk) {
+      if (n.hostile) {   // update 42: a guard at war — he comes for you, strikes when he reaches you, goes home when you are far
+        const dh = Math.hypot(p.pos.x - n.homeX, p.pos.z - n.homeZ);
+        let tx, tz;
+        if (dh < GD.chaseR) { tx = p.pos.x; tz = p.pos.z; n.calmT = 0; }
+        else { tx = n.homeX; tz = n.homeZ; n.calmT = (n.calmT || 0) + dt; }
+        const dx = tx - n.x, dz = tz - n.z, dd = Math.hypot(dx, dz);
+        const stopAt = tx === p.pos.x ? GD.reach - 0.6 : 0.4;
+        if (dd > stopAt) { const st = Math.min(dd - stopAt, GD.speed * dt); n.x += dx / dd * st; n.z += dz / dd * st; walking = true; n.speed = GD.speed; n.body.position.x = n.x; n.body.position.z = n.z; const fy = this.floorH(n.x, n.z, n.y); if (fy !== null) { n.y = fy; n.body.position.y = n.y; } }
+        n.yaw0 = Math.atan2(dx, dz);
+        n.atkT = (n.atkT || 0) - dt;
+        if (tx === p.pos.x && d < GD.reach && n.atkT <= 0) { n.atkT = GD.hitEvery; p.damage(GD.dmg, "guard", new THREE.Vector3(n.x, n.y, n.z)); }
+        if (n.calmT > 6 && dd < 1) { n.hostile = false; n.hits = 0; n.hp = GD.hp; n.yaw0 = n.yawHome !== undefined ? n.yawHome : n.yaw0; if (!this.npcs.some((o) => o.hostile)) g.ui.toast(STR.et.guardCalm); }
+      } else if (n.walk) {
         const W = n.walk;
         if (d < 3.5) { W.wait = Math.max(W.wait, 0.8); }
         else if (W.wait > 0) W.wait -= dt;
@@ -476,6 +574,7 @@ export class EterniusCity {
     }
     if (!this.keeperReady) { const k = this.npcs.find((n) => n.role === "keeper"); if (k && Math.hypot(p.pos.x - k.x, p.pos.z - k.z) > 25) this.keeperReady = true; }
     if (this.rex && !this.rex.dead) {
+      { const K = C.castle, Pr = this.polar(this.rex.pos.x, this.rex.pos.z); const ca = Math.max(K.a0 + 4, Math.min(K.a1 - 4, Pr.a)), cb = Math.max(-K.hw + 4, Math.min(K.hw - 4, Pr.b)); if (ca !== Pr.a || cb !== Pr.b) { const [wx, wz] = cityWorld(ca, cb); this.rex.pos.x = wx; this.rex.pos.z = wz; } }   // update 42: the courtyard's walls hold it
       const dr = Math.hypot(p.pos.x - this.rex.chain.x, p.pos.z - this.rex.chain.z);
       if (dr < this.rex.chain.r + 12 && dr > this.rex.chain.r + 3 && !this._warned) { this._warned = true; g.ui.toast(STR.et.rexWarn); }
       if (dr > this.rex.chain.r + 20) this._warned = false;
@@ -614,10 +713,15 @@ export class EterniusCity {
     const name = (id) => id === "fill_water" ? S.fillWater : (STR.items[id] ? STR.items[id].name : id);
     const icon = (id) => { const u = iconUrl(id === "fill_water" ? "water_bottle" : id); return u ? `<img src="${u}" alt="">` : `<span class="noicon"></span>`; };
     const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    // update 42: a stall with a `limit` sells that many of each thing a day (the water is never limited)
+    if (!this.bought || this.bought.day !== g.dayNum) this.bought = { day: g.dayNum };
+    const B = this.bought[st.id] || (this.bought[st.id] = {});
+    const limitOf = (id) => st.limit && id !== "fill_water" ? st.limit : 0;
+    const left = (id) => limitOf(id) ? Math.max(0, limitOf(id) - (B[id] || 0)) : Infinity;
     const rows = [];
     if (st.sells && st.sells.length) {
       rows.push(`<div class="shopHead">${S.buyHead}</div><div class="shopGrid">`);
-      for (const id of st.sells) rows.push(`<button class="shopCard" data-buy="${id}">${icon(id)}<span class="nm">${esc(name(id))}${C.bundles[id] ? ` ×${C.bundles[id]}` : ""}</span><span class="pr">${price(id)} ${S.coinsShort}</span></button>`);
+      for (const id of st.sells) rows.push(`<button class="shopCard${left(id) === 0 ? " out" : ""}" data-buy="${id}">${icon(id)}<span class="nm">${esc(name(id))}${C.bundles[id] ? ` ×${C.bundles[id]}` : ""}</span><span class="pr">${price(id)} ${S.coinsShort}</span>${limitOf(id) ? `<span class="cnt">${S.leftToday.replace("%n", left(id))}</span>` : ""}</button>`);
       rows.push(`</div>`);
     }
     const sellable = [];
@@ -640,12 +744,14 @@ export class EterniusCity {
     const refresh = () => { const sc = s.querySelector(".shopWrap").scrollTop; g.ui.closeScreen(); this.openStall(st); const w2 = document.querySelector("#screen .shopWrap"); if (w2) w2.scrollTop = sc; };
     s.querySelectorAll("[data-buy]").forEach((b) => b.addEventListener("click", () => {
       const id = b.dataset.buy, cost = price(id);
+      if (left(id) === 0) { g.ui.toast(S.soldOut); g.audio.sDeny(); return; }
       if (this.coins < cost) { g.ui.toast(S.noCoins); g.audio.sDeny(); return; }
       if (id === "fill_water") {
         if (!p.inv.has("water_bottle")) { g.ui.toast(S.noBottle); g.audio.sDeny(); return; }
         g.desert.bottle.water = CFG.desert.thirst.bottleTime;
       } else if (!p.inv.add(id, C.bundles[id] || 1)) { g.ui.toast(STR.inventoryFull); g.audio.sDeny(); return; }
       this.coins -= cost; g.ui.coins(this.coins); g.ui.renderHotbar(p.inv); g.audio.sPickup();
+      if (limitOf(id)) B[id] = (B[id] || 0) + 1;
       g.ui.toast(S.bought.replace("%i", name(id)));
       refresh();
     }));

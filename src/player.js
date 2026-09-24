@@ -370,6 +370,8 @@ export class Player {
       c.hit(K.dmg, game, weapon);
       return;
     }
+    // update 42: an Eternial in the way — a guard strikes back (twice, and it is a fight); nobody here is a tree
+    if (game.city && game.city.hitNpc(this, K, weapon, fx, fz)) return;
     // no creature hit — a knife blow against a tree yields a branch
     if (!weapon) return; // bare fists strip no bark
     // update 36: a cactus first — water for the bottle (or spines in your hand)
@@ -391,6 +393,7 @@ export class Player {
       if (d > 2.4) continue;
       const dot = (dx * fx + dz * fz) / (d || 1);
       if (dot < 0.4) continue;
+      if (t.tag) continue;   // update 42: lampposts, statues and people are colliders, not firewood
       this.chopT = game.time;
       game.audio.sHit();
       if (game.rng() < CFG.branchChance) {

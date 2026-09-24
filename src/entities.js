@@ -118,6 +118,8 @@ export class Creature {
   collideXZ(x, z, ignoreTrees) {
     const w = this.ctx.world;
     const r = Math.max(0.4, this.cfg.height * 0.18);
+    // update 42: the werewolves never set foot in Eternius — the mountain, the castle, the bridge
+    if (this.type === "werewolf" && !this.caveWolf && w.city && w.city.inZone(x, z) && !w.city.inZone(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
     // update 29: the raiding werewolf leaps every fence — only the world's edge holds it
     if (this.raid) {
       const sqr = CFG.world.square - 2;

@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=41";
+export const ASSET_V = "?v=42";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -538,7 +538,8 @@ export const CFG = {
   fireflies: { clusters: 9, per: 11, litClusters: 5 },
   respawnTime: 60,
 
-  modelScale: { et_bed: 2.0, et_lamppost: 4.6, et_torchbearer: 5.2, et_chainpost: 3.6, et_ceilinglamp: 1.8, et_throne: 4.2, et_gate: 10,   // update 40
+  modelScale: { et_door: 4.0, et_fence: 1.4, et_collar: 1.0, et_vaultdoor: 6.0, et_censer: 1.4,   // update 42 (Higgsfield text-to-3D)
+    et_bed: 2.0, et_lamppost: 4.6, et_torchbearer: 5.2, et_chainpost: 3.6, et_ceilinglamp: 1.8, et_throne: 4.2, et_gate: 10,   // update 40
     etdagger3d: 0.95, etsword3d: 1.6, etspear3d: 2.6,   // update 40: the generated weapons (upright scans; turned to lie along -x in buildEternialWeapons)
     trex: 5.4, trexgreen: 5.4, werewolf: 1.9, pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
     bedroll: 0.45, hutbed: 0.95, kitchen: 1.5, bill: 1.75, storagechest: 0.8, boulder: 1.9,
@@ -576,7 +577,8 @@ export const CFG = {
     et_male: 3.1, et_female: 2.8, et_guardspear: 3.1, et_guardsword: 3.1, et_king: 3.2, et_statue: 9,   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
-  modelYaw: { et_bed: Math.PI,   // update 40: the bed scan has its headboard at -z; the city puts the head at +z
+  modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
+    et_bed: Math.PI,   // update 40: the bed scan has its headboard at -z; the city puts the head at +z
     trex: 0, werewolf: 0, pig: 0, chicken: 0, tree: 0, appletree: 0, chest: 0, statue: 0,
     bedroll: 0, hutbed: 0, kitchen: 0, bill: 0, storagechest: 0, boulder: 0,
     door: 0, table: 0, chair: 0, lantern: 0, croc: 0, dinoegg: 0,
@@ -641,17 +643,17 @@ export const CFG = {
     entryA: 68, entryRampA: 56, entryTh: 60,
     // update 40: real staircases — 0.3 m risers, the floor is quantized to the treads
     stairRise: 0.3,
-    stairs: { up: { r0: 64, r1: 96, hw: 6 }, down: { r0: 68, r1: 96, hw: 6 } },
+    stairs: { up: { r0: 64, r1: 92, hw: 6 }, down: { r0: 68, r1: 92, hw: 6 } },   // update 42: the top tread meets the terrace edge (the floor used to run on over the last four treads)
     // the upper terrace runs on past the throne door to -150 deg; a grand stair drops to the lower gallery by -125 deg
     split: { stairTh0: -150, stairTh1: -125, landing: 3 },
     riverTh: { th0: -123, th1: -62 },                    // the river runs between two arched culverts
-    culvert: { depth: 7, w: 8, h: 4 },
+    culvert: { depth: 14, w: 8, h: 6.5, wallUp: 4 },   // update 42: a real end wall with a boat-high arch, no grate
     // enterable homes carved into the cavern wall (theta in degrees; level = the terrace they open onto)
     rooms: [{ th: 100, level: "terrace", kind: "female" }, { th: 162, level: "terrace", kind: "male" },
             { th: -108, level: "lower", kind: "male" }, { th: 38, level: "court", kind: "female" }],
     room: { depth: 9, hw: 4.5, h: 5, doorHw: 1.4 },
     facadeStep: 9, facadeH: 8,                            // house fronts every 9 m along the cavern wall
-    riverR0: 104, riverR1: 112, riverBridgeHw: 3,
+    riverR0: 104, riverR1: 112, riverBridgeHw: 3, riverBridgeArch: 3.2, riverBridgeExt: 5,   // update 42: an arched bridge a boat passes under
     levels: { court: 2, plaza: -4, dais: -2.2, terrace: 8, lower: -14, riverBed: -19, water: -15.2 },   // update 40: the water within reach of the bank
     tunnel: { a0: 118, a1: 206, hw: 5, h: 9 },
     castle: { a0: 205, a1: 250, hw: 60, wallH: 14 },
@@ -660,15 +662,16 @@ export const CFG = {
     bridge: { a0: 250, a1: 344, hw: 3, arch: 1.2 },      // update 40: the deck starts ON the castle sill
     flatA: 280, flatR: 140,                              // the dunes go flat this far around the castle
     statue: { a: 226, b: 0 },
-    chainRex: { a: 226, b: -38, reach: 18 },             // update 41: a longer chain (the post moved so the beast never reaches the walls)
+    chainRex: { a: 227, b: -34, reach: 25.5 },           // update 42: twice the ground to roam (the castle walls stop it)
     altar: { r: 10 },
     throne: { a0: -152, a1: -116, hw: 20, doorHw: 4 },
     vault: { b0: 118, b1: 142, hw: 18, doorHw: 2.2 },
     inn: { r: 104, th: 135 }, keeper: { r: 100, th: -112 },   // update 40: the keeper moved off the grand stair
     advisor: { a: -140, b: 7 },
     innPrice: 5, fishTime: 4, vaultTasks: 3,
+    guard: { hp: 140, dmg: 14, warnDmg: 10, speed: 3.4, hitEvery: 1.3, reach: 2.6, chaseR: 45, coins: [8, 15] },   // update 42: strike a guard once and he warns you, twice and it is a fight
     stalls: [
-      { id: "food", name: "Neferu's kitchen", kind: "female", r: 44, th: -50, color: 0x2f7a3a, wares: 0xb0402a, blurb: "foodBlurb", lines: "foodLines",
+      { id: "food", name: "Neferu's kitchen", kind: "female", r: 44, th: -50, limit: 5,   // update 42: five of each a day color: 0x2f7a3a, wares: 0xb0402a, blurb: "foodBlurb", lines: "foodLines",
         sells: ["apple", "egg", "blueberries", "cooked_pork", "cooked_chicken", "cooked_fish", "chocolate", "energy_drink", "fishing_rod", "fill_water"],
         buys: { apple: 1, egg: 1, blueberries: 1, lemon: 1, raw_pork: 1, raw_chicken: 1, raw_fish: 1, raw_beef: 1, raw_goat: 1, raw_wolf: 1, cooked_pork: 2, cooked_chicken: 2, cooked_fish: 2, cooked_eggs: 2, cooked_beef: 3, cooked_goat: 3, cooked_wolf: 3, cooked_trex: 5, chocolate: 2, bowl_yogurt: 3, bowl_yogurt_blueberries: 5 } },
       { id: "tools", name: "Khamet's tools", kind: "male", r: 44, th: -18, color: 0x8a5a2a, wares: 0x555a60, blurb: "toolsBlurb", lines: "toolsLines",
@@ -769,6 +772,10 @@ export const CFG = {
     night: { sky: 0x0b101c, fog: 0x0b101c, fogNear: 12, fogFar: 72,
              hemiSky: 0x2c3a56, hemiGnd: 0x0c1018, hemi: 0.52,
              sun: 0x7d90b8, sunI: 0.32 },
+    // update 42: the mountain's own night — warm and a little dimmer, never the blue moonlight of the desert
+    cave:  { sky: 0x0b101c, fog: 0x1a1410, fogNear: 30, fogFar: 150,
+             hemiSky: 0x7a6c58, hemiGnd: 0x33291f, hemi: 0.66,
+             sun: 0x9a8a70, sunI: 0.52 },
     accent: 0xb06a2c,
   },
 

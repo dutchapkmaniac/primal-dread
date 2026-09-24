@@ -62,7 +62,7 @@ const verbFor = (label) => {
   return STR.mobUse;
 };
 
-const GLB_IDS = ["trex", "trexgreen", "werewolf", "pig", "chicken", "tree", "appletree", "chest", "statue",
+const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_vaultdoor", "et_censer", "werewolf", "pig", "chicken", "tree", "appletree", "chest", "statue",
   "bedroll", "hutbed", "kitchen", "bill", "storagechest", "boulder",
   "door", "table", "chair", "lantern", "croc", "dinoegg", "metaldoor", "beaconlamp",
   "nest", "barrel", "closet", "woodchest", "trapdoor", "knife3d", "machete3d", "torch3d",
@@ -1182,9 +1182,11 @@ class Game {
     // the dungeon keeps its OWN hour: crystal dusk — darker than day,
     // never as black as the night outside
     const inDun = this.world.inDungeon(this.player.pos.x, this.player.pos.z);
-    this.world.updateEnv(nvg ? 0.08 : inDun ? 0.55 : k);
+    // update 42: inside the mountain the night is the cavern's own — warm, a little dimmer (CFG.env.cave)
+    const inMt = !!(this.city && this.city.inMountain(this.player.pos.x, this.player.pos.z, this.player.pos.y));
+    this.world.updateEnv(nvg ? 0.08 : inDun ? 0.55 : inMt ? k * 0.8 : k, inMt && !nvg);
     if (this.elisia) this.elisia.applyMist(dt);   // update 35: her mist sits on top of the day's fog
-    this.ui.nightVig(nvg ? 0 : (inDun ? 0.55 : k) * 0.7);
+    this.ui.nightVig(nvg ? 0 : (inDun ? 0.55 : inMt ? k * 0.4 : k) * 0.7);
     this.ui.nvgOverlay(nvg);
     // the soundscape follows the light — crickets fade in WITH the dusk
     this.audio.nightMix(k);
@@ -1887,7 +1889,7 @@ class Game {
         const sq = CFG.world.square - 5;
         x = Math.max(-sq, Math.min(sq, x));
         z = Math.max(-sq, Math.min(sq, z));
-      } while (this.world.inFarm(x, z) && ++tries < 16);   // update 29: never born inside the farm
+      } while ((this.world.inFarm(x, z) || (this.city && this.city.inZone(x, z))) && ++tries < 16);   // update 29: never born inside the farm; update 42: nor in Eternius
       this.wolves.push(new Creature("werewolf", this.assets.glb.werewolf, x, z, this.ctx));
     }
     for (const w of this.wolves) if (w.dead && w.respawnT > 1e8 && !w.raider) w.respawn();

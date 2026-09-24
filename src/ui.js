@@ -539,7 +539,20 @@ export class UI {
     const fwd = ["ArrowDown", "ArrowRight", "KeyS", "KeyD"].includes(e.code);
     const back = ["ArrowUp", "ArrowLeft", "KeyW", "KeyA"].includes(e.code);
     if (fwd || back) {
-      this.navIdx = (this.navIdx + (fwd ? 1 : -1) + this.navEls.length) % this.navEls.length;
+      // update 42: inside a shop grid, up and down move by a whole row
+      const vert = ["ArrowDown", "KeyS"].includes(e.code) ? 1 : ["ArrowUp", "KeyW"].includes(e.code) ? -1 : 0;
+      let next = -1;
+      if (vert) {
+        const el = this.navEls[this.navIdx], grid = el && el.closest ? el.closest(".shopGrid") : null;
+        if (grid) {
+          const cards = [...grid.children].filter((c) => this.navEls.includes(c)), i = cards.indexOf(el);
+          const cols = cards.filter((c) => c.offsetTop === cards[0].offsetTop).length || 1, j = i + vert * cols;
+          if (j >= 0 && j < cards.length) next = this.navEls.indexOf(cards[j]);
+          else if (vert > 0) next = (this.navEls.indexOf(cards[cards.length - 1]) + 1) % this.navEls.length;
+          else next = (this.navEls.indexOf(cards[0]) - 1 + this.navEls.length) % this.navEls.length;
+        }
+      }
+      this.navIdx = next >= 0 ? next : (this.navIdx + (fwd ? 1 : -1) + this.navEls.length) % this.navEls.length;
       this.paintNav();
       this.navEls[this.navIdx].scrollIntoView({ block: "nearest" });
       e.preventDefault();

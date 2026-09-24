@@ -47,10 +47,10 @@ export class World {
     this.boxes.push({ minX, maxX, minY, maxY, minZ, maxZ });
   }
   gridKey(x, z) { return `${Math.floor(x / 8)},${Math.floor(z / 8)}`; }
-  addTree(x, z, r) {
+  addTree(x, z, r, tag = null) {   // update 42: `tag` marks a collider that is NOT a tree (nobody chops an Eternial)
     const k = this.gridKey(x, z);
     if (!this.treeGrid.has(k)) this.treeGrid.set(k, []);
-    this.treeGrid.get(k).push({ x, z, r });
+    this.treeGrid.get(k).push({ x, z, r, tag });
   }
   treesNear(x, z) {
     const out = [];
@@ -3437,9 +3437,9 @@ export class World {
   }
 
   // k: 0 = full day, 1 = full night
-  updateEnv(k) {
+  updateEnv(k, warm = false) {
     this.nightK = k;
-    const d = CFG.env.day, n = CFG.env.night;
+    const d = CFG.env.day, n = warm && CFG.env.cave ? CFG.env.cave : CFG.env.night;   // update 42: the cavern's warm night
     const lerpC = (a, b) => new THREE.Color(a).lerp(new THREE.Color(b), k);
     const lerp = (a, b) => a + (b - a) * k;
     this.scene.background = lerpC(d.sky, n.sky);
