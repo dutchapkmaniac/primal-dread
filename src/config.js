@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=45";
+export const ASSET_V = "?v=46";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -647,7 +647,7 @@ export const CFG = {
     // the upper terrace runs on past the throne door to -150 deg; a grand stair drops to the lower gallery by -125 deg
     split: { stairTh0: -150, stairTh1: -125, landing: 3 },
     riverTh: { th0: -133, th1: -60.6 },   // update 44: the river runs right up to the radial wall, the culvert's face is flush with it                    // update 43: the river now runs OUT of the grand stair (an open channel through its lowest steps, then a lit arch) to one culvert
-    culvert: { depth: 60, w: 8, h: 6.2, wallUp: 5.2, lit: 18 },   // update 45: 60 m, curving with the river — no end in sight   // update 44: 30 m of sandstone tunnel, lamps for the first 18 m, then the dark   // update 43: the arch springs from the water, the wall stands 5 m above the gallery; lights inside
+    culvert: { depth: 90, w: 8, h: 6.2, wallUp: 5.2, lit: 18 },   // update 46: 90 m round the bend — nothing to see at the end   // update 45: 60 m, curving with the river — no end in sight   // update 44: 30 m of sandstone tunnel, lamps for the first 18 m, then the dark   // update 43: the arch springs from the water, the wall stands 5 m above the gallery; lights inside
     // enterable homes carved into the cavern wall (theta in degrees; level = the terrace they open onto)
     rooms: [{ th: 100, level: "terrace", kind: "female" }, { th: 162, level: "terrace", kind: "male" },
             { th: -108, level: "lower", kind: "male" }, { th: 38, level: "court", kind: "female" }],

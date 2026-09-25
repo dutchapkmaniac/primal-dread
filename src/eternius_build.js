@@ -433,7 +433,7 @@ function buildCastle(city, grp, box, sand, rock, gold, goldPlain, goldBright, ge
       city.emit(grp, 0, y0 + 10.8, pa + 1.5, 0xffc060, 1.6, 12, {}); }
   }
   archFrame(0, y0, K.a0 - 2.6, C.tunnel.hw * 2 + 4, 18, 1.4, 1.2, gold);
-  for (const s of [-1, 1]) city.addTorchbearer(K.a0 + 3.5, s * (C.tunnel.hw + 6), y0, 90 * (s > 0 ? -1 : 1) + 0);
+  for (const s of [-1, 1]) city.addTorchbearer(K.a0 + 7.0, s * (C.tunnel.hw + 6), y0, 90 * (s > 0 ? -1 : 1) + 0);   // update 46: in front of the towers, not inside them
   // flags on every wall, banners on the towers, the gold way's lampposts, the colonnades, palms and benches
   for (let i = 0; i < 6; i++) for (const s of [-1, 1]) city.addFlag(s * (K.hw - 1.2), y0 + H + 0.7, K.a0 + 5 + i * (len - 10) / 5, s > 0 ? -90 : 90);
   for (const az of [K.a1, K.a0]) for (const s of [-1, 1]) for (const bb of [22, 38, 52]) city.addFlag(s * bb, y0 + H + 0.7, az + (az === K.a1 ? -1.2 : 1.2), az === K.a1 ? 180 : 0);
@@ -447,7 +447,7 @@ function buildCastle(city, grp, box, sand, rock, gold, goldPlain, goldBright, ge
     // update 43: stone benches with gold and gems, sized for the Eternials (Higgsfield: et_bench)
     const benchA = A.glb.et_bench || A.glb.bench;
     // update 45: clear of the palms and pillars (6 m in from the palm line), turned to face the statue in the middle
-    if (benchA) for (const az of [K.a0 + 10, ac, K.a1 - 10]) { const bch = city.warmProp(benchA.model.clone()); const [x, z] = cityWorld(az, s * (K.hw - 14)); bch.position.set(x, y0, z); bch.rotation.y = C.grpYaw + (s > 0 ? 0 : Math.PI); city.g.scene.add(bch); obst(az, s * (K.hw - 14), 1.4); }   // the seat toward the statue, the back to the colonnade
+    if (benchA) for (const az of [K.a0 + 10, ac, K.a1 - 10]) { const bch = city.warmProp(benchA.model.clone()); const [x, z] = cityWorld(az, s * (K.hw - 14)); bch.position.set(x, y0, z); bch.rotation.y = C.grpYaw + (s > 0 ? Math.PI : 0); city.g.scene.add(bch); obst(az, s * (K.hw - 14), 1.4); }   // the seat toward the statue, the back to the colonnade
   }
 
   // ---- the HALLWAY through the rock: statues, ceiling lamps, flags, gold bands, a green carpet ----
@@ -521,9 +521,10 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
 
   // ---- floors ----
   {   // update 43: the plaza floor with the down stair's trench cut out of it (the slab used to run over the treads)
-    const SD = C.stairs.down, shp = new THREE.Shape(); shp.absarc(0, 0, TR + 1, 0, Math.PI * 2, false);
-    const hole = new THREE.Path(); const x0 = -(TR + 0.5), x1 = -(SD.r0 + 0.05), yh = SD.hw + 0.25;   // update 45: the floor meets the first tread (a 30 cm gap showed the void)   // shape x = b, shape y = -a; the hole must stay INSIDE the outline (earcut drops a crossing hole)
-    hole.moveTo(x0, -yh); hole.lineTo(x1, -yh); hole.lineTo(x1, yh); hole.lineTo(x0, yh); hole.closePath(); shp.holes.push(hole);
+    // update 46: the outline itself is notched for the trench (a hole had to stay inside the disc, which left a half-metre
+    // rim of floor hanging across the trench's top — the 'beam' seen from below). shape x = b, shape y = -a
+    const SD = C.stairs.down, shp = new THREE.Shape(), RO = TR + 1, x1 = -(SD.r0 + 0.05), yh = SD.hw + 0.25, xr = -Math.sqrt(RO * RO - yh * yh);
+    shp.moveTo(x1, -yh); shp.lineTo(xr, -yh); shp.absarc(0, 0, RO, Math.atan2(-yh, xr), Math.atan2(yh, xr), false); shp.lineTo(x1, yh); shp.closePath();
     const geo = new THREE.ShapeGeometry(shp, 48); { const uv = geo.attributes.uv, pp = geo.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, pp.getX(i) / 7, pp.getY(i) / 7); }
     const fl = new THREE.Mesh(geo, sand(1, 1)); fl.material.side = THREE.DoubleSide; fl.rotation.x = -Math.PI / 2; fl.position.y = L.plaza; fl.receiveShadow = true; grp.add(fl);
     // update 44: the trench's side walls — along -b at a = ±(hw + 0.4) (they were laid out with a and b swapped, and stood
@@ -556,12 +557,12 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
   }
   // the upper terrace (+8) runs from ET round past the throne door to S.stairTh0; the lower gallery (-14) from S.stairTh1 to -ET
   sector(TR, R, ET, 180, L.terrace, sand(6, 6), 48); sector(TR, R, -180, S.stairTh0, L.terrace, sand(6, 6), 24);
-  for (const mm of [cyl(TR, ET, 180, L.plaza, L.terrace, sand(48, 3)), cyl(TR, -180, S.stairTh0, L.plaza, L.terrace, sand(48, 3))]) mm.material.side = THREE.DoubleSide;   // update 45: seen from the plaza too (it was back-face culled — the 'invisible wall')
+  for (const mm of [cyl(TR, ET, 180, L.plaza, L.terrace, city.mats.sandLit((180 - ET) * 0.4, 3)), cyl(TR, -180, S.stairTh0, L.plaza, L.terrace, city.mats.sandLit((S.stairTh0 + 180) * 0.4, 3))]) mm.material.side = THREE.DoubleSide;   // update 45/46: seen from the plaza too, lit, ONE texture scale (the short piece had the long piece's repeat squeezed into it)
   sector(TR, C.riverR0, S.stairTh1, -ET, L.lower, sand(6, 6), 48);
   sector(C.riverR1, R, S.stairTh1, -ET, L.lower, sand(6, 6), 48);
   sector(C.riverR0 - 0.2, C.riverR1 + 0.2, RT.th0, RT.th1, L.riverBed, rock(6, 2), 48);
   // update 44: no floor plates over the river's ends any more (one lay across the channel's mouth like a brown platform)
-  { const g = (SD_hw) => (SD_hw / TR) / D2R; const dth = g(C.stairs.down.hw + 0.4); for (const mm of [cyl(TR, S.stairTh1, -90 - dth, L.lower - 1, L.plaza, city.mats.sandLit(48, 3)), cyl(TR, -90 + dth, -ET, L.lower - 1, L.plaza, city.mats.sandLit(48, 3))]) mm.material.side = THREE.DoubleSide; }   // update 45: both faces   // update 43: a gap for the stair's trench, blocks not smears
+  { const g = (SD_hw) => (SD_hw / TR) / D2R; const dth = g(C.stairs.down.hw + 0.4); for (const mm of [cyl(TR, S.stairTh1, -90 - dth, L.lower - 1, L.plaza, city.mats.sandLit((-90 - dth - S.stairTh1) * 0.4, 2.75)), cyl(TR, -90 + dth, -ET, L.lower - 1, L.plaza, city.mats.sandLit((-ET + 90 - dth) * 0.4, 2.75))]) mm.material.side = THREE.DoubleSide; }   // update 45/46: both faces, one texture scale   // update 43: a gap for the stair's trench, blocks not smears
   cyl(C.riverR0, RT.th0, RT.th1, L.riverBed, L.lower, rock(6, 1), true); cyl(C.riverR1, RT.th0, RT.th1, L.riverBed, L.lower, rock(6, 1));
   // the river's water, its culvert arches (the water flows in from the dark and out again), golden grates
   {
@@ -582,7 +583,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     // 60 m of pointed-arch tunnel that CURVES with the river's arc, so no end is ever in view (the bend hides it), gold
     // lamps left and right for the first 18 m and darkness beyond. The one under the grand stair rises gently (1 m over
     // 30 m, a boat could pass) so the water comes down to you. `sgn` = which way along theta the tunnel runs
-    city.culvert = (thd, sgn, yTop, uphill = false) => {
+    city.culvert = (thd, sgn, yTop, grade = 0) => {   // grade: +1 the water comes DOWN to you, -1 it runs away downhill
       const th = thd * D2R, rm = (C.riverR0 + C.riverR1) / 2, CV = C.culvert;
       const ca = rm * Math.cos(th), cb = rm * Math.sin(th), ry = th - Math.PI / 2;   // the wall's width runs radially
       const wd = C.riverR1 - C.riverR0 + 2.4, yB = L.water - 0.5, W = CV.w - 1.2, Hh = CV.h;
@@ -590,9 +591,9 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
       archWall(cb, yB, ca, wd, Math.max(Hh + 0.4, yTop - yB), 0.8, W, Hh, sand(3, 2), ry);
       archFrame(cb, yB, ca, W, Hh, 0.5, 0.9, gold, ry);
       box(wd + 0.4, 0.5, 1.2, cb, yTop + 0.25, ca, gold, ry);
-      const segL = 5, nSeg = Math.round(CV.depth / segL), slope = uphill ? Math.atan2(1.0, 30) : 0, dth = segL / rm;
+      const segL = 5, nSeg = Math.round(CV.depth / segL), slope = grade * Math.atan2(1.0, 30), dth = segL / rm;
       const tunM = sand(2, 3); tunM.side = THREE.BackSide;
-      const tw = waterMat(); tw.map && tw.map.repeat.set(2, 3); tw.color = new THREE.Color(0x9ad2f0); tw.emissive = new THREE.Color(0x0d3d52); tw.emissiveIntensity = 1.0; tw.roughness = 0.35;
+      const tw = waterMat(); tw.map && tw.map.repeat.set(2, 3);   // update 46: the river's own water, the same blue inside and out, day and night
       const segGeo = (() => {   // the extruded arch WITHOUT its two flat end caps (they stood across the tube every 5 m)
         const ex = new THREE.ExtrudeGeometry(city.prims.archShape(W, Hh + 0.2, 0, true), { depth: segL + 0.3, bevelEnabled: false }); ex.translate(0, -0.1, -(segL + 0.3) / 2);
         const gs = ex.groups.find((g) => g.materialIndex === 1) || { start: 0, count: ex.attributes.position.count };
@@ -609,14 +610,15 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
         for (const sd of [-1, 1]) { const bm = new THREE.Mesh(bandGeo, goldPlain); bm.rotation.order = "YXZ"; bm.rotation.y = S2.ry; bm.rotation.x = -slope; bm.position.set(S2.b + Math.sin(S2.t) * sd * (W / 2 - 0.12), S2.y + 3.0, S2.a + Math.cos(S2.t) * sd * (W / 2 - 0.12)); grp.add(bm); }
         const wm2 = new THREE.Mesh(waterGeo, tw); wm2.rotation.order = "YXZ"; wm2.rotation.y = S2.ry; wm2.rotation.x = -Math.PI / 2 - slope; wm2.position.set(S2.b, S2.y + 0.5, S2.a); grp.add(wm2); city.tunnelWater.push(wm2); city.keepExtra.push(wm2);
       }
-      { const E2 = segAt(nSeg - 0.5); const cap = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.4, Hh + 1), new THREE.MeshBasicMaterial({ color: 0x000000 })); cap.rotation.y = E2.ry + Math.PI; cap.position.set(E2.b, E2.y + Hh / 2, E2.a); grp.add(cap); }
+      { const E2 = segAt(nSeg - 0.5); const cm = sand(2, 2); cm.emissiveIntensity = 0.05; const cap = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.4, Hh + 1), cm); cap.rotation.y = E2.ry + Math.PI; cap.position.set(E2.b, E2.y + Hh / 2, E2.a); grp.add(cap); }   // update 46: unlit stone, not a black plate
       const lit = CV.lit || CV.depth;
-      for (let u = 3; u <= lit; u += 4.5) { const t = th + sgn * u / rm, yy = yB + Math.tan(slope) * u; for (const sd of [-1, 1]) { const rr = rm + sd * (W / 2 - 0.45), lb = rr * Math.sin(t), la = rr * Math.cos(t); box(0.35, 0.22, 0.5, lb, yy + 3.55, la, goldPlain, t - Math.PI / 2); const gl = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.5, 0.28), glowM); gl.position.set(lb, yy + 3.95, la); grp.add(gl); if (sd > 0) city.emit(grp, rm * Math.sin(t), yy + 3.6, rm * Math.cos(t), 0xffc35a, 1.7, 13, {}); } }
+      // update 46: real little lamps — a gold bracket, a small gold cage with a green gem in it, on both walls
+      for (let u = 3; u <= lit; u += 4.5) { const t = th + sgn * u / rm, yy = yB + Math.tan(slope) * u; for (const sd of [-1, 1]) { const rr = rm + sd * (W / 2 - 0.4), lb = rr * Math.sin(t), la = rr * Math.cos(t); box(0.32, 0.12, 0.42, lb, yy + 3.5, la, goldPlain, t - Math.PI / 2); const cage = new THREE.Mesh(new THREE.OctahedronGeometry(0.24), goldPlain); cage.position.set(lb - Math.sin(t) * sd * 0.2, yy + 3.85, la - Math.cos(t) * sd * 0.2); grp.add(cage); const gm = new THREE.Mesh(new THREE.OctahedronGeometry(0.13), gem); gm.position.copy(cage.position); grp.add(gm); if (sd > 0) city.emit(grp, rm * Math.sin(t), yy + 3.6, rm * Math.cos(t), 0xd8f0b0, 1.6, 13, {}); } }
     };
     // update 45: the banks — a rock face in sandstone colour from each walkway's edge down to the bed, both sides (the
     // channel through the grand stair has its own walls)
     { const bankM = w.mat("t_cavern", 24, 1, 0xd2ad7c); bankM.emissive = new THREE.Color(0x4a3a24); bankM.emissiveIntensity = 0.5; cyl(C.riverR0, S.stairTh1 + 0.3, RT.th1 + 0.3, L.riverBed, L.lower + 0.02, bankM, false, 64); cyl(C.riverR1, S.stairTh1 + 0.3, RT.th1 + 0.3, L.riverBed, L.lower + 0.02, bankM, true, 64); }
-    city.culvert(RT.th1, 1, L.lower + C.culvert.wallUp);
+    city.culvert(RT.th1, 1, L.lower + C.culvert.wallUp, -1);   // update 46: the exit runs gently downhill away from you
     // update 43: the bridge over the river: an arched stone deck a boat passes under, gold balustrades sized for Eternials —
     // shorter now, and beside the vault's axis so it no longer ends on the vault door
     {
@@ -699,7 +701,20 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     const th0 = S.stairTh0, th1 = S.stairTh1, n = Math.round((L.terrace - L.lower) / rise), rs = (L.terrace - L.lower) / n;
     const total = th1 - th0, land = S.landing, stepArc = (total - land) / n, half = Math.floor(n / 2);
     city.grandStair = { th0, th1, n, rs, stepArc, land, half };
-    { const wm = sand(9, 2); wm.emissiveIntensity = 0.5; cyl(TR, th0 - 0.3, th1 + 0.3, L.lower - 1, L.plaza + 0.05, wm, false, 24); }   // update 45: ONE textured inner wall from the gallery to the plaza's rim (the blocks must read — less self-light than the far walls)
+    // update 46: the inner wall is seen from the plaza as well (both faces, lit) — and the part above the plaza is ONE
+    // stepped strip with the very same texture scale, not a face per step (each restarted the pattern and looked squeezed)
+    { const wm = city.mats.sandLit((th1 - th0 + 0.6) * 0.4, 2.75); wm.side = THREE.DoubleSide; cyl(TR, th0 - 0.3, th1 + 0.3, L.lower - 1, L.plaza + 0.05, wm, false, 24); }
+    {
+      const pos = [], uv = [], idx = []; let vi = 0;
+      for (let i = 1; i <= n; i++) {
+        const tA = th0 + stepArc * (i - 1) + (i > half ? land : 0), tB = tA + stepArc, y = L.terrace - rs * i;
+        if (y <= L.plaza + 0.05) continue;
+        for (const [t, yy] of [[tA, L.plaza], [tB, L.plaza], [tB, y], [tA, y]]) { pos.push(TR * Math.sin(t * D2R), yy, TR * Math.cos(t * D2R)); uv.push((t - (th0 - 0.3)) * 0.4, (yy - (L.lower - 1)) * 0.25); }
+        idx.push(vi, vi + 1, vi + 2, vi, vi + 2, vi + 3); vi += 4;
+      }
+      const g2 = new THREE.BufferGeometry(); g2.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g2.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g2.setIndex(idx); g2.computeVertexNormals();
+      const wm = city.mats.sandLit(1, 1); wm.side = THREE.DoubleSide; const mm = new THREE.Mesh(g2, wm); grp.add(mm);
+    }
     for (let i = 1; i <= n; i++) {
       const tA = th0 + stepArc * (i - 1) + (i > half ? land : 0), tB = tA + stepArc;
       const y = L.terrace - rs * i;
@@ -707,7 +722,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
       if (chan) { sector(TR, C.riverR0 - 0.2, tA, tB, y, i % 6 === 0 ? gold : stone, 2); sector(C.riverR1 + 0.2, R, tA, tB, y, i % 6 === 0 ? gold : stone, 2); }
       else sector(TR, R, tA, tB, y, i % 6 === 0 ? gold : stone, 2);
       cyl(TR, tA, tB, y, y + rs, stone, false, 2);   // (a riser is the terrace wall's own face; the visible one is the outer step face)
-      if (y > L.plaza + 0.05) { const wm = sand(0.12, Math.max(0.25, (y - L.plaza) / 4)); wm.emissiveIntensity = 0.5; cyl(TR, tA, tB, L.plaza, y, wm, false, 2); }   // update 45: only the part above the plaza, per step (the wall below is one textured piece)
+      // (update 46: the face above the plaza is the continuous strip built before this loop)   // update 45: only the part above the plaza, per step (the wall below is one textured piece)
       if (chan) for (const rr of [C.riverR0, C.riverR1]) cyl(rr, tA - 0.02, tB + 0.02, L.riverBed, y + 0.02, rock(6, 1), rr === C.riverR0, 2);   // update 44: the channel's walls rise with the steps
       // the riser: a thin wall across the band at tA
       const ra = (TR + R) / 2, ca = ra * Math.cos(tA * D2R), cb = ra * Math.sin(tA * D2R);
@@ -719,7 +734,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     {
       const tc0 = th1 - C.riverChanDeg, RT2 = C.riverTh;
       sector(C.riverR0 - 0.2, C.riverR1 + 0.2, tc0 - 0.3, th1 + 0.3, L.riverBed, rock(6, 2), 6);
-      city.culvert(tc0, -1, city.grandStairY(tc0 - 0.2) + 0.4, true);   // update 45: the gentle uphill tunnel
+      city.culvert(tc0, -1, city.grandStairY(tc0 - 0.2) + 0.4, 1);   // update 45: the gentle uphill tunnel
       city.stairFence = (rr, ta, tb, yOf) => city.arcFence(rr, ta, tb, yOf);   // update 44: the Higgsfield balustrade, sheared to the steps
       city.stairFence(C.riverR0 - 0.45, tc0 + 0.15, th1, (t) => city.grandStairY(t), 1);
       city.stairFence(C.riverR1 + 0.45, tc0 + 0.15, th1, (t) => city.grandStairY(t), -1);
@@ -765,6 +780,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
       domeGeo.computeVertexNormals();
     }
     const dome = new THREE.Mesh(domeGeo, ragged(rock(24, 4))); grp.add(dome);
+    cyl(R - 0.3, -180, 180, C.wallTop - 0.9, C.wallTop + 1.1, rock(24, 1), true, 96);   // update 46: the seam between the wall's rings and the dome's rim let sky through — a band of rock over it
     // the beam of light: a soft column plus three faint rays; the pool of light on the dais
     const beamM = new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.09, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(C.shaftR * 0.95, C.shaftR * 1.35, C.cavernH - L.plaza + 4, 40, 1, true), beamM); beam.position.y = (C.cavernH + L.plaza) / 2 + 2; grp.add(beam); city.beam = beam;
@@ -1036,7 +1052,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
       }
     };
     { const dth = ((C.stairs.down.hw + 0.4) / TR) / D2R; deco(S.stairTh1 + 1, -90 - dth - 1, L.lower, L.plaza, 10, true); deco(-90 + dth + 1, -ET - 1, L.lower, L.plaza, 10, true); }
-    for (let t = S.stairTh1 + 8; t < -ET - 6; t += 24) { if (Math.abs(t + 90) < 8) continue; city.addTorchbearer((TR + 4.2) * Math.cos(t * D2R), (TR + 4.2) * Math.sin(t * D2R), L.lower, t); }   // update 44: clear of the pennants
+    for (let t0 = S.stairTh1 + 8; t0 < -ET - 6; t0 += 24) { if (Math.abs(t0 + 90) < 8) continue; const t = t0 === S.stairTh1 + 8 ? t0 + 4 : t0; city.addTorchbearer((TR + 4.2) * Math.cos(t * D2R), (TR + 4.2) * Math.sin(t * D2R), L.lower, t); }   // update 44/46: clear of the pennants; the first one 4 m off its lamp post
     { const dth = ((C.stairs.up.hw + 0.4) / TR) / D2R; deco(ET + 1, 90 - dth - 1, L.plaza, L.terrace, 10, false); deco(90 + dth + 1, 180, L.plaza, L.terrace, 10, false); deco(-180, S.stairTh0 - 1, L.plaza, L.terrace, 10, false); }
   }
   // update 42: the golden balustrade (Higgsfield: et_fence) along both terrace edges and the grand stair's inner edge —
@@ -1062,7 +1078,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
   // in pointed niches on corbels, five hanging chain lanterns of green glass that sway, more pennants and torch brackets
   {
     const tA = S.stairTh1 + 4, tB = -ET - 4, rW = R - 0.15;
-    for (const yy of [0.2, 13.4, 20.2]) cyl(rW, tA, tB, yy, yy + 0.6, gold, true, 40);
+    // (update 46: the three gold bands are gone — only the reliefs, colossi, lanterns, flags and lamps)
     const reliefM = A.tex.t_relief ? (() => { const m = w.mat("t_relief", 1, 1, 0xffffff); m.emissiveMap = m.map; m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 0.32; return m; })() : sand(2, 3);
     for (const t of [-72, -92, -112]) {
       const th = t * D2R, ca = Math.cos(th), cb = Math.sin(th), pw = 9, ph = 12, yc = 7.2;
@@ -1163,7 +1179,7 @@ function buildHomes(city, grp, box, cyl, sand, rock, gold, goldPlain, goldBright
     const ry = th * D2R;   // local +z (a) points outward along the radial
     const cu = RM.depth / 2, [ca, cb] = P(cu, 0);
     box(RM.hw * 2 + 1, 0.3, RM.depth + 1.5, cb, y - 0.15, ca, sand(3, 3), ry);
-    box(RM.hw * 2 + 1, 0.4, RM.depth + 1.5, cb, y + RM.h + 0.2, ca, rock(3, 3), ry);
+    box(RM.hw * 2 + 1, 0.4, RM.depth + 1.5, cb, y + RM.h + 0.2, ca, sand(3, 3), ry);   // update 46: sandstone like the rest of the front
     for (const s of [-1, 1]) { const [sa, sb] = P(cu, s * (RM.hw + 0.3)); box(0.6, RM.h, RM.depth + 1, sb, y + RM.h / 2, sa, sand(2, 2), ry); const [q0a, q0b] = P(-0.5, s * RM.hw), [q1a, q1b] = P(RM.depth + 0.5, s * RM.hw); wallSeg(q0a, q0b, q1a, q1b, 0.4); }
     { const [ba, bb] = P(RM.depth + 0.3, 0); box(RM.hw * 2 + 1, RM.h, 0.6, bb, y + RM.h / 2, ba, sand(2, 2), ry); const [q0a, q0b] = P(RM.depth, -RM.hw), [q1a, q1b] = P(RM.depth, RM.hw); wallSeg(q0a, q0b, q1a, q1b, 0.4); }
     // the front wall pieces either side of the door (the rock ring has its gap here)
