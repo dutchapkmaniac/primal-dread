@@ -1,0 +1,175 @@
+import * as THREE from "three";
+import { CFG } from "./config.js";
+import { STR } from "../strings.js";
+import { E, D2R, cityWorld } from "./eternius_frame.js";
+
+// ============================================================================
+// update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat
+// ride down the spiral and back up. Called from eternius.js (floorH / collide / waterSource / interact / update)
+// and main.js (the ride owns the player while it runs). The geometry is in eternius_lower.js.
+// ============================================================================
+const LW = () => E().lower;
+const inW = (th) => th > LW().west.th0 && th < LW().west.th1;
+const inEa = (th) => th > LW().east.th0 && th < LW().east.th1;
+
+// the room (hospital, house, store, a cell) that holds (a, b), within margin m
+export function lowerRoom(city, a, b, m = 1) {
+  for (const rm of city.lowerRooms || []) { const u = rm.u(a, b), v = rm.v(a, b); if (u > -m && u < rm.depth + m && Math.abs(v) < rm.hw + m) return rm; }
+  return null;
+}
+function mineDist(city, a, b) {
+  const M = city.lowerMine; if (!M) return 1e9;
+  let best = 1e9; const q = new THREE.Vector3(b, 0, a);
+  for (let i = 0; i <= 40; i++) { const p = M.path.getPointAt(i / 40); const d = Math.hypot(p.x - q.x, p.z - q.z); if (d < best) best = d; }
+  return best;
+}
+// inside the carved space of floor -1 (the bowl, the two bands, the rooms, the mine)?
+export function lowerInside(city, a, b, r, th) {
+  const L = LW(), C = E();
+  if (r < C.terraceR + 0.5) return true;
+  if (r < C.wallR + 0.5 && (inW(th) || inEa(th))) return true;
+  if (lowerRoom(city, a, b, 1)) return true;
+  if (mineDist(city, a, b) < L.mine.hw + 0.5) return true;
+  return false;
+}
+export function lowerH(city, a, b, r, th) {
+  const C = E(), L = LW(), Y = L.y, rise = C.stairRise, TR = C.terraceR;
+  const rm = lowerRoom(city, a, b, 1); if (rm) return rm.y;
+  if (r > C.wallR + 0.5) return mineDist(city, a, b) < L.mine.hw + 0.5 ? Y.low : null;
+  const SU = C.stairs.up, SD = C.stairs.down;
+  if (Math.abs(a) < SU.hw + 0.3 && b > SU.r0 && b <= SU.r1 + 0.3) { const n = Math.round((Y.walk - Y.park) / rise), run = (SU.r1 - SU.r0) / n; return Y.park + ((Y.walk - Y.park) / n) * Math.min(n, Math.ceil((b - SU.r0) / run)); }
+  if (Math.abs(a) < SD.hw + 0.3 && -b > SD.r0 && -b <= SD.r1 + 0.3) { const n = Math.round((Y.park - Y.low) / rise), run = (SD.r1 - SD.r0) / n; return Y.park - ((Y.park - Y.low) / n) * Math.min(n, Math.ceil((-b - SD.r0) / run)); }
+  if (r >= TR) {
+    if (inW(th)) {
+      if (city.lowerJetty && Math.abs(th - city.lowerJetty.th) < 1.3 && r < L.riverR0 + 3.6) return Y.water + 0.8;   // the jetty's pier
+      const B = city.lowerBridge; const bt = B ? Math.abs(-a * Math.sin(B.th * D2R) + b * Math.cos(B.th * D2R)) : 1e9;
+      if (r > L.riverR0 - 1.5 && r < L.riverR1 + 1.5 && bt <= (B ? B.hw : 0) + 0.3) return Y.walk + 0.45;
+      if (r > L.riverR0 && r < L.riverR1) return Y.riverBed;
+      return Y.walk;
+    }
+    if (inEa(th)) return Y.low;
+    if (mineDist(city, a, b) < L.mine.hw + 0.5) return Y.low;
+    return null;
+  }
+  const FR = L.fountainR;
+  if (r < FR - 0.6) return Y.park + 0.7;
+  if (r < FR) return Y.park + 0.9;
+  if (r < FR + 8) return Y.park + 0.02;
+  return Y.park;
+}
+// the pushes of floor -1 (in place of the ground floor's): the bowl's rock at TR in the closed sectors, the outer wall,
+// the rails along the bands' edges, the river's banks, the mouths. Returns [a, b] or null when nothing moved
+export function lowerCollide(city, a, b, rad, y) {
+  const C = E(), L = LW(), Y = L.y, TR = C.terraceR, R = C.wallR;
+  let moved = false;
+  let r = Math.hypot(a, b), th = Math.atan2(b, a) / D2R;
+  const room = lowerRoom(city, a, b, 1.2), nearDoor = (city.lowerRooms || []).some((rm) => { const u = rm.u(a, b), v = rm.v(a, b); return u > -3 && u < 2 && Math.abs(v) < (rm.kind === "store" ? 2.2 : rm.kind === "cell" ? 1.15 : C.room.doorHw) + rad; });
+  const inMine = mineDist(city, a, b) < L.mine.hw + rad + 1;
+  const stairGap = (b > 0 && Math.abs(a) < C.stairs.up.hw + 0.6) || (b < 0 && Math.abs(a) < C.stairs.down.hw + 0.6);
+  if (!room && !nearDoor) {
+    if (!(inW(th) || inEa(th))) { if (r > TR - rad && r < TR + 30) { const k = (TR - rad) / r; a *= k; b *= k; moved = true; } }   // the closed sectors: rock at the park's edge
+    else if (!inMine && r > R - rad && r < R + 8) { const k = (R - rad) / r; a *= k; b *= k; moved = true; }   // the outer wall
+  }
+  r = Math.hypot(a, b); th = Math.atan2(b, a) / D2R;
+  if ((inW(th) || inEa(th)) && Math.abs(r - TR) < rad + 0.3 && !stairGap && !room && !nearDoor) {   // the rails at the bands' edges
+    const side = r < TR ? TR - rad - 0.3 : TR + rad + 0.3; const k = side / r; a *= k; b *= k; moved = true;
+  }
+  r = Math.hypot(a, b); th = Math.atan2(b, a) / D2R;
+  if (inW(th) && r > L.riverR0 - rad && r < L.riverR1 + rad && y > Y.riverBed + 2.5) {   // the river: banks, not water — unless on the bridge
+    const B = city.lowerBridge; const bt = B ? Math.abs(-a * Math.sin(B.th * D2R) + b * Math.cos(B.th * D2R)) : 1e9;
+    const onPier = city.lowerJetty && Math.abs(th - city.lowerJetty.th) < 1.1 && r < L.riverR0 + 3.4;
+    if (!onPier && !(B && bt <= B.hw - 0.2)) { const mid = (L.riverR0 + L.riverR1) / 2, side = r < mid ? L.riverR0 - rad : L.riverR1 + rad; const k = side / r; a *= k; b *= k; moved = true; }
+  }
+  return moved ? [a, b] : null;
+}
+export function lowerWater(city, x, z, y, P) {
+  const C = E(), L = LW(), Y = L.y, { a, b, r, th } = P;
+  if (y > -100) return null;
+  if (r < L.fountainR + 3.2 && Math.abs(y - Y.park) < 3) { const k = (L.fountainR - 0.4) / (r || 1); const [wx, wz] = cityWorld(a * k, b * k); return { x: wx, z: wz, y: Y.park + 0.7, name: "fountain" }; }
+  if (inW(th) && Math.abs(y - Y.walk) < 2.5 && ((r > L.riverR0 - 3 && r < L.riverR0) || (r > L.riverR1 && r < L.riverR1 + 3))) {
+    const rr = r < L.riverR0 ? L.riverR0 : L.riverR1, [wx, wz] = cityWorld(rr * Math.cos(th * D2R), rr * Math.sin(th * D2R));
+    return { x: wx, z: wz, y: Y.water, name: "cavern" };
+  }
+  return null;
+}
+// ---------------- the people of floor -1 ----------------
+export function lowerNpcs(city) {
+  const C = E(), L = LW(), Y = L.y, S = STR.et, mk = city.mkNpc, R = C.wallR, TR = C.terraceR;
+  if (!mk) return;
+  const pt = (r, th) => [r * Math.cos(th * D2R), r * Math.sin(th * D2R)];
+  for (const [ga, gb] of city.lowerJailGuards || []) { const [fa, fb] = pt(R, Math.atan2(gb, ga) / D2R); mk("spear", ga, gb, Y.low, fa, fb, "guard", { lines: S.jailerLines }); }
+  if (city.lowerCells && city.lowerCells[2]) { const c = city.lowerCells[2]; mk("prisoner", c.inA, c.inB, Y.low, c.rm.doorA, c.rm.doorB, "prisoner", { name: S.prisonerName, lines: S.prisonerLines }); }
+  if (city.lowerHospital) { const h = city.lowerHospital; mk("male", h.npc[0], h.npc[1], Y.park, h.doorA, h.doorB, "doctor", { name: S.doctorName, lines: S.doctorLines, style: "busy" }); }
+  if (city.lowerStore) { const s = city.lowerStore; mk("male", s.npc[0], s.npc[1], Y.low, s.doorA, s.doorB, "minekeeper", { name: S.minekeeperName, lines: S.minekeeperLines, style: "busy" }); }
+  for (const m of city.lowerMiners || []) { const fa = m.a + Math.cos(m.face * D2R) * 3, fb = m.b + Math.sin(m.face * D2R) * 3; mk("male", m.a, m.b, Y.low, fa, fb, "miner", { name: S.minerName, lines: S.minerLines, style: "busy" }); }
+  if (city.lowerHouse) { const rm = city.lowerHouse.rm; const [ra, rb] = rm.P(-4.5, 3.2); mk("female", ra, rb, Y.park, rm.doorA, rm.doorB, "realtor", { name: S.realtorName, lines: S.realtorLines }); }
+  if (city.lowerJetty) { const J = city.lowerJetty; const [ba, bb] = pt(L.riverR0 - 2.4, J.th - 3); mk("male", ba, bb, Y.walk, J.boatA, J.boatB, "boatman", { name: S.boatmanName, lines: S.boatmanLowerLines }); }
+  if (city.jettyUp) { const J = city.jettyUp; const [ba, bb] = pt(C.riverR0 - 2.4, J.th + 3); mk("male", ba, bb, C.levels.lower, J.boatA, J.boatB, "boatman", { name: S.boatmanName, lines: S.boatmanUpperLines }); }
+  // strollers round the fountain and along the tree walks
+  const ring = (r0, t0, n, dir) => { const pts = []; for (let i = 0; i < n; i++) { const t = t0 + dir * i * (360 / n); pts.push(pt(r0, t)); } return pts; };
+  mk("female", ...pt(28, 20), Y.park, 0, 0, "citizen", { lines: S.parkLines, name: S.homeFemale, walk: { pts: ring(28, 20, 10, 1), i: 0, wait: 1, speed: 1.1 } });
+  mk("male", ...pt(34, 200), Y.park, 0, 0, "citizen", { lines: S.parkLines, name: S.homeMale, walk: { pts: ring(34, 200, 12, -1), i: 0, wait: 2, speed: 1.0 } });
+  mk("female", ...pt(72, 50), Y.park, 0, 0, "citizen", { lines: S.parkLines, name: S.homeFemale, walk: { pts: [pt(72, 50), pt(60, 30), pt(56, -40), pt(72, -70), pt(80, -30), pt(76, 20)], i: 0, wait: 3, speed: 0.9 } });
+  mk("male", ...pt(66, 160), Y.park, 0, 0, "citizen", { lines: S.parkLines, name: S.homeMale, walk: { pts: [pt(66, 160), pt(50, 140), pt(44, 100), pt(58, 125), pt(70, 175)], i: 0, wait: 2, speed: 1.0 } });
+  mk("male", ...pt(R - 5, 60), Y.walk, ...pt(R, 60), "citizen", { lines: S.parkLines, name: S.homeMale, walk: { pts: [pt(R - 5, 60), pt(R - 5, 100), pt(R - 5, 130)], i: 0, wait: 4, speed: 0.9 } });
+}
+// ---------------- prompts ----------------
+export function lowerInteract(city, consider, p) {
+  const C = E(), L = LW(), S = STR.et, g = city.g;
+  const near = (pa, pb, d) => { const [x, z] = cityWorld(pa, pb); return Math.hypot(p.pos.x - x, p.pos.z - z) < d; };
+  if (city.jettyUp && !g.ride && near(city.jettyUp.a, city.jettyUp.b, 4.5) && Math.abs(p.pos.y - C.levels.lower) < 3) { const [x, z] = cityWorld(city.jettyUp.a, city.jettyUp.b); consider(x, z, p.pos.y, `${S.boatDown} [${STR.interact}]`, () => startRide(city, 1)); }
+  if (city.lowerJetty && !g.ride && near(city.lowerJetty.a, city.lowerJetty.b, 4.5) && Math.abs(p.pos.y - L.y.walk) < 3) { const [x, z] = cityWorld(city.lowerJetty.a, city.lowerJetty.b); consider(x, z, p.pos.y, `${S.boatUp} [${STR.interact}]`, () => startRide(city, -1)); }
+  if (city.lowerHouse && near(city.lowerHouse.rm.doorA, city.lowerHouse.rm.doorB, 3.2) && Math.abs(p.pos.y - L.y.park) < 3) { const [x, z] = cityWorld(city.lowerHouse.rm.doorA, city.lowerHouse.rm.doorB); consider(x, z, p.pos.y, `${S.enterHome} [${STR.interact}]`, () => { g.ui.toast(S.notYourHome); g.audio.sDeny(); }); }
+}
+// ---------------- each frame ----------------
+export function lowerUpdate(city, dt) {
+  const t = city.t;
+  if (city.lowerRiver && city.lowerRiver.material.map) city.lowerRiver.material.map.offset.set(-t * 0.07, 0);
+  if (city.lowerFount && city.lowerFount.material.map) city.lowerFount.material.map.offset.set(t * 0.03, t * 0.02);
+  if (city.rideWater && city.rideWater.material.map) city.rideWater.material.map.offset.set(-t * 0.25, 0);
+  if (city.lowerBeam) city.lowerBeam.material.opacity = 0.06 + Math.sin(t * 0.5) * 0.015;
+}
+// ---------------- the boat ride ----------------
+export function startRide(city, dir) {
+  const g = city.g, C = E(), S = STR.et;
+  if (g.ride || !city.rideCurve) return;
+  const boat = city.rideBoat; if (!boat) return;
+  const from = dir > 0 ? city.boatUp : city.boatLow; if (from) from.visible = false;
+  boat.visible = true;
+  g.ride = { dir, s: 0, len: city.rideLen, speed: C.lower.ride.speed, t: 0 };
+  g.menuOpen = false; g.sitting = false;
+  g.ui.toast(dir > 0 ? S.boatLeaveDown : S.boatLeaveUp); g.audio.sSelect && g.audio.sSelect();
+  placeBoat(city, g.ride, 0);
+  const p = g.player; const tw = tangentWorld(city, g.ride, dir > 0 ? 0.001 : 0.999, dir); p.yaw = Math.atan2(-tw.x, -tw.z); p.pitch = 0.05;
+}
+function tangentWorld(city, Rd, u, dir) {
+  const t = city.rideCurve.getTangentAt(u).clone(); if (dir < 0) t.negate();
+  const q = new THREE.Quaternion(); city.grp.getWorldQuaternion(q); return t.applyQuaternion(q).normalize();
+}
+function placeBoat(city, Rd, u) {
+  const boat = city.rideBoat, curve = city.rideCurve;
+  const pl = curve.getPointAt(u), pw = city.grp.localToWorld(pl.clone());
+  const tw = tangentWorld(city, Rd, u, Rd.dir);
+  boat.position.set(pw.x, pw.y + 0.15, pw.z);
+  const yaw = Math.atan2(tw.x, tw.z) + (city.boatYawOff || 0);
+  boat.rotation.set(0, yaw, 0); boat.rotateX(-Math.asin(Math.max(-0.6, Math.min(0.6, tw.y))));
+  return pw;
+}
+export function updateRide(city, dt, input) {
+  const g = city.g, Rd = g.ride, p = g.player, C = E(), L = LW(), S = STR.et;
+  if (!Rd) return;
+  Rd.t += dt; Rd.s = Math.min(Rd.len, Rd.s + Rd.speed * dt * Math.min(1, Rd.t / 1.5));
+  const u = Rd.dir > 0 ? Rd.s / Rd.len : 1 - Rd.s / Rd.len;
+  const pw = placeBoat(city, Rd, Math.max(0.0005, Math.min(0.9995, u)));
+  p.pos.set(pw.x, pw.y + 0.35, pw.z); p.vel && p.vel.set(0, 0, 0);
+  p.yaw += (input.turn || 0) * 2.7 * dt; p.yaw -= input.look.dx * 0.0023; p.pitch = Math.max(-1.45, Math.min(1.45, p.pitch - input.look.dy * 0.0023)); input.look.dx = input.look.dy = 0;
+  g.camera.position.set(p.pos.x, p.pos.y + 1.15, p.pos.z); g.camera.rotation.set(p.pitch, p.yaw, 0, "YXZ");
+  g.ui.prompt(Rd.dir > 0 ? S.boatRidingDown : S.boatRidingUp);
+  if (Rd.s >= Rd.len) {
+    const J = Rd.dir > 0 ? city.lowerJetty : city.jettyUp, y = Rd.dir > 0 ? L.y.walk : C.levels.lower;
+    const [x, z] = cityWorld(J.a, J.b); p.pos.set(x, y + 0.1, z);
+    city.rideBoat.visible = false; if (city.boatUp) city.boatUp.visible = true; if (city.boatLow) city.boatLow.visible = true;
+    g.ride = null; g.ui.prompt(""); g.ui.toast(Rd.dir > 0 ? S.boatArriveDown : S.boatArriveUp);
+    if (Rd.dir > 0 && !city.lowerFound) { city.lowerFound = true; }
+  }
+}

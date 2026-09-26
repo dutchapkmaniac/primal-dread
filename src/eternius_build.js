@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { CFG } from "./config.js";
 import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";   // update 41
+import { buildLower } from "./eternius_lower.js";   // update 50: floor -1
 
 // ============================================================================
 // update 40: everything that is BUILT in Eternius City — the mountain, the castle,
@@ -525,12 +526,28 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     // rim of floor hanging across the trench's top — the 'beam' seen from below). shape x = b, shape y = -a
     const SD = C.stairs.down, shp = new THREE.Shape(), RO = TR + 1, x1 = -(SD.r0 + 0.05), yh = SD.hw + 0.25, xr = -Math.sqrt(RO * RO - yh * yh);
     shp.moveTo(x1, -yh); shp.lineTo(xr, -yh); shp.absarc(0, 0, RO, Math.atan2(-yh, xr), Math.atan2(yh, xr), false); shp.lineTo(x1, yh); shp.closePath();
+    { const hole = new THREE.Path(); hole.absarc(0, 0, C.lower.glassR1, 0, Math.PI * 2, true); shp.holes.push(hole); }   // update 50: the glass ring's hole
     const geo = new THREE.ShapeGeometry(shp, 48); { const uv = geo.attributes.uv, pp = geo.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, pp.getX(i) / 7, pp.getY(i) / 7); }
     const fl = new THREE.Mesh(geo, sand(1, 1)); fl.material.side = THREE.DoubleSide; fl.rotation.x = -Math.PI / 2; fl.position.y = L.plaza; fl.receiveShadow = true; grp.add(fl);
     // update 44: the trench's side walls — along -b at a = ±(hw + 0.4) (they were laid out with a and b swapped, and stood
     // as a curb in front of the throne stair while the trench had invisible sides); sandstone you can see, up to the plaza's rim
     for (const s of [-1, 1]) box(0.36, L.plaza - L.lower + 1.05, TR + 1.5 - (SD.r0 - 0.3), -(TR + 1.5 + SD.r0 - 0.3) / 2, (L.plaza + L.lower) / 2 + 0.025, s * (SD.hw + 0.4), city.mats.sandLit(6, 3), Math.PI / 2);
     box(SD.hw * 2 + 0.8, 0.34, 0.24, -(SD.r0 + 0.02), L.plaza - 0.17, 0, sand(3, 1), Math.PI / 2);   // update 45: a sandstone riser under the floor's edge, not a thin plate
+    // update 50: the ring of green glass round the altar's steps — gold rims and spokes, and under it the shaft that
+    // drops 150 m to floor -1's roof: this glass is the park's light hole. The dais hangs in the middle on a golden boss
+    {
+      const r0 = C.lower.glassR0, r1 = C.lower.glassR1;
+      sector(0, r0, -180, 180, L.plaza, sand(4, 4), 48);
+      const gm = w.mat("t_glassgreen", 8, 2, 0x2a7a4a); gm.transparent = true; gm.opacity = 0.6; gm.emissive = new THREE.Color(0x1c6a3a); gm.emissiveIntensity = 0.6; gm.metalness = 0.2; gm.roughness = 0.2; gm.side = THREE.DoubleSide; gm.depthWrite = false;
+      const glass = sector(r0, r1, -180, 180, L.plaza + 0.02, gm, 96); city.keepExtra.push(glass); city.glassRing = glass;
+      cyl(r0, 0, 360, L.plaza - 0.25, L.plaza + 0.12, gold, false, 64); cyl(r1, 0, 360, L.plaza - 0.25, L.plaza + 0.12, gold, true, 64);
+      sector(r0 - 0.35, r0 + 0.05, -180, 180, L.plaza + 0.12, goldPlain, 64); sector(r1 - 0.05, r1 + 0.35, -180, 180, L.plaza + 0.12, goldPlain, 64);
+      for (let k = 0; k < 16; k++) { const t = k * 22.5; box(0.3, 0.14, r1 - r0, ((r0 + r1) / 2) * Math.sin(t * D2R), L.plaza + 0.08, ((r0 + r1) / 2) * Math.cos(t * D2R), goldPlain, t * D2R); }
+      cyl(r0, 0, 360, L.plaza - 3.2, L.plaza - 0.25, gold, false, 64); const boss = new THREE.Mesh(new THREE.ConeGeometry(r0, 5, 64), gold); boss.rotation.x = Math.PI; boss.position.y = L.plaza - 3.2 - 2.5; grp.add(boss);
+      const gb = new THREE.Mesh(new THREE.OctahedronGeometry(1.6), gem); gb.position.y = L.plaza - 6.8; grp.add(gb);
+      city.emit(grp, 0, L.plaza - 7.5, 0, 0x9cffb0, 10, 60, {});
+      { const sm = rock(16, 30); sm.side = THREE.BackSide; cyl(r1, 0, 360, L.plaza - 0.6, L.plaza - 0.25, sm, true, 64); }
+    }
   }
   // the altar dais: six real steps up to a golden platform
   const nD = Math.round((L.dais - L.plaza) / rise), runD = 0.6;
@@ -596,7 +613,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     // 60 m of pointed-arch tunnel that CURVES with the river's arc, so no end is ever in view (the bend hides it), gold
     // lamps left and right for the first 18 m and darkness beyond. The one under the grand stair rises gently (1 m over
     // 30 m, a boat could pass) so the water comes down to you. `sgn` = which way along theta the tunnel runs
-    city.culvert = (thd, sgn, yTop, grade = 0) => {   // grade: +1 the water comes DOWN to you, -1 it runs away downhill
+    city.culvert = (thd, sgn, yTop, grade = 0, open = false) => {   // update 50: open — no end cap, the spiral carries on   // grade: +1 the water comes DOWN to you, -1 it runs away downhill
       const th = thd * D2R, rm = (C.riverR0 + C.riverR1) / 2, CV = C.culvert;
       const ca = rm * Math.cos(th), cb = rm * Math.sin(th), ry = th - Math.PI / 2;   // the wall's width runs radially
       const wd = C.riverR1 - C.riverR0 + 2.4, yB = L.water - 0.5, W = CV.w - 1.2, Hh = CV.h;
@@ -623,7 +640,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
         for (const sd of [-1, 1]) { const bm = new THREE.Mesh(bandGeo, goldPlain); bm.rotation.order = "YXZ"; bm.rotation.y = S2.ry; bm.rotation.x = -slope; bm.position.set(S2.b + Math.sin(S2.t) * sd * (W / 2 - 0.12), S2.y + 3.0, S2.a + Math.cos(S2.t) * sd * (W / 2 - 0.12)); grp.add(bm); }
         const wm2 = new THREE.Mesh(waterGeo, tw); wm2.rotation.order = "YXZ"; wm2.rotation.y = S2.ry; wm2.rotation.x = -Math.PI / 2 - slope; wm2.position.set(S2.b, S2.y + 0.5, S2.a); grp.add(wm2); city.tunnelWater.push(wm2); city.keepExtra.push(wm2);
       }
-      { const E2 = segAt(nSeg - 0.5); const cm = sand(2, 2); cm.emissiveIntensity = 0.05; const cap = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.4, Hh + 1), cm); cap.rotation.y = E2.ry + Math.PI; cap.position.set(E2.b, E2.y + Hh / 2, E2.a); grp.add(cap); }   // update 46: unlit stone, not a black plate
+      if (!open) { const E2 = segAt(nSeg - 0.5); const cm = sand(2, 2); cm.emissiveIntensity = 0.05; const cap = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.4, Hh + 1), cm); cap.rotation.y = E2.ry + Math.PI; cap.position.set(E2.b, E2.y + Hh / 2, E2.a); grp.add(cap); }   // update 46: unlit stone, not a black plate
       const lit = CV.lit || CV.depth;
       // update 46: real little lamps — a gold bracket, a small gold cage with a green gem in it, on both walls
       for (let u = 3; u <= lit; u += 4.5) { const t = th + sgn * u / rm, yy = yB + Math.tan(slope) * u; for (const sd of [-1, 1]) { const rr = rm + sd * (W / 2 - 0.4), lb = rr * Math.sin(t), la = rr * Math.cos(t); box(0.32, 0.12, 0.42, lb, yy + 3.5, la, goldPlain, t - Math.PI / 2); const cage = new THREE.Mesh(new THREE.OctahedronGeometry(0.24), goldPlain); cage.position.set(lb - Math.sin(t) * sd * 0.2, yy + 3.85, la - Math.cos(t) * sd * 0.2); grp.add(cage); const gm = new THREE.Mesh(new THREE.OctahedronGeometry(0.13), gem); gm.position.copy(cage.position); grp.add(gm); if (sd > 0) city.emit(grp, rm * Math.sin(t), yy + 3.6, rm * Math.cos(t), 0xd8f0b0, 1.6, 13, {}); } }
@@ -631,7 +648,22 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     // update 45: the banks — a rock face in sandstone colour from each walkway's edge down to the bed, both sides (the
     // channel through the grand stair has its own walls)
     { const bankM = w.mat("t_cavern", 24, 1, 0xd2ad7c); bankM.emissive = new THREE.Color(0x4a3a24); bankM.emissiveIntensity = 0.5; cyl(C.riverR0, S.stairTh1 + 0.3, RT.th1 + 0.3, L.riverBed, L.lower + 0.02, bankM, false, 64); cyl(C.riverR1, S.stairTh1 + 0.3, RT.th1 + 0.3, L.riverBed, L.lower + 0.02, bankM, true, 64); }
-    city.culvert(RT.th1, 1, L.lower + C.culvert.wallUp, -1);   // update 46: the exit runs gently downhill away from you
+    city.culvert(RT.th1, 1, L.lower + C.culvert.wallUp, -1, true);
+    // update 50: the jetty on the inner bank by the court-side tunnel, and the boats — one moored here, one moored on
+    // floor -1, one that does the sailing (hidden until you board). The ride itself is eternius_lower_logic.js
+    {
+      const JT = RT.th1 - 4.5, rm2 = C.riverR0, cs = Math.cos(JT * D2R), sn = Math.sin(JT * D2R), jry = JT * D2R - Math.PI / 2;
+      const pier = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.6, 4.0), sand(2, 2)); pier.position.set((rm2 + 1.6) * sn, L.water + 0.5, (rm2 + 1.6) * cs); pier.rotation.y = jry; grp.add(pier);
+      for (const t of [-1, 1]) { const tq = JT + (t * 1.7 / rm2) / D2R; pillar((rm2 + 3.2) * Math.sin(tq * D2R), L.water + 0.8, (rm2 + 3.2) * Math.cos(tq * D2R), 0.16, 0.9, goldPlain); }
+      city.addLantern((rm2 - 1.4) * Math.sin((JT + 2.2) * D2R), L.lower, (rm2 - 1.4) * Math.cos((JT + 2.2) * D2R), false, true, 3.0);
+      city.jettyUp = { a: (rm2 + 1.6) * cs, b: (rm2 + 1.6) * sn, th: JT, boatA: (rm2 + 4.6) * cs, boatB: (rm2 + 4.6) * sn, y: L.water };
+      const bb0 = A.glb.et_boat ? new THREE.Box3().setFromObject(A.glb.et_boat.model) : null, sz0 = bb0 ? bb0.getSize(new THREE.Vector3()) : null;
+      city.boatYawOff = sz0 && sz0.x > sz0.z ? Math.PI / 2 : 0;
+      const boatFb = (a, b, y, deg) => () => { const gg = new THREE.Group(); gg.position.set(b, y, a); gg.rotation.y = deg * D2R; grp.add(gg); const hull = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.9, 6.0), sand(1, 3)); hull.position.y = 0.3; gg.add(hull); const rim = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.15, 6.2), goldPlain); rim.position.y = 0.8; gg.add(rim); return gg; };
+      const mkBoat = (a, b, y, deg) => { const m = prop("et_boat", a, b, y, deg + city.boatYawOff / D2R, boatFb(a, b, y, deg)); return m; };
+      city.boatUp = mkBoat(city.jettyUp.boatA, city.jettyUp.boatB, L.water + 0.15, JT + 90);
+      city.rideBoat = mkBoat(0, 0, -900, 0); if (city.rideBoat) city.rideBoat.visible = false;
+    }   // update 46: the exit runs gently downhill away from you
     // update 43: the bridge over the river: an arched stone deck a boat passes under, gold balustrades sized for Eternials —
     // shorter now, and beside the vault's axis so it no longer ends on the vault door
     {
@@ -1037,6 +1069,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
   buildHomes(city, grp, box, cyl, sand, rock, gold, goldPlain, goldBright, gem, dark, wallSeg, obst, archFrame, carpetM, prop, glowM, greenGlowM);
   // ---- the MARKET, the INN, the lampposts and flags on the terraces, the doors of the mountain gate ----
   for (const st of C.stalls) buildStall(city, st, grp, box, sand, gold, goldPlain, goldBright, gem, dark, obst, prop, latticeM, glowM);
+  buildLower(city, grp);   // update 50: floor -1, the spiral, the boats
   {
     const I = C.inn, y = L.terrace, cs = Math.cos(I.th * D2R), sn = Math.sin(I.th * D2R);
     const [ia, ib] = [I.r * cs, I.r * sn];

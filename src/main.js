@@ -27,7 +27,7 @@ const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_in
   // update 36: the desert's sand
   "t_sand", "t_riversand",   // update 37: the river bank
   "t_sandstone", "t_goldpanel", "t_cavern", "t_flag",
-  "t_trexgreen", "t_goldlattice", "t_greencarpet", "t_mountain", "t_relief"];   // update 44: the jackal relief on the river wall   // update 39/40: Eternius City
+  "t_trexgreen", "t_goldlattice", "t_greencarpet", "t_mountain", "t_relief", "t_glassgreen", "t_soil"];   // update 50: the glass ring, the park's soil   // update 44: the jackal relief on the river wall   // update 39/40: Eternius City
 // ONE word per situation for the mobile context button, resolved from the
 // prompt label's leading constant. Built ONCE — update 26 profiling caught the
 // per-frame rebuild of this table as the main-thread's top garbage source.
@@ -93,7 +93,8 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "etdagger3d", "etsword3d", "etspear3d",   // update 40: the Eternial weapons, generated at last (buildEternialWeapons wraps them)
   "portal",   // update 37
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
-  "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician"];   // update 39: the Eternials; update 49: the sorcerer
+  "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician",
+  "et_fountain", "et_bigtree", "et_boat", "et_prisoner", "et_minecart", "et_emerald"];   // update 39: the Eternials; update 49: the sorcerer; update 50: floor -1
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
@@ -1078,6 +1079,15 @@ class Game {
     if (this.coffeeT > 0) {
       this.coffeeT -= dt;
       this.player.en = Math.min(100, this.player.en + (100 / CFG.coffee.regenTime) * dt);
+    }
+    if (this.ride) {   // update 50: the boat owns you on the way down the spiral (and back up)
+      this.city.updateRide(dt, input);
+      for (const c of this.creatures) c.update(dt, this);
+      for (const w of this.wolves) w.update(dt, this);
+      this.city.update(dt);
+      this.updateMusic();
+      this.ui.bars(this.player.hp, this.player.en, this.player.hu);
+      return;
     }
     if (this.sitting) {
       // resting on the chair: energy climbs (never past the cap), time flows

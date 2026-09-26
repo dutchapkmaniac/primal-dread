@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=49";
+export const ASSET_V = "?v=50";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -574,7 +574,8 @@ export const CFG = {
     remotus: 1.8, altai: 1.8, cactus: 4.0, palm: 9.0, nomad: 1.75,   // update 36: the desert (the Alioramus stand 1.8 m, 5.5 m long)
     portal: 5.2,   // update 37: the stone portals
     imperator: 5.94, trexdagger3d: 0.4, impdagger3d: 0.4,   // update 38
-    et_male: 3.1, et_female: 2.8, et_guardspear: 3.1, et_guardsword: 3.1, et_king: 3.2, et_statue: 9, et_magician: 3.1,   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_male: 3.1, et_female: 2.8, et_guardspear: 3.1, et_guardsword: 3.1, et_king: 3.2, et_statue: 9, et_magician: 3.1,
+    et_fountain: 11, et_bigtree: 34, et_boat: 2.4, et_prisoner: 3.5, et_minecart: 1.7, et_emerald: 1.6,   // update 50: floor -1   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -612,7 +613,7 @@ export const CFG = {
     // update 36: Duco built new from his two photos (front + side), and the desert's models
     remotus: 0, altai: 0, cactus: 0, palm: 0, nomad: 0, portal: 0,   // the portal's medallion face is the model's +z
     imperator: 0, trexdagger3d: 0, impdagger3d: 0,
-    et_male: 0, et_female: 0, et_guardspear: 0, et_guardsword: 0, et_king: 0, et_statue: 0, et_magician: 0 },   // update 39/49
+    et_male: 0, et_female: 0, et_guardspear: 0, et_guardsword: 0, et_king: 0, et_statue: 0, et_magician: 0, et_fountain: 0, et_bigtree: 0, et_boat: 0, et_prisoner: 0, et_minecart: 0, et_emerald: 0 },   // update 39/49/50
   // animation clip speed: clip cycles per meter moved (tuned per creature)
   animGait: { trex: 0.22, werewolf: 0.55, chicken: 1.6, croc: 0.9, cow: 0.5, dog: 0.9, elisia: 0.9 },
 
@@ -646,6 +647,22 @@ export const CFG = {
     stairs: { up: { r0: 64, r1: 92, hw: 6 }, down: { r0: 68, r1: 92, hw: 6 } },   // update 42: the top tread meets the terrace edge (the floor used to run on over the last four treads)
     // the upper terrace runs on past the throne door to -150 deg; a grand stair drops to the lower gallery by -125 deg
     split: { stairTh0: -150, stairTh1: -125, landing: 3 },
+    // update 50: FLOOR -1, 200 m down (see eternius_lower.js): its levels, the river band on the west (theta +90 is the
+    // map's left), the gallery on the east, the rooms carved into the walls, the trees, the spiral the boat takes down
+    lower: {
+      y: { park: -204, walk: -192, low: -214, riverBed: -219, water: -215.2 },
+      west: { th0: 28, th1: 139 }, east: { th0: -168, th1: -33 },
+      riverR0: 100, riverR1: 108, bridgeTh: 83, jettyTh: 36, shaftR: 22.5, glassR0: 14.5, glassR1: 22.5,
+      jail: { th0: -76, th1: -35, cells: 5 }, mineTh: -152, mine: { len: 70, hw: 4.5, h: 8 }, storeTh: -138,
+      hospitalTh: 122, houseTh: -18, fountainR: 12, planterR: 45,
+      planters: [[-52, -8], [72, 112], [-166, -122]],
+      beds: [[30, 72, 46, 90], [-102, -54, 50, 90], [136, 182, 50, 90]],
+      trees: [[34, 58], [46, 70], [58, 60], [40, 82], [52, 84], [64, 76], [70, 64], [36, 72], [48, 50], [66, 89],
+              [-58, 62], [-66, 78], [-76, 66], [-84, 82], [-92, 70], [-100, 60], [-70, 52], [-88, 54],
+              [140, 62], [150, 76], [160, 64], [172, 78], [178, 60], [146, 86], [166, 88], [156, 52]],
+      helix: { ca: 142, cb: 60, r: 30, turns: 4.75, yTop: -30, yBot: -213 },
+      ride: { speed: 8 },
+    },
     riverTh: { th0: -133, th1: -60.6 },   // update 44: the river runs right up to the radial wall, the culvert's face is flush with it                    // update 43: the river now runs OUT of the grand stair (an open channel through its lowest steps, then a lit arch) to one culvert
     culvert: { depth: 90, w: 8, h: 6.2, wallUp: 5.2, lit: 18 },   // update 46: 90 m round the bend — nothing to see at the end   // update 45: 60 m, curving with the river — no end in sight   // update 44: 30 m of sandstone tunnel, lamps for the first 18 m, then the dark   // update 43: the arch springs from the water, the wall stands 5 m above the gallery; lights inside
     // enterable homes carved into the cavern wall (theta in degrees; level = the terrace they open onto)

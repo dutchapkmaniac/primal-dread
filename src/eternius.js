@@ -6,6 +6,7 @@ import { riggedHumanoid, driveHumanoid } from "./humanoid.js";
 import { iconUrl } from "./items.js";
 import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js";
 import { buildCity } from "./eternius_build.js";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js";   // update 50
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -96,6 +97,7 @@ export class EterniusCity {
   // rooms under the mountain: someone on the rock above must not fall through.
   floorH(x, z, y = 0) {
     const C = E(), L = C.levels, P = this.polar(x, z), { a, b, r, th } = P;
+    if (y < -100) return lowerH(this, a, b, r, th);   // update 50: floor -1
     if (r < C.mountainR + 2 || (a > C.tunnel.a0 && a < C.tunnel.a1 + 1)) {
       if (this.inMountainRooms(a, b, r) && (y < 24 || y > 900)) return this.roomH(a, b, r, th);
     }
@@ -160,6 +162,7 @@ export class EterniusCity {
         const rb0 = C.riverR0 - C.riverBridgeExt, rb1 = C.riverR1 + C.riverBridgeExt;
         if (r > rb0 && r < rb1) return L.lower + C.riverBridgeArch * Math.sin((r - rb0) / (rb1 - rb0) * Math.PI);
       }
+      if (this.jettyUp && Math.abs(th - this.jettyUp.th) < 1.3 && r < C.riverR0 + 3.6) return L.water + 0.8;   // update 50: the jetty's pier
       if (r > C.riverR0 && r < C.riverR1 && th > RT.th0 && th < RT.th1) return L.riverBed;
       return L.lower;
     }
@@ -242,6 +245,7 @@ export class EterniusCity {
       const rr = r < C.riverR0 ? C.riverR0 : C.riverR1, [wx, wz] = cityWorld(rr * Math.cos(th * D2R), rr * Math.sin(th * D2R));
       return { x: wx, z: wz, y: L.water, name: "cavern" };
     }
+    { const lw = lowerWater(this, x, z, y, P); if (lw) return lw; }   // update 50: the fountain and the river of floor -1
     const n = lakeNorm(a, b), onBridge = Math.abs(b) < C.bridge.hw + 0.4 && a > C.bridge.a0 - 1 && a < C.bridge.a1 + 1;   // (the lake bridge)
     if (!onBridge && n > 0.92 && n < 1.28 && y < 6) return { x, z, y: L.court - 2.05, name: "lake" };
     return null;
@@ -263,11 +267,12 @@ export class EterniusCity {
     {
       const rc = Math.hypot(a, b);
       const Re = this.edgeR(a, b);
-      if (rc < Re - 0.6 && !this.inMountainRooms(a, b, rc) && y < this.mountainH(x, z) - 1.2) {
+      if (rc < Re - 0.6 && !this.inMountainRooms(a, b, rc) && y < this.mountainH(x, z) - 1.2 && !(y < -100 && lowerInside(this, a, b, rc, Math.atan2(b, a) / D2R))) {   // update 50: floor -1's mine runs beyond the wall
         const k = (Re + 0.2) / (rc || 1e-6); a *= k; b *= k; moved = true;
       }
     }
-    if (y < 24 || y > 900) {
+    if (y < -100) { const lc = lowerCollide(this, a, b, r, y); if (lc) { a = lc[0]; b = lc[1]; moved = true; } }   // update 50: floor -1 has its own walls
+    else if (y < 24 || y > 900) {
       const rr = Math.hypot(a, b);
       // the cavern wall: stay inside, except through the doors and inside the halls carved beyond it
       const inVault = b < -(C.wallR - 6) && Math.abs(a) < C.vault.hw + 1;
@@ -286,7 +291,8 @@ export class EterniusCity {
       }
       // the river: banks, not water — unless on the bridge
       const rb = Math.hypot(a, b), thb = Math.atan2(b, a) / D2R, RT = C.riverTh;
-      if (thb > RT.th0 - 2 && thb < RT.th1 + 2 && rb > C.riverR0 - r && rb < C.riverR1 + r && this.bridgeT(a, b) > C.riverBridgeHw - 0.2) {
+      const onPier = this.jettyUp && Math.abs(thb - this.jettyUp.th) < 1.1 && rb < C.riverR0 + 3.4;   // update 50
+      if (!onPier && thb > RT.th0 - 2 && thb < RT.th1 + 2 && rb > C.riverR0 - r && rb < C.riverR1 + r && this.bridgeT(a, b) > C.riverBridgeHw - 0.2) {
         const mid = (C.riverR0 + C.riverR1) / 2;
         const side = rb < mid ? C.riverR0 - r : C.riverR1 + r;
         const k = side / rb; a *= k; b *= k; moved = true;
@@ -326,6 +332,7 @@ export class EterniusCity {
     this.buildStatue();
     this.buildRex();
     this.buildNpcs();
+    lowerNpcs(this);   // update 50: floor -1's people
   }
   buildStatue() {
     const C = E(), A = this.g.assets, S = C.statue, [x, z] = cityWorld(S.a, S.b), y = C.levels.court;
@@ -437,7 +444,7 @@ export class EterniusCity {
     const C = E(), L = C.levels, A = this.g.assets, scene = this.g.scene;
     const K = C.castle, S = STR.et;
     const mk = (kind, a, b, y, faceA, faceB, role, opts = {}) => {
-      const id = { male: "et_male", female: "et_female", spear: "et_guardspear", sword: "et_guardsword", king: "et_king", mage: "et_magician" }[kind];
+      const id = { male: "et_male", female: "et_female", spear: "et_guardspear", sword: "et_guardsword", king: "et_king", mage: "et_magician", prisoner: "et_prisoner" }[kind];
       const asset = A.glb[id];
       const [x, z] = cityWorld(a, b);
       let body;
@@ -514,6 +521,7 @@ export class EterniusCity {
     const near = Math.hypot(p.pos.x - C.cx, p.pos.z - C.cz) < C.mountainR + 420;
     if (!near) return;
     const night = g.isNight ? 1 : 0;
+    lowerUpdate(this, dt);   // update 50: floor -1's water and light
     // inside the mountain the day's fog would swallow the far wall: push it back while you are in
     const P = this.polar(p.pos.x, p.pos.z);
     const inRooms = this.inMountainRooms(P.a, P.b, P.r) && p.pos.y < 24;
@@ -710,6 +718,7 @@ export class EterniusCity {
       else if (n.role === "keeper") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openKeeper());
       else if (n.role === "inn") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openInn());
       else if (n.role === "advisor") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openAdvisor(n));
+      else if (n.role === "prisoner") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.talkRandom(n));   // update 50: a different story every time
       else consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.talk(n));
     }
     // the altar: once a day, hunger AND health
@@ -725,6 +734,7 @@ export class EterniusCity {
         g.ui.toast(S.prayed); g.audio.sPickup();
       });
     }
+    lowerInteract(this, consider, p);   // update 50: the boats, the house door
     for (const b of this.innBeds || []) {
       if (Math.hypot(p.pos.x - b.x, p.pos.z - b.z) < 3.0) consider(b.x, b.z, b.y, `${S.sleepFor.replace("%n", C.innPrice)} [${STR.interact}]`, () => {
         if (!g.isNight) return g.ui.toast(STR.sleepNotNight);
@@ -748,6 +758,11 @@ export class EterniusCity {
       if (src && src.name === "cavern") consider(p.pos.x, p.pos.z, p.pos.y, `${S.fish} [${STR.interact}]`, () => { g.fishing = { x: p.pos.x, z: p.pos.z, t: C.fishTime }; g.ui.toast(S.fishing); });
     }
   }
+  talkRandom(n) {   // update 50: the prisoner — one of his stories, never the same twice running
+    const g = this.g, lines = n.lines || STR.et.maleLines; let i = Math.floor(Math.random() * lines.length); if (lines.length > 1 && i === n.lineI) i = (i + 1) % lines.length; n.lineI = i;
+    g.npcPanel(n.name, [lines[i]]); g.audio.sSelect && g.audio.sSelect();
+  }
+  updateRide(dt, input) { updateRide(this, dt, input); }   // update 50
   talk(n) {
     const g = this.g, lines = n.lines || STR.et.maleLines;
     n.lineI = ((n.lineI ?? -1) + 1) % lines.length;
