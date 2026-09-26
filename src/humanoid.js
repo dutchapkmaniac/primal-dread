@@ -36,17 +36,25 @@ export function riggedHumanoid(sourceGroup, opts = {}) {
   const fore = arms.map((a, i) => { const b = new THREE.Bone(); b.position.set(0, elbowY - shoulderY, 0); a.add(b); return b; });
   const legs = [-1, 1].map((s) => { const b = new THREE.Bone(); b.position.set(s * size.x * 0.09, 0, 0); hips.add(b); return b; });
   const knees = legs.map((l) => { const b = new THREE.Bone(); b.position.set(0, kneeY - hipY, 0); l.add(b); return b; });
-  const bones = [hips, chest, head, arms[0], arms[1], fore[0], fore[1], legs[0], legs[1], knees[0], knees[1]];
-  const I = { hips: 0, chest: 1, head: 2, armL: 3, armR: 4, foreL: 5, foreR: 6, legL: 7, legR: 8, kneeL: 9, kneeR: 10 };
-
   const pos = geo.attributes.position, n = pos.count;
   const idx = new Uint16Array(n * 4), wgt = new Float32Array(n * 4);
   const v = new THREE.Vector3();
   const fade = H * 0.035;
+  // update 49: a long prop (the guard's spear) — the scan's highest vertices sit off the body's centre line when a
+  // shaft rises past the head. Every vertex in that column belongs to ONE bone hung at the hand, so the shaft never
+  // stretches between the head, the chest and the arm the way it did; the same bone flips it for the thrust
+  let prop = null;
+  { let tx = 0, tz = 0, tn = 0; for (let i = 0; i < n; i++) { v.fromBufferAttribute(pos, i); if (v.y > bb.max.y - H * 0.035) { tx += v.x - cx; tz += v.z - cz; tn++; } }
+    if (tn && Math.abs(tx / tn) > H * 0.08) prop = { x: tx / tn, z: tz / tn, r: H * 0.05, s: tx / tn < 0 ? 0 : 1 }; }
+  const propBone = new THREE.Bone(); const gripY = bb.min.y + H * 0.42;
+  if (prop) { propBone.position.set(prop.x - (prop.s ? 1 : -1) * shoulderX, gripY - elbowY, prop.z); fore[prop.s].add(propBone); } else { propBone.position.set(0, 0, 0); hips.add(propBone); }
+  const bones = [hips, chest, head, arms[0], arms[1], fore[0], fore[1], legs[0], legs[1], knees[0], knees[1], propBone];
+  const I = { hips: 0, chest: 1, head: 2, armL: 3, armR: 4, foreL: 5, foreR: 6, legL: 7, legR: 8, kneeL: 9, kneeR: 10, prop: 11 };
   const blend2 = (i, b1, w1, b2, w2) => { idx[i * 4] = b1; wgt[i * 4] = w1; idx[i * 4 + 1] = b2; wgt[i * 4 + 1] = w2; idx[i * 4 + 2] = 0; wgt[i * 4 + 2] = Math.max(0, 1 - w1 - w2); };
   for (let i = 0; i < n; i++) {
     v.fromBufferAttribute(pos, i);
     const x = v.x - cx, y = v.y;
+    if (prop && Math.hypot(x - prop.x, v.z - cz - prop.z) < prop.r) { blend2(i, I.prop, 1, I.prop, 0); continue; }   // update 49: the shaft, whole
     if (y > neckY - fade && Math.abs(x) < size.x * 0.2) {        // the head (and the neck ramp)
       const k = Math.min(1, (y - (neckY - fade)) / (2 * fade));
       blend2(i, I.head, k, I.chest, 1 - k);
@@ -80,7 +88,7 @@ export function riggedHumanoid(sourceGroup, opts = {}) {
   skinned.add(hips);
   skinned.bind(new THREE.Skeleton(bones));
   const g = new THREE.Group(); g.add(skinned);
-  g.userData.hrig = { hips, chest, head, arms, fore, legs, knees, H, hipsY0: hips.position.y, phase: Math.random() * 6.28, look: 0, lookT: 0, lookTarget: 0, shift: 0, shiftT: 2 + Math.random() * 4, shiftTarget: 0, armIn: opts.armIn || 0 };
+  g.userData.hrig = { hips, chest, head, arms, fore, legs, knees, H, hipsY0: hips.position.y, phase: Math.random() * 6.28, look: 0, lookT: 0, lookTarget: 0, shift: 0, shiftT: 2 + Math.random() * 4, shiftTarget: 0, armIn: opts.armIn || 0, prop: prop ? propBone : null, propSide: prop ? prop.s : -1 };
   return g;
 }
 
@@ -130,16 +138,49 @@ export function driveHumanoid(group, state, speed, dt, headTurn = 0, style = "ca
   // forward as the chest and hips unwind, the shield arm up; then it recovers. block: both arms snap up in front,
   // the chest leans back, the knees give a little, then it eases out.
   if (fx) {
-    if (fx.attack > 0) {
+    // update 49: the weapon hand is the one the scan holds its shaft in (propSide); the other is the free hand
+    const w = R.propSide >= 0 ? R.propSide : 1, o = 1 - w, inW = w === 0 ? 1 : -1, inO = o === 0 ? 1 : -1;   // in*: +z-rotation brings that arm in toward the body
+    if (fx.attack > 0 && R.prop) {
+      // the spear: both hands take the shaft, it flips in the grip to point ahead as the arms come level, the chest
+      // coils; then the thrust — chest and hips unwind forward, the arms drive out, the front foot steps; then it eases
+      // back to the rest pose. The blow lands at 0.52, in the middle of the drive.
+      const k = fx.attack, q1 = Math.min(1, k / 0.35), q2 = k < 0.35 ? 0 : Math.min(1, (k - 0.35) / 0.2), q3 = k < 0.55 ? 0 : (k - 0.55) / 0.45;
+      const rec = 1 - q3 * q3 * (3 - 2 * q3), ready = (q1 * q1 * (3 - 2 * q1)) * rec, push = (q2 * q2 * (3 - 2 * q2)) * rec;
+      R.arms[w].rotation.x = -1.05 * ready - 0.25 * push; R.fore[w].rotation.x = -0.55 * ready + 0.35 * push; R.arms[w].rotation.z = inW * (0.15 * ready + R.armIn);
+      R.arms[o].rotation.x = -1.2 * ready - 0.15 * push; R.fore[o].rotation.x = -0.6 * ready + 0.2 * push; R.arms[o].rotation.z = inO * (0.45 * ready + R.armIn);
+      R.prop.rotation.x = Math.PI * ready; R.prop.rotation.y = 0; R.prop.rotation.z = 0;
+      const tw = inO * (0.35 * ready - 0.55 * push);
+      R.chest.rotation.y = tw; R.hips.rotation.y = tw * 0.4; R.chest.rotation.x = -0.12 * ready + 0.32 * push;
+      R.legs[o].rotation.x = -0.3 * ready - 0.25 * push; R.legs[w].rotation.x = 0.2 * ready + 0.15 * push; R.knees[o].rotation.x = -0.35 * ready; R.knees[w].rotation.x = -0.1 * push;
+      R.hips.position.y = R.hipsY0 - R.H * 0.02 * push;
+    } else if (fx.attack > 0) {
+      // update 44: a sword — the weapon arm winds up over the head, the chest coils back, then the blow sweeps down and
+      // forward as the chest and hips unwind, the free arm up; then it recovers
       const k = fx.attack;
       let sw, ch, tw;
       if (k < 0.42) { const q = k / 0.42, e = q * q; sw = -2.6 * e; ch = -0.16 * e; tw = 0.4 * e; }
       else if (k < 0.62) { const q = (k - 0.42) / 0.2; sw = -2.6 + 2.2 * q; ch = -0.16 + 0.42 * q; tw = 0.4 - 0.85 * q; }
       else { const q = (k - 0.62) / 0.38; sw = -0.4 * (1 - q); ch = 0.26 * (1 - q); tw = -0.45 * (1 - q); }
-      R.arms[1].rotation.x = sw; R.arms[1].rotation.z = -0.3 - R.armIn; R.fore[1].rotation.x = k < 0.42 ? -1.0 : -0.25;
-      R.arms[0].rotation.x = -0.9; R.fore[0].rotation.x = -1.1; R.arms[0].rotation.z = 0.35 + R.armIn;
-      R.chest.rotation.x = ch; R.chest.rotation.y = tw; R.hips.rotation.y = tw * 0.45;
-      R.legs[0].rotation.x = -0.28; R.legs[1].rotation.x = 0.22; R.knees[0].rotation.x = -0.3;
+      R.arms[w].rotation.x = sw; R.arms[w].rotation.z = inW * (0.3 + R.armIn); R.fore[w].rotation.x = k < 0.42 ? -1.0 : -0.25;
+      R.arms[o].rotation.x = -0.9; R.fore[o].rotation.x = -1.1; R.arms[o].rotation.z = inO * (0.35 + R.armIn);
+      R.chest.rotation.x = ch; R.chest.rotation.y = inO * tw; R.hips.rotation.y = inO * tw * 0.45;
+      R.legs[o].rotation.x = -0.28; R.legs[w].rotation.x = 0.22; R.knees[o].rotation.x = -0.3;
+    }
+    if (fx.shove > 0) {
+      // update 49: the warning — the FREE hand shoots out flat and shoves, the shaft stays upright in the other
+      const e = Math.sin(Math.min(1, fx.shove) * Math.PI), e2 = e * e;
+      R.arms[o].rotation.x = -1.5 * e2; R.fore[o].rotation.x = -0.35 * (1 - e2) - 0.05 * e2; R.arms[o].rotation.z = inO * (0.1 * e2 + R.armIn);
+      R.chest.rotation.x = 0.16 * e2; R.chest.rotation.y = inO * 0.28 * e2; R.hips.rotation.y = inO * 0.12 * e2;
+      R.legs[o].rotation.x = -0.22 * e2; R.legs[w].rotation.x = 0.14 * e2;
+    }
+    if (fx.fall > 0) {
+      // update 49: the fall — the knees give, the body sinks and folds forward (the tilt to the ground is the body's own)
+      const k = Math.min(1, fx.fall), e = k * k * (3 - 2 * k);
+      R.knees[0].rotation.x = -1.25 * e; R.knees[1].rotation.x = -1.15 * e; R.legs[0].rotation.x = 0.55 * e; R.legs[1].rotation.x = 0.5 * e;
+      R.hips.position.y = R.hipsY0 - R.H * 0.16 * e; R.chest.rotation.x = 0.38 * e; R.chest.rotation.y = 0; R.hips.rotation.y = 0;
+      R.arms[0].rotation.x = 0.35 * e; R.arms[1].rotation.x = 0.3 * e; R.fore[0].rotation.x = -0.15 * (1 - e); R.fore[1].rotation.x = -0.15 * (1 - e);
+      R.arms[0].rotation.z = R.armIn; R.arms[1].rotation.z = -R.armIn;
+      if (R.prop) R.prop.rotation.x += (0 - R.prop.rotation.x) * Math.min(1, dt * 3);
     }
     if (fx.block > 0) {
       const e = Math.sin(Math.min(1, fx.block) * Math.PI);
@@ -148,12 +189,12 @@ export function driveHumanoid(group, state, speed, dt, headTurn = 0, style = "ca
       R.chest.rotation.x = -0.24 * e; R.hips.position.y = R.hipsY0 - R.H * 0.022 * e;
       R.knees[0].rotation.x = -0.35 * e; R.knees[1].rotation.x = -0.35 * e; R.legs[0].rotation.x = 0.18 * e; R.legs[1].rotation.x = 0.18 * e;
     }
-  }
+  } else if (R.prop && R.prop.rotation.x !== 0) R.prop.rotation.x += (0 - R.prop.rotation.x) * Math.min(1, dt * 4);   // update 49: the shaft settles upright again
   // the head: turns toward a visitor, otherwise glances around slowly
   R.lookT -= dt;
   if (R.lookT <= 0) { R.lookT = 3 + Math.random() * 5; R.lookTarget = (Math.random() - 0.5) * 0.5; }
   R.look += (R.lookTarget - R.look) * Math.min(1, dt * 0.9);
   const want = headTurn !== 0 ? Math.max(-0.7, Math.min(0.7, headTurn)) : R.look;
   R.head.rotation.y += (want - R.head.rotation.y) * Math.min(1, dt * 3);
-  R.head.rotation.x = Math.sin(t * 0.5 + R.phase) * 0.02 + (fx && fx.block > 0 ? 0.22 * Math.sin(Math.min(1, fx.block) * Math.PI) : 0);
+  R.head.rotation.x = Math.sin(t * 0.5 + R.phase) * 0.02 + (fx && fx.block > 0 ? 0.22 * Math.sin(Math.min(1, fx.block) * Math.PI) : 0) + (fx && fx.fall > 0 ? 0.45 * Math.min(1, fx.fall) : 0);
 }

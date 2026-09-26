@@ -212,3 +212,4 @@ et_censer,model,assets/models/et_censer.glb,Higgsfield tripo_3d text-to-3D 2026-
 et_bench,model,assets/models/et_bench.glb,Higgsfield tripo_3d text-to-3D 2026-09-24,"update 43: giants' stone bench with gold trim and gems, the castle courtyard (job dc340043)"
 et_altar,model,assets/models/et_altar.glb,Higgsfield nano_banana_pro -> image_to_3d (24k) 2026-09-24,"update 43: the golden altar under the light hole — drum with the sun disc and channels, crystalline spire (job 1bdf25e2)"
 t_relief,texture,assets/tex/t_relief_basecolor.webp,Higgsfield nano_banana_pro 2026-09-24,"update 44: the carved jackal relief on the river-side rock face and the gatehouse tympanum (job 65b024fc)"
+et_magician,model,assets/models/et_magician.glb,Higgsfield nano_banana_pro -> image_to_3d (textured) 2026-09-26,"update 49: Khemenu the sorcerer — hooded green robe over gold armour, gem staff; sells the Long Stride on the plaza (jobs 0dc5ccc6 / f1d6b1a5)"

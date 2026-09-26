@@ -236,7 +236,7 @@ export class Player {
 
     // energy — running drunk burns it TWICE as fast
     const moving = Math.hypot(this.vel.x, this.vel.z) > 0.5;
-    if (this.sprinting && moving) this.en = Math.max(0, this.en - P.sprintDrain * (drunk ? CFG.wine.drainMult : 1) * dt);
+    if (this.sprinting && moving) this.en = Math.max(0, this.en - P.sprintDrain * (drunk ? CFG.wine.drainMult : 1) * (game.strideOn ? CFG.eternius.stride.drain : 1) * dt);   // update 49: the sorcerer's Long Stride inside Eternius
     else if (this.sneak) this.en = Math.min(100, this.en + P.regenSneak * dt);
     else if (moving) this.en = Math.min(100, this.en + P.regenMove * dt);
     else this.en = Math.min(100, this.en + P.regenIdle * dt);

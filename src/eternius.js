@@ -26,6 +26,7 @@ export class EterniusCity {
     this.g = game;
     this.coins = 0;
     this.prayedDay = -1;
+    this.stride = false; this.strideOn = false; try { this.stride = localStorage.pdEtStride === "1"; } catch (e) {}   // update 49: the sorcerer's Long Stride, bought once and kept
     this.tasksDone = 0; this.task = null; this.keyGiven = false; this.vaultOpen = false;
     this.chapter = 0; this.keeperReady = true;
     this.npcs = []; this.stalls = []; this.lights = []; this.flags = []; this.lanterns = [];
@@ -204,7 +205,7 @@ export class EterniusCity {
       if (n.hp <= 0) this.guardDown(n);
       return true;
     }
-    if (n.hits === 1) { player.damage(G.warnDmg, "guard", new THREE.Vector3(n.x, n.y, n.z)); g.ui.toast(S.guardWarn); n.warnT = g.time; return true; }
+    if (n.hits === 1) { n.blockT = 0; n.shove = 0; player.damage(G.warnDmg, "guard", new THREE.Vector3(n.x, n.y, n.z)); g.ui.toast(S.guardWarn); n.warnT = g.time; return true; }   // update 49: he shoves you with his free hand
     // the second blow: he and the guards around him draw steel
     for (const o of this.npcs) if (o.role === "guard" && !o.dead && Math.hypot(o.x - n.x, o.z - n.z) < 30) { o.hostile = true; o.war = true; o.beast = null; o.hp = o.hp || G.hp; o.atkT = 0.4; }
     n.hp = (n.hp || G.hp) - K.dmg;
@@ -214,8 +215,8 @@ export class EterniusCity {
   }
   guardDown(n) {
     const G = E().guard, g = this.g;
-    n.dead = true; n.hostile = false; n.war = false; n.beast = null; n.strike = undefined; n.blockT = 0;
-    n.body.rotation.x = -Math.PI / 2; n.body.position.y = n.y + 0.35;
+    n.dead = true; n.hostile = false; n.war = false; n.beast = null; n.strike = undefined; n.blockT = 0; n.shove = undefined;
+    n.fall = 0;   // update 49: he goes down on his knees and falls (played in update), no longer dropped flat in one frame
     const coins = G.coins[0] + Math.floor(g.rng() * (G.coins[1] - G.coins[0] + 1));
     this.coins += coins; g.ui.coins(this.coins); g.ui.toast(STR.et.guardDown.replace("%n", coins));
     n.respawnT = G.respawn || 20;   // update 44: back on duty after 20 s (see update)
@@ -223,7 +224,7 @@ export class EterniusCity {
   // update 44: the fallen guard rises at his post, whole again
   guardRespawn(n) {
     const G = E().guard, g = this.g;
-    n.dead = false; n.hostile = false; n.war = false; n.beast = null; n.hits = 0; n.hp = G.hp; n.respawnT = undefined;
+    n.dead = false; n.hostile = false; n.war = false; n.beast = null; n.hits = 0; n.hp = G.hp; n.respawnT = undefined; n.fall = undefined; n.shove = undefined;
     n.x = n.homeX; n.z = n.homeZ; const fy = this.floorH(n.x, n.z, n.y); if (fy !== null) n.y = fy;
     n.body.rotation.x = 0; n.body.position.set(n.x, n.y, n.z); n.yaw0 = n.yawHome !== undefined ? n.yawHome : n.yaw0; n.yaw = n.yaw0; n.body.rotation.y = n.yaw;
     if (Math.hypot(g.player.pos.x - n.x, g.player.pos.z - n.z) < 45) g.ui.toast(STR.et.guardBack);
@@ -436,7 +437,7 @@ export class EterniusCity {
     const C = E(), L = C.levels, A = this.g.assets, scene = this.g.scene;
     const K = C.castle, S = STR.et;
     const mk = (kind, a, b, y, faceA, faceB, role, opts = {}) => {
-      const id = { male: "et_male", female: "et_female", spear: "et_guardspear", sword: "et_guardsword", king: "et_king" }[kind];
+      const id = { male: "et_male", female: "et_female", spear: "et_guardspear", sword: "et_guardsword", king: "et_king", mage: "et_magician" }[kind];
       const asset = A.glb[id];
       const [x, z] = cityWorld(a, b);
       let body;
@@ -469,6 +470,7 @@ export class EterniusCity {
     }
     mk("spear", C.entryRampA - 4, 12, L.plaza, C.entryA + 40, 12, "guard", { lines: S.guardLines });
     mk("spear", C.entryRampA - 4, -12, L.plaza, C.entryA + 40, -12, "guard", { lines: S.guardLines });
+    { const M = C.stride; mk("mage", M.r * Math.cos(M.th * D2R), M.r * Math.sin(M.th * D2R), L.plaza, 0, 0, "mage", { name: S.mageName, lines: S.mageLines }); }   // update 49: the sorcerer on the plaza, facing the altar
     mk("sword", C.throne.a1 + 3, 6, L.terrace, C.throne.a1 + 40, 6, "guard", { lines: S.guardLines });
     mk("sword", C.throne.a1 + 3, -6, L.terrace, C.throne.a1 + 40, -6, "guard", { lines: S.guardLines });
     mk("king", this.throneLocal.a - 0.6, 0, L.terrace + 1.2, this.throneLocal.a + 30, 0, "king", { name: S.kingName, lines: S.kingLines });
@@ -507,6 +509,8 @@ export class EterniusCity {
   update(dt) {
     const g = this.g, p = g.player, C = E();
     this.t += dt;
+    { const on = this.stride && this.inCastle(p.pos.x, p.pos.z);   // update 49: the Long Stride works inside the mountain, the hallway and the castle
+      if (on !== this.strideOn) { this.strideOn = on; g.strideOn = on; g.ui.strideBar(on); g.ui.toast(on ? STR.et.strideOn : STR.et.strideOff); } }
     const near = Math.hypot(p.pos.x - C.cx, p.pos.z - C.cz) < C.mountainR + 420;
     if (!near) return;
     const night = g.isNight ? 1 : 0;
@@ -605,7 +609,14 @@ export class EterniusCity {
     }
     for (const n of this.npcs) {
       n.t += dt;
-      if (n.dead) { if (n.respawnT !== undefined) { n.respawnT -= dt; if (n.respawnT <= 0) this.guardRespawn(n); } continue; }
+      if (n.dead) {
+        if (n.fall !== undefined && n.fall < 1) {   // update 49: the fall — knees first (0.35 of it), then the body tips over onto its back
+          n.fall = Math.min(1, n.fall + dt / 1.0); const k = n.fall, tl = Math.max(0, (k - 0.35) / 0.65), e = tl * tl * (3 - 2 * tl);
+          n.body.rotation.x = -Math.PI / 2 * e; n.body.position.y = n.y + 0.35 * e;
+          if (n.body.userData.hrig) driveHumanoid(n.body, "idle", 0, dt, 0, n.style || "calm", { attack: 0, block: 0, shove: 0, fall: Math.min(1, k / 0.35) });
+        }
+        if (n.respawnT !== undefined) { n.respawnT -= dt; if (n.respawnT <= 0) this.guardRespawn(n); } continue; }
+      if (n.shove !== undefined) { n.shove += dt / 0.55; if (n.shove >= 1) n.shove = undefined; }   // update 49: the warning shove runs its course
       const d = Math.hypot(p.pos.x - n.x, p.pos.z - n.z);
       let targetYaw = n.yaw0, walking = false;
       n.blockT = Math.max(0, (n.blockT || 0) - dt);
@@ -658,7 +669,7 @@ export class EterniusCity {
       let headTurn = 0;
       if (d >= 5.5 && d < 12) { const want = Math.atan2(p.pos.x - n.x, p.pos.z - n.z); headTurn = ((want - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; }
       if (n.body.userData.hrig) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm",
-        (n.strike !== undefined || n.blockT > 0) ? { attack: n.strike !== undefined ? Math.min(1, n.strike) : 0, block: n.blockT > 0 ? 1 - n.blockT / 0.45 : 0 } : null);   // update 44
+        (n.strike !== undefined || n.blockT > 0 || n.shove !== undefined) ? { attack: n.strike !== undefined ? Math.min(1, n.strike) : 0, block: n.blockT > 0 ? 1 - n.blockT / 0.45 : 0, shove: n.shove !== undefined ? n.shove : 0, fall: 0 } : null);   // update 44/49
       else if (!n.walk) n.body.position.y = n.y + Math.sin(n.t * 1.3) * 0.012;
     }
     if (!this.keeperReady) { const k = this.npcs.find((n) => n.role === "keeper"); if (k && Math.hypot(p.pos.x - k.x, p.pos.z - k.z) > 25) this.keeperReady = true; }
@@ -693,8 +704,9 @@ export class EterniusCity {
         continue;
       }
       const d = Math.hypot(p.pos.x - n.x, p.pos.z - n.z);
-      if (d > 4.2) continue;
-      if (n.role === "king") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openKing());
+      if (d > 4.2 || n.dead) continue;   // update 49: the dead do not talk (he does again once he is back on his post)
+      if (n.role === "mage") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openMage(n));
+      else if (n.role === "king") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openKing());
       else if (n.role === "keeper") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openKeeper());
       else if (n.role === "inn") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openInn());
       else if (n.role === "advisor") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openAdvisor(n));
@@ -709,7 +721,7 @@ export class EterniusCity {
       const ax = p.pos.x + ux * Math.max(0, dA - (DRa + 1.5)), az = p.pos.z + uz * Math.max(0, dA - (DRa + 1.5));
       if (dA < DRa + 1.5 + 3.2 && Math.abs(p.pos.y - ay) < 2.4) consider(ax, az, p.pos.y, `${STR.prayPrompt} [${STR.interact}]`, () => {
         if (this.prayedDay === g.dayNum) { g.ui.toast(STR.prayedAlready); g.audio.sDeny(); return; }
-        this.prayedDay = g.dayNum; p.hu = 100; p.hp = 100; this.altarFlash = 3;   // update 45: the carvings glow green for a moment
+        this.prayedDay = g.dayNum; p.hu = 100; p.hp = 100; p.en = 100; this.altarFlash = 3;   // update 49: the run energy too   // update 45: the carvings glow green for a moment
         g.ui.toast(S.prayed); g.audio.sPickup();
       });
     }
@@ -752,6 +764,17 @@ export class EterniusCity {
     lines.push(T.done ? S.advisorDone : S.advisorTask.replace("%need", need).replace("%r", T.reward));
     if (!this.keyGiven) lines.push(S.advisorKey.replace("%n", Math.max(0, E().vaultTasks - this.tasksDone)));
     g.npcPanel(n.name, lines);
+  }
+  // update 49: Khemenu the sorcerer — three lines and the offer; once bought, a greeting only
+  openMage(n) {
+    const g = this.g, S = STR.et, C = E();
+    if (this.stride) { n.lineI = ((n.lineI ?? -1) + 1) % S.mageHas.length; g.npcPanel(n.name, [S.mageHas[n.lineI]]); return; }
+    const s = g.npcPanel(n.name, S.mageLines.map((l) => l.replace("%n", C.stride.price)), [["mageBuy", S.mageBuy.replace("%n", C.stride.price)]]);
+    s.querySelector("#mageBuy").addEventListener("click", () => {
+      if (this.coins < C.stride.price) { g.ui.toast(S.mageNoCoins.replace("%n", C.stride.price)); g.audio.sDeny(); return; }
+      this.coins -= C.stride.price; g.ui.coins(this.coins); this.stride = true; try { localStorage.pdEtStride = "1"; } catch (e) {}
+      g.audio.sPickup(); g.ui.closeScreen(); g.npcPanel(n.name, [S.mageBought]);
+    });
   }
   openInn() {
     const g = this.g, S = STR.et, C = E();

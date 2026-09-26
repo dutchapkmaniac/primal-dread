@@ -555,6 +555,19 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
       box(halfW * 2, 0.05, 0.12, 0, y + 0.02, a0 + 0.06, goldPlain);
     }
   }
+  // update 49: the court's edge either side of the entry stair — from the stair's end round to the long walls at +-ET there
+  // was NO face between the city-centre floor and the court 6 m above it (you looked straight through to the outer wall,
+  // and walking in lifted you onto the court). Sandstone, the gold beams top and bottom, and a wall you cannot walk through
+  {
+    const thA = Math.atan2(Math.sqrt(TR * TR - C.entryA * C.entryA) + 2, C.entryA) / D2R - 1.5, thS = Math.atan2(Math.sqrt(TR * TR - C.entryRampA * C.entryRampA) + 2, C.entryRampA) / D2R;
+    for (const s of [-1, 1]) {
+      const t0 = Math.min(s * thA, s * (ET - 0.02)), t1 = Math.max(s * thA, s * (ET - 0.02));
+      const wm = city.mats.sandLit((ET - thA) * 0.4, 1.5); wm.side = THREE.DoubleSide; cyl(TR, t0, t1, L.plaza, L.court, wm, false, 12);
+      cyl(TR - 0.3, t0, t1, L.court - 0.55, L.court - 0.05, gold, true, 12); cyl(TR - 0.3, t0, t1, L.plaza + 0.05, L.plaza + 0.55, gold, true, 12);
+      const c0 = Math.min(s * thS, s * ET), c1 = Math.max(s * thS, s * ET), nS = 3;
+      for (let i = 0; i < nS; i++) { const ta = (c0 + (c1 - c0) * i / nS) * D2R, tb = (c0 + (c1 - c0) * (i + 1) / nS) * D2R; wallSeg(TR * Math.cos(ta), TR * Math.sin(ta), TR * Math.cos(tb), TR * Math.sin(tb), 0.5); }
+    }
+  }
   // the upper terrace (+8) runs from ET round past the throne door to S.stairTh0; the lower gallery (-14) from S.stairTh1 to -ET
   sector(TR, R, ET, 180, L.terrace, sand(6, 6), 48); sector(TR, R, -180, S.stairTh0, L.terrace, sand(6, 6), 24);
   for (const mm of [cyl(TR, ET, 180, L.plaza, L.terrace, city.mats.sandLit((180 - ET) * 0.4, 3)), cyl(TR, -180, S.stairTh0, L.plaza, L.terrace, city.mats.sandLit((S.stairTh0 + 180) * 0.4, 3))]) mm.material.side = THREE.DoubleSide;   // update 45/46: seen from the plaza too, lit, ONE texture scale (the short piece had the long piece's repeat squeezed into it)

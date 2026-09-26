@@ -261,6 +261,8 @@ export class UI {
     };
     set("#hp", hp, true); set("#en", en, false); set("#hu", hu, true);
   }
+  // update 49: the run bar goes turquoise while the sorcerer's Long Stride carries you
+  strideBar(on) { const el = $("#en"); if (el) el.classList.toggle("stride", !!on); }
   // update 36: the thirst bar — only while you are in the desert (null hides it)
   thirst(v) {
     const el = $("#th");

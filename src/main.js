@@ -93,7 +93,7 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "etdagger3d", "etsword3d", "etspear3d",   // update 40: the Eternial weapons, generated at last (buildEternialWeapons wraps them)
   "portal",   // update 37
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
-  "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue"];   // update 39: the Eternials
+  "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician"];   // update 39: the Eternials; update 49: the sorcerer
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {

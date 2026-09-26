@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=48";
+export const ASSET_V = "?v=49";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -574,7 +574,7 @@ export const CFG = {
     remotus: 1.8, altai: 1.8, cactus: 4.0, palm: 9.0, nomad: 1.75,   // update 36: the desert (the Alioramus stand 1.8 m, 5.5 m long)
     portal: 5.2,   // update 37: the stone portals
     imperator: 5.94, trexdagger3d: 0.4, impdagger3d: 0.4,   // update 38
-    et_male: 3.1, et_female: 2.8, et_guardspear: 3.1, et_guardsword: 3.1, et_king: 3.2, et_statue: 9,   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_male: 3.1, et_female: 2.8, et_guardspear: 3.1, et_guardsword: 3.1, et_king: 3.2, et_statue: 9, et_magician: 3.1,   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -612,7 +612,7 @@ export const CFG = {
     // update 36: Duco built new from his two photos (front + side), and the desert's models
     remotus: 0, altai: 0, cactus: 0, palm: 0, nomad: 0, portal: 0,   // the portal's medallion face is the model's +z
     imperator: 0, trexdagger3d: 0, impdagger3d: 0,
-    et_male: 0, et_female: 0, et_guardspear: 0, et_guardsword: 0, et_king: 0, et_statue: 0 },   // update 39
+    et_male: 0, et_female: 0, et_guardspear: 0, et_guardsword: 0, et_king: 0, et_statue: 0, et_magician: 0 },   // update 39/49
   // animation clip speed: clip cycles per meter moved (tuned per creature)
   animGait: { trex: 0.22, werewolf: 0.55, chicken: 1.6, croc: 0.9, cow: 0.5, dog: 0.9, elisia: 0.9 },
 
@@ -670,6 +670,7 @@ export const CFG = {
     inn: { r: 104, th: 135 }, keeper: { r: 100, th: -112 },   // update 40: the keeper moved off the grand stair
     advisor: { a: -134, b: 8.5 },   // update 43: beside the dais, not in it
     innPrice: 5, fishTime: 4, vaultTasks: 3,
+    stride: { price: 35, drain: 0.5, r: 48, th: 150 },   // update 49: the sorcerer's Long Stride — run energy drains at `drain` inside the mountain, hallway and castle; he stands at (r, theta) on the plaza
     guard: { hp: 450, dmg: 14, warnDmg: 10, speed: 3.4, hitEvery: 1.3, reach: 2.6, chaseR: 45, coins: [8, 15], respawn: 20, atkDur: 0.8, beastHits: 3 },   // update 44: ten Eternal-dagger blows, back on duty after 20 s, three strikes fell a desert hunter   // update 42: strike a guard once and he warns you, twice and it is a fight
     stalls: [
       { id: "food", name: "Neferu's kitchen", kind: "female", r: 44, th: -50, limit: 5,   // update 42: five of each a day color: 0x2f7a3a, wares: 0xb0402a, blurb: "foodBlurb", lines: "foodLines",
