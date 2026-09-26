@@ -460,7 +460,7 @@ export class EterniusCity {
     mk("sword", K.a0 + 9, -4.4, L.court, K.a1, -4.4, "guard", { lines: S.guardLines });
     mk("female", 234, 24, L.court, C.statue.a, C.statue.b, "citizen", { lines: S.femaleLines });
     mk("male", 241, -22, L.court, C.statue.a, C.statue.b, "citizen", { lines: S.maleLines });
-    mk("male", 214, 46, L.court, 214, 30, "citizen", { lines: S.maleLines });
+    mk("male", 214, 44, L.court, 214, 30, "citizen", { lines: S.maleLines });   // update 47: 1.5 m in front of the bench, not in it
     // the cavern: stall keepers, the innkeeper, the keeper of tales, the king and his court, guards, walkers
     for (const st of this.stalls) {
       const { a, b } = cityLocal(st.keeperX, st.keeperZ);
@@ -521,8 +521,8 @@ export class EterniusCity {
       else if (L.halo) L.halo.material.opacity = night ? 0.12 : 0;
       L.l.intensity = L.on * k;
     }
-    for (const f of this.flags) { f.material.emissiveIntensity = night * 0.6; f.rotation.z = Math.sin(this.t * 1.7 + f.position.x) * 0.06; }
-    for (const f of this.banners || []) f.material.emissiveIntensity = night * 0.6;
+    for (const f of this.flags) { f.material.emissiveIntensity = 0.45 + night * 0.3; f.rotation.z = Math.sin(this.t * 1.7 + f.position.x) * 0.06; }   // update 47: the cloth keeps its green under any light
+    for (const f of this.banners || []) f.material.emissiveIntensity = 0.45 + night * 0.3;
     if (this.altarGem) { this.altarGem.rotation.y += dt * 0.5; if (this.altarHalo) this.altarHalo.material.opacity = 0.11 + 0.06 * Math.sin(this.t * 2.1); }   // update 43: the crystal turns in its socket
     if (this.altarGlow) {   // update 45: gold light breathing between 60 and 100 %, never out; a green moment when you pray
       const pulse = 0.62 + 0.38 * (0.5 + 0.5 * Math.sin(this.t * 1.6)), base = 1.75 * pulse;

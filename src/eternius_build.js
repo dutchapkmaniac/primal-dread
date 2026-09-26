@@ -21,7 +21,7 @@ export function buildCity(city) {
 
   // ---------------- materials ----------------
   const sand = (rx, rz) => { const m = w.mat("t_sandstone", rx, rz, 0xc8a870); m.emissive = new THREE.Color(0x4a3c26); m.emissiveIntensity = 0.42; return m; };
-  const sandLit = (rx, rz) => { const m = sand(rx, rz); m.emissiveIntensity = 0.78; return m; };   // update 44: the big walls you face at night
+  const sandLit = (rx, rz) => { const m = sand(rx, rz); if (m.map) { m.emissiveMap = m.map; m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 0.55; } else m.emissiveIntensity = 0.78; return m; };   // update 44/47: the big walls you face — lit by their OWN texture, so they read as sandstone with no lamp near (a flat emissive was a dark brown 'void')
   const rock = (rx, rz) => { const m = w.mat("t_cavern", rx, rz, 0x6b5238); m.emissive = new THREE.Color(0x3a2c1c); m.emissiveIntensity = 0.5; return m; };
   const mountainM = (rx, rz) => { const m = w.mat(A.tex.t_mountain ? "t_mountain" : "t_cavern", rx, rz, 0x7a5a3c); m.vertexColors = true; return m; };
   const goldM = () => { const m = w.mat("t_goldpanel", 2, 2, 0xd4a72c); m.metalness = 0.55; m.roughness = 0.35; m.emissive = new THREE.Color(0x4a3608); m.emissiveIntensity = 0.35; return m; };
@@ -51,7 +51,7 @@ export function buildCity(city) {
       const img = A.tex.t_flag.image, cv = document.createElement("canvas"); cv.width = img.width || 512; cv.height = img.height || 512;
       const ctx = cv.getContext("2d"); ctx.drawImage(img, 0, 0, cv.width, cv.height);
       const id = ctx.getImageData(0, 0, cv.width, cv.height), d = id.data;
-      for (let i = 0; i < d.length; i += 4) { const lum = (d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11) / 255; if (lum < 0.3) { const k = 1 - lum / 0.3; d[i] = d[i] * (1 - k) + 30 * k; d[i + 1] = d[i + 1] * (1 - k) + 98 * k; d[i + 2] = d[i + 2] * (1 - k) + 50 * k; } }
+      for (let i = 0; i < d.length; i += 4) { const lum = (d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11) / 255; if (lum < 0.3) { const k = 1 - lum / 0.3; d[i] = d[i] * (1 - k) + 46 * k; d[i + 1] = d[i + 1] * (1 - k) + 122 * k; d[i + 2] = d[i + 2] * (1 - k) + 64 * k; } }
       ctx.putImageData(id, 0, 0);
       const t = new THREE.CanvasTexture(cv); t.colorSpace = A.tex.t_flag.colorSpace; t.flipY = A.tex.t_flag.flipY; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.needsUpdate = true; city.flagTex = t;
     } catch (e) { console.warn("flag cloth", e); }
@@ -127,7 +127,7 @@ export function buildCity(city) {
   city.addFlag = (bx, y, az, faceDeg, tall = false) => {
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, tall ? 9 : 6, 6), goldPlain); pole.position.set(bx, y + (tall ? 4.5 : 3), az); grp.add(pole);
     const tex = city.flagTex || A.tex.t_flag;
-    const m = new THREE.MeshStandardMaterial({ map: tex || null, color: tex ? 0xffffff : 0x1f5a2a, side: THREE.DoubleSide, roughness: 0.9, emissive: 0x2a1c00, emissiveIntensity: 0 });
+    const m = new THREE.MeshStandardMaterial({ map: tex || null, color: tex ? 0xffffff : 0x1f5a2a, side: THREE.DoubleSide, roughness: 0.9, emissive: 0x2f7a40, emissiveIntensity: 0.45 });
     const f = new THREE.Mesh(new THREE.PlaneGeometry(tall ? 2.4 : 1.8, tall ? 4.2 : 2.4, 6, 4), m); f.position.set(bx, y + (tall ? 6.4 : 4.4), az); f.rotation.y = faceDeg * D2R;
     f.geometry.translate(tall ? 1.2 : 0.9, 0, 0);
     grp.add(f); city.flags.push(f);
@@ -135,7 +135,7 @@ export function buildCity(city) {
   // a long banner hung flat on a wall face (faceDeg = the direction the face looks)
   city.addBanner = (bx, y, az, faceDeg, wd = 2.4, h = 9) => {
     const tex = city.flagTex || A.tex.t_flag;
-    const m = new THREE.MeshStandardMaterial({ map: tex || null, color: tex ? 0xffffff : 0x1f5a2a, side: THREE.DoubleSide, roughness: 0.9, emissive: 0x2a1c00, emissiveIntensity: 0 });
+    const m = new THREE.MeshStandardMaterial({ map: tex || null, color: tex ? 0xffffff : 0x1f5a2a, side: THREE.DoubleSide, roughness: 0.9, emissive: 0x2f7a40, emissiveIntensity: 0.45 });
     if (m.map) { m.map = m.map.clone(); m.map.repeat.set(1, h / (wd * 1.33)); m.map.wrapT = THREE.RepeatWrapping; m.map.needsUpdate = true; }
     const f = new THREE.Mesh(new THREE.PlaneGeometry(wd, h), m); f.position.set(bx, y - h / 2, az); f.rotation.y = faceDeg * D2R; grp.add(f); city.banners.push(f);   // update 42: a banner hangs still
     const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, wd + 0.6, 6), goldPlain); rod.position.set(bx, y + 0.1, az); rod.rotation.z = Math.PI / 2; rod.rotation.y = faceDeg * D2R; grp.add(rod);
@@ -165,7 +165,7 @@ export function buildCity(city) {
       const S = Lp * 0.58;   // the whole texture spans this many metres; the emblem is its middle half
       for (let i = 0; i < uv.count; i++) uv.setXY(i, 0.5 + (p.getZ(i) - cz) / S, 0.5 + (p.getY(i) - cy) / S); }
     const tex = city.flagTex || A.tex.t_flag;
-    const m = new THREE.MeshStandardMaterial({ map: tex || null, color: tex ? 0xffffff : 0x1f5a2a, side: THREE.DoubleSide, roughness: 0.9, emissive: 0x2a1c00, emissiveIntensity: 0 });
+    const m = new THREE.MeshStandardMaterial({ map: tex || null, color: tex ? 0xffffff : 0x1f5a2a, side: THREE.DoubleSide, roughness: 0.9, emissive: 0x2f7a40, emissiveIntensity: 0.45 });
     const f = new THREE.Mesh(geo, m); fl.add(f); city.flags.push(f);
     return gg;
   };
@@ -310,12 +310,12 @@ function buildMountain(city, grp, mountainM, dark, rock) {
   const mesh = new THREE.Mesh(geo, mountainM(1, 1)); mesh.receiveShadow = true; mesh.castShadow = true; grp.add(mesh);
   city.mountainMesh = mesh;
   // the shaft: a ragged rock tube from the cavern's ceiling up through the peak
-  const N = 96, rows = 10, sp = [], si = [], su = [];   // update 45: the same 96 spokes as the dome's lathe — the two rims used to cross and leak sky
+  const N = 168, rows = 10, sp = [], si = [], su = [];   // update 47: the mountain's 168 columns — rim and tube share every vertex   // update 45: the same 96 spokes as the dome's lathe — the two rims used to cross and leak sky
   for (let i = 0; i <= rows; i++) {
     const y = C.cavernH + (C.peakH - 4 - C.cavernH) * (i / rows);
     for (let j = 0; j <= N; j++) {
       const th = (j / N) * Math.PI * 2;
-      const rr = shaftR(th) * (1 + 0.08 * Math.sin(i * 1.7 + th * 2.3) * Math.sin(Math.PI * i / rows));   // update 43: flush at both ends
+      const rr = shaftR(th) * (1 + 0.08 * Math.sin(i * 1.7 + th * 2) * Math.sin(Math.PI * i / rows));   // update 43/47: flush at both ends, and periodic in theta (2.3 left a crack down the seam)
       sp.push(rr * Math.sin(th), y, rr * Math.cos(th)); su.push(j / N * 6, i / rows * 8);
     }
   }
@@ -517,7 +517,7 @@ function archShapeHead(wd, h, yDoor) {
 function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, goldBright, gem, dark, wallSeg, obst, pillar, archFrame, archWall, carpetM, waterMat, prop, glowM, greenGlowM, latticeM) {
   const C = E(), L = C.levels, A = city.g.assets, w = city.g.world, scene = city.g.scene;
   const R = C.wallR, TR = C.terraceR, ET = C.entryTh, S = C.split, RT = C.riverTh, rise = C.stairRise;
-  const stone = sand(4, 4);
+  const stone = sand(4, 4); if (stone.map) { stone.emissiveMap = stone.map; stone.emissive = new THREE.Color(0xffffff); stone.emissiveIntensity = 0.38; }   // update 47: the treads and their sides keep their texture in the dark too
 
   // ---- floors ----
   {   // update 43: the plaza floor with the down stair's trench cut out of it (the slab used to run over the treads)
@@ -714,7 +714,20 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
       }
       const g2 = new THREE.BufferGeometry(); g2.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g2.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g2.setIndex(idx); g2.computeVertexNormals();
       const wm = city.mats.sandLit(1, 1); wm.side = THREE.DoubleSide; const mm = new THREE.Mesh(g2, wm); grp.add(mm);
+      // update 47: the gold bands carry on along this wall on the plaza side — the bottom one straight along the base,
+      // the top one following the steps along the wall's top edge
+      cyl(TR - 0.3, th0 - 0.3, th1 + 0.3, L.plaza + 0.05, L.plaza + 0.55, gold, true, 24);
+      { const bp = [], bi = []; let bv = 0;
+        for (let i = 1; i <= n; i++) {
+          const tA = th0 + stepArc * (i - 1) + (i > half ? land : 0), tB = tA + stepArc, y = L.terrace - rs * i;
+          if (y <= L.plaza + 0.6) continue;
+          for (const [t, yy] of [[tA, y - 0.5], [tB, y - 0.5], [tB, y], [tA, y]]) bp.push((TR - 0.3) * Math.sin(t * D2R), yy, (TR - 0.3) * Math.cos(t * D2R));
+          bi.push(bv, bv + 1, bv + 2, bv, bv + 2, bv + 3); bv += 4;
+        }
+        const bg = new THREE.BufferGeometry(); bg.setAttribute("position", new THREE.Float32BufferAttribute(bp, 3)); bg.setAttribute("uv", new THREE.Float32BufferAttribute(new Array(bp.length / 3 * 2).fill(0), 2)); bg.setIndex(bi); bg.computeVertexNormals();
+        const gm2 = goldPlain.clone(); gm2.side = THREE.DoubleSide; grp.add(new THREE.Mesh(bg, gm2)); }
     }
+    const chanSteps = [];
     for (let i = 1; i <= n; i++) {
       const tA = th0 + stepArc * (i - 1) + (i > half ? land : 0), tB = tA + stepArc;
       const y = L.terrace - rs * i;
@@ -723,12 +736,23 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
       else sector(TR, R, tA, tB, y, i % 6 === 0 ? gold : stone, 2);
       cyl(TR, tA, tB, y, y + rs, stone, false, 2);   // (a riser is the terrace wall's own face; the visible one is the outer step face)
       // (update 46: the face above the plaza is the continuous strip built before this loop)   // update 45: only the part above the plaza, per step (the wall below is one textured piece)
-      if (chan) for (const rr of [C.riverR0, C.riverR1]) cyl(rr, tA - 0.02, tB + 0.02, L.riverBed, y + 0.02, rock(6, 1), rr === C.riverR0, 2);   // update 44: the channel's walls rise with the steps
+      if (chan) chanSteps.push([tA, tB, y]);   // update 47: the channel's walls are built below, as ONE sandstone strip per bank
       // the riser: a thin wall across the band at tA
       const ra = (TR + R) / 2, ca = ra * Math.cos(tA * D2R), cb = ra * Math.sin(tA * D2R);
       if (chan) { const r0c = (TR + C.riverR0 - 0.2) / 2, r1c = (C.riverR1 + 0.2 + R) / 2; box(0.12, rs + 0.02, C.riverR0 - 0.2 - TR, r0c * Math.sin(tA * D2R), y + rs / 2, r0c * Math.cos(tA * D2R), stone, tA * D2R); box(0.12, rs + 0.02, R - C.riverR1 - 0.2, r1c * Math.sin(tA * D2R), y + rs / 2, r1c * Math.cos(tA * D2R), stone, tA * D2R); }
       else box(0.12, rs + 0.02, R - TR, cb, y + rs / 2, ca, stone, tA * D2R);   // update 42: along the radial
       if (i === half) { const tL = tB; sector(TR, R, tL, tL + land, y, gold, 3); }
+    }
+    // update 47: the channel's two walls — sandstone block texture, self-lit, one stepped strip per bank following the steps
+    for (const rr of [C.riverR0, C.riverR1]) {
+      const pos = [], uv = [], idx = []; let vi = 0; const inner = rr === C.riverR0;
+      for (const [tA, tB, y] of chanSteps) {
+        const yTop = y + 0.02, quad = [[tA, L.riverBed], [tB, L.riverBed], [tB, yTop], [tA, yTop]];
+        for (const [t, yy] of quad) { pos.push(rr * Math.sin(t * D2R), yy, rr * Math.cos(t * D2R)); uv.push((t - th0) * 0.4 * rr / TR, (yy - L.riverBed) * 0.25); }
+        if (inner) idx.push(vi, vi + 1, vi + 2, vi, vi + 2, vi + 3); else idx.push(vi, vi + 2, vi + 1, vi, vi + 3, vi + 2); vi += 4;
+      }
+      const g2 = new THREE.BufferGeometry(); g2.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g2.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g2.setIndex(idx); g2.computeVertexNormals();
+      const wm = city.mats.sandLit(1, 1); wm.side = THREE.DoubleSide; grp.add(new THREE.Mesh(g2, wm));
     }
     // update 43: the channel's walls and bed, the arch the water comes out of (lit inside), and fences on both banks of the channel
     {
@@ -763,7 +787,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     // the dome: a lathe whose profile is displaced by a rock noise, ending in the ragged shaft mouth
     const pts = [], N = 16;
     for (let i = 0; i <= N; i++) { const t = i / N; const rr = R - (R - C.shaftR) * Math.sin(t * Math.PI / 2); const yy = C.wallTop + (C.cavernH - C.wallTop) * Math.sin(t * Math.PI / 2); pts.push(new THREE.Vector2(rr, yy)); }
-    const domeGeo = new THREE.LatheGeometry(pts, 96);
+    const domeGeo = new THREE.LatheGeometry(pts, 168);   // update 47: the same spokes as the shaft tube
     {
       const p = domeGeo.attributes.position;
       for (let i = 0; i < p.count; i++) {
@@ -780,7 +804,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
       domeGeo.computeVertexNormals();
     }
     const dome = new THREE.Mesh(domeGeo, ragged(rock(24, 4))); grp.add(dome);
-    cyl(R - 0.3, -180, 180, C.wallTop - 0.9, C.wallTop + 1.1, rock(24, 1), true, 96);   // update 46: the seam between the wall's rings and the dome's rim let sky through — a band of rock over it
+    cyl(R - 0.3, -180, 180, C.wallTop - 0.9, C.wallTop + 1.1, rock(24, 1), true, 168);   // update 46: the seam between the wall's rings and the dome's rim let sky through — a band of rock over it
     // the beam of light: a soft column plus three faint rays; the pool of light on the dais
     const beamM = new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.09, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(C.shaftR * 0.95, C.shaftR * 1.35, C.cavernH - L.plaza + 4, 40, 1, true), beamM); beam.position.y = (C.cavernH + L.plaza) / 2 + 2; grp.add(beam); city.beam = beam;
@@ -896,7 +920,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
   // ---- the THRONE HALL ----
   {
     const T = C.throne, hw = T.hw, tlen = T.a1 - T.a0, tac = (T.a0 + T.a1) / 2, y = L.terrace, H = 14;
-    box(hw * 2 + 2, 0.4, tlen + 2, 0, y - 0.2, tac, sand(6, 6));
+    box(hw * 2 + 2, 0.4, tlen + 2, 0, y - 0.19, tac, sand(6, 6));   // update 47: a centimetre proud of the terrace — the doorway showed both patterns fighting
     box(hw * 2 + 2, 1, tlen + 2, 0, y + H + 0.5, tac, rock(6, 6));
     for (const s of [-1, 1]) { box(1, H, tlen + 2, s * (hw + 0.5), y + H / 2, tac, sand(2, 6)); wallSeg(T.a0 - 1, s * hw, T.a1 + 1, s * hw, 0.6); for (const yy of [3.2, 9.6]) box(0.25, 0.35, tlen + 2, s * (hw - 0.05), y + yy, tac, goldPlain); }
     box(hw * 2 + 2, H, 1, 0, y + H / 2, T.a0 - 0.5, sand(6, 3)); wallSeg(T.a0, -hw, T.a0, hw, 0.6);
@@ -1051,9 +1075,9 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
         if ((Math.round((t - t0) / stepDeg)) % 2 === 1) city.addPoleFlag((TR + sgn * 0.3) * cb, yHi - 3.2, (TR + sgn * 0.3) * ca, t + (faceOut ? 0 : 180), 0.9, 4.5);
       }
     };
-    { const dth = ((C.stairs.down.hw + 0.4) / TR) / D2R; deco(S.stairTh1 + 1, -90 - dth - 1, L.lower, L.plaza, 10, true); deco(-90 + dth + 1, -ET - 1, L.lower, L.plaza, 10, true); }
+    { const dth = ((C.stairs.down.hw + 0.4) / TR) / D2R; deco(S.stairTh1 + 0.4, -90 - dth - 0.15, L.lower, L.plaza, 10, true); deco(-90 + dth + 0.15, -ET - 0.4, L.lower, L.plaza, 10, true); }   // update 47: the bands reach the walls' ends
     for (let t0 = S.stairTh1 + 8; t0 < -ET - 6; t0 += 24) { if (Math.abs(t0 + 90) < 8) continue; const t = t0 === S.stairTh1 + 8 ? t0 + 4 : t0; city.addTorchbearer((TR + 4.2) * Math.cos(t * D2R), (TR + 4.2) * Math.sin(t * D2R), L.lower, t); }   // update 44/46: clear of the pennants; the first one 4 m off its lamp post
-    { const dth = ((C.stairs.up.hw + 0.4) / TR) / D2R; deco(ET + 1, 90 - dth - 1, L.plaza, L.terrace, 10, false); deco(90 + dth + 1, 180, L.plaza, L.terrace, 10, false); deco(-180, S.stairTh0 - 1, L.plaza, L.terrace, 10, false); }
+    { const dth = ((C.stairs.up.hw + 0.4) / TR) / D2R; deco(ET + 0.4, 90 - dth - 0.15, L.plaza, L.terrace, 10, false); deco(90 + dth + 0.15, 180, L.plaza, L.terrace, 10, false); deco(-180, S.stairTh0 - 0.1, L.plaza, L.terrace, 10, false); }   // update 47: the bands reach the walls' ends
   }
   // update 42: the golden balustrade (Higgsfield: et_fence) along both terrace edges and the grand stair's inner edge —
   // you can walk into it, and it is what stops you from jumping down
@@ -1279,7 +1303,7 @@ function mergeStatic(city, grp) {
   // variant lands in one bucket. Only materials whose map and normal map share one transform are baked.
   const texKey = (t) => t ? (t.source ? t.source.uuid : t.uuid) + "/" + t.wrapS + t.wrapT + (t.flipY ? 1 : 0) + t.colorSpace : "";
   const bakeable = (m) => { const a = m.map, b = m.normalMap; if (!a && !b) return true; if (a && a.rotation) return false; if (a && b) return a.repeat.equals(b.repeat) && a.offset.equals(b.offset); return true; };
-  const sig = (m) => [m.type, m.color ? m.color.getHex() : "", texKey(m.map), texKey(m.normalMap), m.normalScale ? m.normalScale.x.toFixed(2) : "", m.emissive ? m.emissive.getHex() : "", m.emissiveIntensity || 0,
+  const sig = (m) => [m.type, m.color ? m.color.getHex() : "", texKey(m.map), texKey(m.normalMap), m.emissiveMap ? (m.emissiveMap === m.map ? "em=map" : texKey(m.emissiveMap)) : "", m.normalScale ? m.normalScale.x.toFixed(2) : "", m.emissive ? m.emissive.getHex() : "", m.emissiveIntensity || 0,
     m.roughness, m.metalness, m.side, m.transparent ? 1 : 0, m.opacity, m.vertexColors ? 1 : 0, m.alphaTest || 0, m.depthWrite ? 1 : 0, m.blending, bakeable(m) ? "b" : "u" + m.uuid].join("|");
   grp.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(grp.matrixWorld).invert();
@@ -1320,7 +1344,9 @@ function mergeStatic(city, grp) {
       cm = b.mat;
       if (bakeable(b.mat) && (b.mat.map || b.mat.normalMap)) {
         cm = b.mat.clone();
+        const sharedEm = b.mat.emissiveMap && b.mat.emissiveMap === b.mat.map;
         for (const k of ["map", "normalMap"]) if (cm[k]) { cm[k] = cm[k].clone(); cm[k].repeat.set(1, 1); cm[k].offset.set(0, 0); cm[k].needsUpdate = true; }
+        if (sharedEm) cm.emissiveMap = cm.map;   // update 47: the self-lit walls glow with their own texture — same clone, same repeat
       }
       canon.set(recipe, cm);
     }
