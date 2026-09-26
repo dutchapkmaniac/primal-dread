@@ -47,10 +47,10 @@ export class World {
     this.boxes.push({ minX, maxX, minY, maxY, minZ, maxZ });
   }
   gridKey(x, z) { return `${Math.floor(x / 8)},${Math.floor(z / 8)}`; }
-  addTree(x, z, r, tag = null) {   // update 42: `tag` marks a collider that is NOT a tree (nobody chops an Eternial)
+  addTree(x, z, r, tag = null, y0, y1) {   // update 42: `tag` marks a collider that is NOT a tree (nobody chops an Eternial); update 51: y0..y1 — the collider only counts at that height (floor -1)
     const k = this.gridKey(x, z);
     if (!this.treeGrid.has(k)) this.treeGrid.set(k, []);
-    this.treeGrid.get(k).push({ x, z, r, tag });
+    this.treeGrid.get(k).push({ x, z, r, tag, y0, y1 });
   }
   treesNear(x, z) {
     const out = [];
@@ -3500,6 +3500,7 @@ export class World {
       }
     }
     for (const t of this.treesNear(x, z)) {
+      if (t.y0 !== undefined && (y < t.y0 || y > t.y1)) continue;   // update 51: another floor's collider
       const dx = x - t.x, dz = z - t.z;
       const rr = r + t.r;
       const d2 = dx * dx + dz * dz;

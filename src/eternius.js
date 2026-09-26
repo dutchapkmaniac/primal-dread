@@ -27,7 +27,7 @@ export class EterniusCity {
     this.g = game;
     this.coins = 0;
     this.prayedDay = -1;
-    this.stride = false; this.strideOn = false; try { this.stride = localStorage.pdEtStride === "1"; } catch (e) {}   // update 49: the sorcerer's Long Stride, bought once and kept
+    this.stride = false; this.strideOn = false; try { if (localStorage.pdEtStride === "1" && localStorage.pdEtStrideOk !== "1") delete localStorage.pdEtStride; this.stride = localStorage.pdEtStride === "1"; } catch (e) {}   // update 49: the sorcerer's Long Stride, bought once and kept; update 51: a flag not written by the sorcerer's button is dropped once
     this.tasksDone = 0; this.task = null; this.keyGiven = false; this.vaultOpen = false;
     this.chapter = 0; this.keeperReady = true;
     this.npcs = []; this.stalls = []; this.lights = []; this.flags = []; this.lanterns = [];
@@ -257,6 +257,7 @@ export class EterniusCity {
     let moved = false;
     for (const w of this.walls) {
       if (w.off) continue;
+      if (w.y0 !== undefined && (y < w.y0 || y > w.y1)) continue;   // update 51: floor -1's walls stop nobody upstairs (they blocked the entry stair)
       const ex = w.a1 - w.a0, ez = w.b1 - w.b0, L2 = ex * ex + ez * ez || 1e-6;
       let t = ((a - w.a0) * ex + (b - w.b0) * ez) / L2; t = Math.max(0, Math.min(1, t));
       const px = w.a0 + ex * t, pz = w.b0 + ez * t;
@@ -522,6 +523,7 @@ export class EterniusCity {
     if (!near) return;
     const night = g.isNight ? 1 : 0;
     lowerUpdate(this, dt);   // update 50: floor -1's water and light
+    { const low = p.pos.y < -100; if (low !== this._propsLow) { this._propsLow = low; for (const m of this.lowerProps || []) m.visible = low; for (const m of this.upperProps || []) m.visible = !low; } }   // update 51: each floor's models draw only while you are on it
     // inside the mountain the day's fog would swallow the far wall: push it back while you are in
     const P = this.polar(p.pos.x, p.pos.z);
     const inRooms = this.inMountainRooms(P.a, P.b, P.r) && p.pos.y < 24;
@@ -617,6 +619,7 @@ export class EterniusCity {
     }
     for (const n of this.npcs) {
       n.t += dt;
+      if (Math.abs(n.y - p.pos.y) > 60) { if (n.body.visible) n.body.visible = false; continue; } else if (!n.body.visible) n.body.visible = true;   // update 51: the other floor's people neither move nor draw
       if (n.dead) {
         if (n.fall !== undefined && n.fall < 1) {   // update 49: the fall — knees first (0.35 of it), then the body tips over onto its back
           n.fall = Math.min(1, n.fall + dt / 1.0); const k = n.fall, tl = Math.max(0, (k - 0.35) / 0.65), e = tl * tl * (3 - 2 * tl);
@@ -676,7 +679,7 @@ export class EterniusCity {
       // a glance at a visitor a little further out (the body turns only when you are close)
       let headTurn = 0;
       if (d >= 5.5 && d < 12) { const want = Math.atan2(p.pos.x - n.x, p.pos.z - n.z); headTurn = ((want - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; }
-      if (n.body.userData.hrig) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm",
+      if (n.body.userData.hrig && d < 140) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm",   // update 51: no rig work for a figure 140 m off
         (n.strike !== undefined || n.blockT > 0 || n.shove !== undefined) ? { attack: n.strike !== undefined ? Math.min(1, n.strike) : 0, block: n.blockT > 0 ? 1 - n.blockT / 0.45 : 0, shove: n.shove !== undefined ? n.shove : 0, fall: 0 } : null);   // update 44/49
       else if (!n.walk) n.body.position.y = n.y + Math.sin(n.t * 1.3) * 0.012;
     }
@@ -787,7 +790,7 @@ export class EterniusCity {
     const s = g.npcPanel(n.name, S.mageLines.map((l) => l.replace("%n", C.stride.price)), [["mageBuy", S.mageBuy.replace("%n", C.stride.price)]]);
     s.querySelector("#mageBuy").addEventListener("click", () => {
       if (this.coins < C.stride.price) { g.ui.toast(S.mageNoCoins.replace("%n", C.stride.price)); g.audio.sDeny(); return; }
-      this.coins -= C.stride.price; g.ui.coins(this.coins); this.stride = true; try { localStorage.pdEtStride = "1"; } catch (e) {}
+      this.coins -= C.stride.price; g.ui.coins(this.coins); this.stride = true; try { localStorage.pdEtStride = "1"; localStorage.pdEtStrideOk = "1"; } catch (e) {}
       g.audio.sPickup(); g.ui.closeScreen(); g.npcPanel(n.name, [S.mageBought]);
     });
   }

@@ -15,7 +15,13 @@ import { E, D2R, cityWorld } from "./eternius_frame.js";
 // ============================================================================
 export function buildLower(city, grp) {
   const C = E(), LW = C.lower, Y = LW.y, R = C.wallR, TR = C.terraceR, A = city.g.assets, w = city.g.world, scene = city.g.scene;
-  const { box, sector, cyl, wallSeg, obst, pillar, archFrame, archWall, prop, archShape } = city.prims;
+  const { box, sector, cyl, pillar, archFrame, archWall, archShape } = city.prims;
+  // update 51: floor -1's walls and colliders count only 200 m down (they used to block the entry stair upstairs), and its
+  // models are listed so they draw only while you are down here
+  const wallSeg = (a0, b0, a1, b1, t) => { const sg = city.prims.wallSeg(a0, b0, a1, b1, t); sg.y0 = -270; sg.y1 = -150; return sg; };
+  const obst = (a, b, r) => w.addTree(...cityWorld(a, b), r, "city", -270, -150);
+  city.lowerProps = city.lowerProps || [];
+  const prop = (id, a, b, y, faceDeg, fb, scaleMul = 1) => { const m = city.prims.prop(id, a, b, y, faceDeg, fb, scaleMul); if (m && m.parent === scene) city.lowerProps.push(m); return m; };
   const { sand, sandLit, rock, gold, goldPlain, goldBright, gem, dark, glowM, greenGlowM, carpetM, latticeM, waterMat } = city.mats;
   const rise = C.stairRise;
   const soilM = (rx, rz) => { const m = w.mat("t_soil", rx, rz, 0x3a2a1c); m.emissive = new THREE.Color(0x2a1e14); m.emissiveIntensity = 0.5; return m; };
@@ -131,7 +137,7 @@ export function buildLower(city, grp) {
     // eight lampposts round the plaza ring, six benches facing the water
     for (let k = 0; k < 8; k++) { const t = k * 45 + 22.5; const [a, b] = pt(FR + 7, t); city.addLamppost(a, b, Y.park, false); }
     const benchA = A.glb.et_bench || A.glb.bench;
-    for (let k = 0; k < 6; k++) { const t = k * 60; const [a, b] = pt(FR + 4.2, t); if (benchA) { const bch = city.warmProp(benchA.model.clone()); const [x, z] = cityWorld(a, b); bch.position.set(x, Y.park, z); bch.rotation.y = C.grpYaw + t * D2R + Math.PI / 2; scene.add(bch); } else box(2.4, 0.5, 0.8, b, Y.park + 0.25, a, sand(1, 1), t * D2R + Math.PI / 2); obst(a, b, 1.2); }
+    for (let k = 0; k < 6; k++) { const t = k * 60; const [a, b] = pt(FR + 4.2, t); if (benchA) { const bch = city.warmProp(benchA.model.clone()); const [x, z] = cityWorld(a, b); bch.position.set(x, Y.park, z); bch.rotation.y = C.grpYaw + t * D2R + Math.PI / 2; scene.add(bch); city.lowerProps.push(bch); } else box(2.4, 0.5, 0.8, b, Y.park + 0.25, a, sand(1, 1), t * D2R + Math.PI / 2); obst(a, b, 1.2); }
   }
 
   // ---------------- planters (hedges and flowers in gold-trimmed sandstone boxes), more benches, lamps ----------------
@@ -150,7 +156,7 @@ export function buildLower(city, grp) {
       const n = Math.max(2, Math.round((t1 - t0) / 6));
       for (let i = 0; i < n; i++) { const ta = (t0 + (t1 - t0) * i / n) * D2R, tb = (t0 + (t1 - t0) * (i + 1) / n) * D2R; for (const rr of [r0 - 0.3, r1 + 0.3]) wallSeg(rr * Math.cos(ta), rr * Math.sin(ta), rr * Math.cos(tb), rr * Math.sin(tb), 0.3); }
       const benchA = A.glb.et_bench || A.glb.bench, tm = (t0 + t1) / 2;
-      for (const dt of [-8, 8]) { const t = tm + dt, [a, b] = pt(r0 - 2.6, t); if (benchA) { const bch = city.warmProp(benchA.model.clone()); const [x, z] = cityWorld(a, b); bch.position.set(x, Y.park, z); bch.rotation.y = C.grpYaw + t * D2R + Math.PI / 2 + Math.PI; scene.add(bch); } obst(a, b, 1.2); }
+      for (const dt of [-8, 8]) { const t = tm + dt, [a, b] = pt(r0 - 2.6, t); if (benchA) { const bch = city.warmProp(benchA.model.clone()); const [x, z] = cityWorld(a, b); bch.position.set(x, Y.park, z); bch.rotation.y = C.grpYaw + t * D2R + Math.PI / 2 + Math.PI; scene.add(bch); city.lowerProps.push(bch); } obst(a, b, 1.2); }
       { const [a, b] = pt(r1 + 2.4, tm); city.addLamppost(a, b, Y.park, false); }
     }
     // lamps along the park's edge, torch statues by the walls, flags on the walls
@@ -212,7 +218,7 @@ export function buildLower(city, grp) {
     const rm = carve(LW.hospitalTh, TR, Y.park, "hospital", 11, 6.5, 5, { green: true });
     city.lowerBeds = [];
     for (let k = 0; k < 3; k++) { const [ba, bb] = rm.P(3.2 + k * 3.4, rm.hw - 1.6); prop("et_bed", ba, bb, Y.park, LW.hospitalTh + 90, () => { const gg = new THREE.Group(); gg.position.set(bb, Y.park, ba); gg.rotation.y = rm.ry + Math.PI / 2; grp.add(gg); const fr = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 3.4), gold); fr.position.y = 0.4; gg.add(fr); const mt = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.3, 3.2), new THREE.MeshStandardMaterial({ color: 0xe8e2d0 })); mt.position.y = 0.8; gg.add(mt); return gg; }); obst(ba, bb, 1.3); const [x, z] = cityWorld(ba, bb); city.lowerBeds.push({ x, z, y: Y.park + 0.9, a: ba, b: bb }); }
-    { const [ta, tb] = rm.P(rm.depth * 0.5, -(rm.hw - 2.4)); if (A.glb.k_table) { const m = A.glb.k_table.model.clone(); const [x, z] = cityWorld(ta, tb); m.position.set(x, Y.park, z); m.rotation.y = C.grpYaw + rm.ry; scene.add(m); } obst(ta, tb, 1.0); }
+    { const [ta, tb] = rm.P(rm.depth * 0.5, -(rm.hw - 2.4)); if (A.glb.k_table) { const m = A.glb.k_table.model.clone(); const [x, z] = cityWorld(ta, tb); m.position.set(x, Y.park, z); m.rotation.y = C.grpYaw + rm.ry; scene.add(m); city.lowerProps.push(m); } obst(ta, tb, 1.0); }
     for (const s of [-1, 1]) { const [pa, pb] = rm.P(-1.4, s * (rm.hw + 0.6)); pillar(pb, Y.park, pa, 0.35, 4.6, gold); }
     { const [fa, fb] = rm.P(-1.2, 0); const sign = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 0.2), new THREE.MeshStandardMaterial({ color: 0xf2eee6, emissive: 0xf2eee6, emissiveIntensity: 0.35 })); sign.position.set(fb, Y.park + 5.6, fa); sign.rotation.y = rm.ry; grp.add(sign); const crossM = new THREE.MeshStandardMaterial({ color: 0xd8302a, emissive: 0xd8302a, emissiveIntensity: 0.6 }); for (const [w2, h2] of [[1.1, 0.32], [0.32, 1.1]]) { const cr = new THREE.Mesh(new THREE.BoxGeometry(w2, h2, 0.08), crossM); cr.position.set(0, 0, -0.14); sign.add(cr); } }
     city.lowerHospital = rm; rm.npc = rm.P(rm.depth * 0.45, -(rm.hw - 2.4) + 2.2);
