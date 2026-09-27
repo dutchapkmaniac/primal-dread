@@ -1,12 +1,12 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=55";
-import { STR } from "../strings.js?v=55";
-import { Creature } from "./entities.js?v=55";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=55";
-import { iconUrl } from "./items.js?v=55";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=55";
-import { buildCity } from "./eternius_build.js?v=55";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=55";   // update 50
+import { CFG } from "./config.js?v=56";
+import { STR } from "../strings.js?v=56";
+import { Creature } from "./entities.js?v=56";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=56";
+import { iconUrl } from "./items.js?v=56";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=56";
+import { buildCity } from "./eternius_build.js?v=56";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=56";   // update 50
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================

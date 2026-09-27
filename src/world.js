@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=55";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=56";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=55";
-import { Desert } from "./desert.js?v=55";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=55";
+import { CFG } from "./config.js?v=56";
+import { Desert } from "./desert.js?v=56";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=56";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path

@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=55";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=55";
+import { CFG } from "./config.js?v=56";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=56";
 
 // ============================================================================
 // update 50: FLOOR -1 — the park under the city, 200 m down. The river leaves the ground floor through the
