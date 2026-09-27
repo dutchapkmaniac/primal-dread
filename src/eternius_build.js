@@ -1222,8 +1222,8 @@ function buildHomes(city, grp, box, cyl, sand, rock, gold, goldPlain, goldBright
   const levelAt = (th) => (Math.abs(th) < ET ? L.court : (th >= ET || th <= S.stairTh0) ? L.terrace : th >= S.stairTh1 ? L.lower : null);
   const windowM = new THREE.MeshBasicMaterial({ color: 0xffd08a });
   city.homeGlows = [];
-  const facade = (th, y) => {
-    const rr = R - 0.6, ca = rr * Math.cos(th * D2R), cb = rr * Math.sin(th * D2R), ry = th * D2R + Math.PI;   // faces the heart
+  const facade = (th, y, wallR = R, yRange = null) => {   // update 53: floor -1 borrows it (its own wall radius, walls that only count down there)
+    const rr = wallR - 0.6, ca = rr * Math.cos(th * D2R), cb = rr * Math.sin(th * D2R), ry = th * D2R + Math.PI;   // faces the heart
     const gg = new THREE.Group(); gg.position.set(cb, y, ca); gg.rotation.y = ry; grp.add(gg);
     const add = (geo, m, x, yy, z) => { const mm = new THREE.Mesh(geo, m); mm.position.set(x, yy, z); mm.castShadow = true; gg.add(mm); return mm; };
     // a sandstone front standing a little proud of the rock, a doorway, two windows, a balcony with a gold rail, a lantern
@@ -1242,9 +1242,10 @@ function buildHomes(city, grp, box, cyl, sand, rock, gold, goldPlain, goldBright
     city.emit(gg, 2.2, 3.9, 1.2, 0xffc35a, 1.3, 12, {});
     // the blocking wall segment (the front is 0.9 m proud of the rock)
     const ta = [-Math.sin(th * D2R), Math.cos(th * D2R)];   // tangential (a, b)
-    const fa = (R - 1.1) * Math.cos(th * D2R), fb = (R - 1.1) * Math.sin(th * D2R);
-    wallSeg(fa - ta[0] * 3.8, fb - ta[1] * 3.8, fa + ta[0] * 3.8, fb + ta[1] * 3.8, 0.5);
+    const fa = (wallR - 1.1) * Math.cos(th * D2R), fb = (wallR - 1.1) * Math.sin(th * D2R);
+    const sg = wallSeg(fa - ta[0] * 3.8, fb - ta[1] * 3.8, fa + ta[0] * 3.8, fb + ta[1] * 3.8, 0.5); if (yRange) { sg.y0 = yRange[0]; sg.y1 = yRange[1]; }
   };
+  city.facade = facade;
   for (let th = -180 + 4; th < 180; th += C.facadeStep / R / D2R) {
     const t = th > 180 ? th - 360 : th;
     if (isBlocked(t)) continue;

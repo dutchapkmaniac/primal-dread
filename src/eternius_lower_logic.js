@@ -41,7 +41,7 @@ export function lowerH(city, a, b, r, th) {
   if (Math.abs(a) < SD.hw + 0.3 && -b > SD.r0 && -b <= SD.r1 + 0.3) { const n = Math.round((Y.park - Y.low) / rise), run = (SD.r1 - SD.r0) / n; return Y.park - ((Y.park - Y.low) / n) * Math.min(n, Math.ceil((-b - SD.r0) / run)); }
   if (r >= TR) {
     if (inW(th)) {
-      if (city.lowerJetty && Math.abs(th - city.lowerJetty.th) < 1.3 && r < L.riverR0 + 3.6) return Y.water + 0.8;   // the jetty's pier
+      if (city.lowerJetty && Math.abs(th - city.lowerJetty.th) < 1.3 && r < L.riverR0 + 3.9) return Y.walk;   // the jetty's pier, level with the walkway
       const B = city.lowerBridge; const bt = B ? Math.abs(-a * Math.sin(B.th * D2R) + b * Math.cos(B.th * D2R)) : 1e9;
       if (r > L.riverR0 - 1.5 && r < L.riverR1 + 1.5 && bt <= (B ? B.hw : 0) + 0.3) return Y.walk + 0.45;
       if (r > L.riverR0 && r < L.riverR1) return Y.riverBed;
@@ -77,7 +77,7 @@ export function lowerCollide(city, a, b, rad, y) {
   r = Math.hypot(a, b); th = Math.atan2(b, a) / D2R;
   if (inW(th) && r > L.riverR0 - rad && r < L.riverR1 + rad && y > Y.riverBed + 2.5) {   // the river: banks, not water — unless on the bridge
     const B = city.lowerBridge; const bt = B ? Math.abs(-a * Math.sin(B.th * D2R) + b * Math.cos(B.th * D2R)) : 1e9;
-    const onPier = city.lowerJetty && Math.abs(th - city.lowerJetty.th) < 1.1 && r < L.riverR0 + 3.4;
+    const onPier = city.lowerJetty && Math.abs(th - city.lowerJetty.th) < 1.1 && r < L.riverR0 + 3.7;
     if (!onPier && !(B && bt <= B.hw - 0.2)) { const mid = (L.riverR0 + L.riverR1) / 2, side = r < mid ? L.riverR0 - rad : L.riverR1 + rad; const k = side / r; a *= k; b *= k; moved = true; }
   }
   return moved ? [a, b] : null;
@@ -117,8 +117,8 @@ export function lowerNpcs(city) {
 export function lowerInteract(city, consider, p) {
   const C = E(), L = LW(), S = STR.et, g = city.g;
   const near = (pa, pb, d) => { const [x, z] = cityWorld(pa, pb); return Math.hypot(p.pos.x - x, p.pos.z - z) < d; };
-  if (city.jettyUp && !g.ride && near(city.jettyUp.a, city.jettyUp.b, 4.5) && Math.abs(p.pos.y - C.levels.lower) < 3) { const [x, z] = cityWorld(city.jettyUp.a, city.jettyUp.b); consider(x, z, p.pos.y, `${S.boatDown} [${STR.interact}]`, () => startRide(city, 1)); }
-  if (city.lowerJetty && !g.ride && near(city.lowerJetty.a, city.lowerJetty.b, 4.5) && Math.abs(p.pos.y - L.y.walk) < 3) { const [x, z] = cityWorld(city.lowerJetty.a, city.lowerJetty.b); consider(x, z, p.pos.y, `${S.boatUp} [${STR.interact}]`, () => startRide(city, -1)); }
+  if (city.jettyUp && !g.ride && near(city.jettyUp.a, city.jettyUp.b, 6.5) && Math.abs(p.pos.y - C.levels.lower) < 3) { const [x, z] = cityWorld(city.jettyUp.a, city.jettyUp.b); consider(x, z, p.pos.y, `${S.boatDown} [${STR.interact}]`, () => startRide(city, 1)); }
+  if (city.lowerJetty && !g.ride && near(city.lowerJetty.a, city.lowerJetty.b, 6.5) && Math.abs(p.pos.y - L.y.walk) < 3) { const [x, z] = cityWorld(city.lowerJetty.a, city.lowerJetty.b); consider(x, z, p.pos.y, `${S.boatUp} [${STR.interact}]`, () => startRide(city, -1)); }
   if (city.lowerHouse && near(city.lowerHouse.rm.doorA, city.lowerHouse.rm.doorB, 3.2) && Math.abs(p.pos.y - L.y.park) < 3) { const [x, z] = cityWorld(city.lowerHouse.rm.doorA, city.lowerHouse.rm.doorB); consider(x, z, p.pos.y, `${S.enterHome} [${STR.interact}]`, () => { g.ui.toast(S.notYourHome); g.audio.sDeny(); }); }
 }
 // ---------------- each frame ----------------
@@ -136,10 +136,12 @@ export function startRide(city, dir) {
   const boat = city.rideBoat; if (!boat) return;
   const from = dir > 0 ? city.boatUp : city.boatLow; if (from) from.visible = false;
   boat.visible = true;
-  g.ride = { dir, s: 0, len: city.rideLen, speed: C.lower.ride.speed, t: 0 };
+  // update 53: two seconds of sailing toward the tunnel, a fade to black, and the picture returns with you in the boat at
+  // the other jetty; a moment later you step off. (The whole 1200 m spiral is still there to look at as you go in.)
+  g.ride = { dir, s: 0, len: city.rideLen, speed: C.lower.ride.speed, t: 0, phase: "sail" };
   g.menuOpen = false; g.sitting = false;
   g.ui.toast(dir > 0 ? S.boatLeaveDown : S.boatLeaveUp); g.audio.sSelect && g.audio.sSelect();
-  placeBoat(city, g.ride, 0);
+  placeBoat(city, g.ride, 0.0005);
   const p = g.player; const tw = tangentWorld(city, g.ride, dir > 0 ? 0.001 : 0.999, dir); p.yaw = Math.atan2(-tw.x, -tw.z); p.pitch = 0.05;
 }
 function tangentWorld(city, Rd, u, dir) {
@@ -156,20 +158,33 @@ function placeBoat(city, Rd, u) {
   return pw;
 }
 export function updateRide(city, dt, input) {
-  const g = city.g, Rd = g.ride, p = g.player, C = E(), L = LW(), S = STR.et;
+  const g = city.g, Rd = g.ride, p = g.player, C = E(), L = LW(), S = STR.et, RC = C.lower.ride;
   if (!Rd) return;
-  Rd.t += dt; Rd.s = Math.min(Rd.len, Rd.s + Rd.speed * dt * Math.min(1, Rd.t / 1.5));
-  const u = Rd.dir > 0 ? Rd.s / Rd.len : 1 - Rd.s / Rd.len;
-  const pw = placeBoat(city, Rd, Math.max(0.0005, Math.min(0.9995, u)));
-  p.pos.set(pw.x, pw.y + 0.35, pw.z); p.vel && p.vel.set(0, 0, 0);
+  Rd.t += dt;
+  const boat = city.rideBoat;
+  if (Rd.phase === "sail") {
+    Rd.s = Math.min(Rd.len, Rd.s + Rd.speed * dt * Math.min(1, Rd.t / 1.0));
+    const u = Rd.dir > 0 ? Rd.s / Rd.len : 1 - Rd.s / Rd.len;
+    placeBoat(city, Rd, Math.max(0.0005, Math.min(0.9995, u)));
+    if (Rd.t >= RC.sail) { Rd.phase = "fade"; Rd.t = 0; g.ui.fade(true, RC.fade * 1000); }
+  } else if (Rd.phase === "fade") {
+    if (Rd.t >= RC.fade + 0.25) {
+      const dest = Rd.dir > 0 ? city.boatLow : city.boatUp;
+      if (dest) { boat.position.copy(dest.position); boat.rotation.copy(dest.rotation); dest.visible = false; }
+      const tw = new THREE.Vector3(0, 0, 1).applyQuaternion(boat.quaternion); p.yaw = Math.atan2(-tw.x, -tw.z);
+      Rd.phase = "arrive"; Rd.t = 0; g.ui.fade(false, RC.fade * 1000);
+    }
+  } else if (Rd.phase === "arrive") {
+    if (Rd.t >= RC.arrive) {
+      const J = Rd.dir > 0 ? city.lowerJetty : city.jettyUp, y = Rd.dir > 0 ? L.y.walk : C.levels.lower;
+      const [x, z] = cityWorld(J.a, J.b); p.pos.set(x, y + 0.1, z);
+      boat.visible = false; if (city.boatUp) city.boatUp.visible = true; if (city.boatLow) city.boatLow.visible = true;
+      g.ride = null; g.ui.prompt(""); g.ui.toast(Rd.dir > 0 ? S.boatArriveDown : S.boatArriveUp);
+      return;
+    }
+  }
+  p.pos.set(boat.position.x, boat.position.y + 0.35, boat.position.z); p.vel && p.vel.set(0, 0, 0);
   p.yaw += (input.turn || 0) * 2.7 * dt; p.yaw -= input.look.dx * 0.0023; p.pitch = Math.max(-1.45, Math.min(1.45, p.pitch - input.look.dy * 0.0023)); input.look.dx = input.look.dy = 0;
   g.camera.position.set(p.pos.x, p.pos.y + 1.15, p.pos.z); g.camera.rotation.set(p.pitch, p.yaw, 0, "YXZ");
   g.ui.prompt(Rd.dir > 0 ? S.boatRidingDown : S.boatRidingUp);
-  if (Rd.s >= Rd.len) {
-    const J = Rd.dir > 0 ? city.lowerJetty : city.jettyUp, y = Rd.dir > 0 ? L.y.walk : C.levels.lower;
-    const [x, z] = cityWorld(J.a, J.b); p.pos.set(x, y + 0.1, z);
-    city.rideBoat.visible = false; if (city.boatUp) city.boatUp.visible = true; if (city.boatLow) city.boatLow.visible = true;
-    g.ride = null; g.ui.prompt(""); g.ui.toast(Rd.dir > 0 ? S.boatArriveDown : S.boatArriveUp);
-    if (Rd.dir > 0 && !city.lowerFound) { city.lowerFound = true; }
-  }
 }

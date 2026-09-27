@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=52";
+export const ASSET_V = "?v=53";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -650,18 +650,18 @@ export const CFG = {
     // update 50: FLOOR -1, 200 m down (see eternius_lower.js): its levels, the river band on the west (theta +90 is the
     // map's left), the gallery on the east, the rooms carved into the walls, the trees, the spiral the boat takes down
     lower: {
-      y: { park: -204, walk: -192, low: -214, riverBed: -219, water: -215.2 },
+      y: { park: -204, walk: -192, low: -214, riverBed: -195.5, water: -192.5 },   // update 53: the river lies half a metre under its walkway
       west: { th0: 28, th1: 139 }, east: { th0: -168, th1: -33 },
       riverR0: 100, riverR1: 108, bridgeTh: 83, jettyTh: 36, shaftR: 22.5, glassR0: 14.5, glassR1: 22.5,
       jail: { th0: -76, th1: -35, cells: 5 }, mineTh: -152, mine: { len: 70, hw: 4.5, h: 8 }, storeTh: -138,
       hospitalTh: 122, houseTh: -18, fountainR: 12, planterR: 45,
       planters: [[-52, -8], [72, 112], [-166, -122]],
-      beds: [[30, 72, 46, 90], [-102, -54, 50, 90], [136, 182, 50, 90]],
-      trees: [[34, 58], [46, 70], [58, 60], [40, 82], [52, 84], [64, 76], [70, 64], [36, 72], [48, 50], [66, 89],
-              [-58, 62], [-66, 78], [-76, 66], [-84, 82], [-92, 70], [-100, 60], [-70, 52], [-88, 54],
-              [140, 62], [150, 76], [160, 64], [172, 78], [178, 60], [146, 86], [166, 88], [156, 52]],
-      helix: { ca: 142, cb: 60, r: 30, turns: 4.75, yTop: -30, yBot: -213 },
-      ride: { speed: 8 },
+      beds: [[30, 76, 48, 74], [-106, -50, 48, 74], [134, 188, 48, 74]],
+      trees: [[33, 56], [43, 66], [52, 54], [61, 67], [71, 57], [38, 50], [57, 50], [66, 50], [48, 62],
+              [-55, 56], [-64, 66], [-73, 54], [-82, 67], [-91, 57], [-100, 64], [-60, 50], [-78, 50], [-95, 50],
+              [138, 56], [148, 66], [157, 54], [166, 67], [175, 58], [184, 52], [143, 50], [161, 50]],   // update 53: none within 22 m of the walkway's edge - no crown over the paths
+      helix: { ca: 142, cb: 60, r: 30, turns: 4.75, yTop: -30, yBot: -190.5 },
+      ride: { speed: 8, sail: 2.2, fade: 0.8, arrive: 1.4 },   // update 53: two seconds of sailing, a fade, and you are there
     },
     riverTh: { th0: -133, th1: -60.6 },   // update 44: the river runs right up to the radial wall, the culvert's face is flush with it                    // update 43: the river now runs OUT of the grand stair (an open channel through its lowest steps, then a lit arch) to one culvert
     culvert: { depth: 90, w: 8, h: 6.2, wallUp: 5.2, lit: 18 },   // update 46: 90 m round the bend — nothing to see at the end   // update 45: 60 m, curving with the river — no end in sight   // update 44: 30 m of sandstone tunnel, lamps for the first 18 m, then the dark   // update 43: the arch springs from the water, the wall stands 5 m above the gallery; lights inside

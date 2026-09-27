@@ -42,7 +42,7 @@ export function buildLower(city, grp) {
   // the west walkway (12 m up) either side of the river, the river bed and the water; the east gallery (10 m down)
   sector(TR, LW.riverR0, LW.west.th0, LW.west.th1, Y.walk, sand(6, 6), 48); sector(LW.riverR1, R, LW.west.th0, LW.west.th1, Y.walk, sand(6, 6), 48);
   sector(LW.riverR0 - 0.2, LW.riverR1 + 0.2, LW.west.th0 - 0.3, LW.west.th1 + 0.3, Y.riverBed, rock(6, 2), 48);
-  cyl(LW.riverR0, LW.west.th0, LW.west.th1, Y.riverBed, Y.walk, rock(6, 1), true); cyl(LW.riverR1, LW.west.th0, LW.west.th1, Y.riverBed, Y.walk, rock(6, 1));
+  for (const [rr, ins] of [[LW.riverR0, true], [LW.riverR1, false]]) { const bm = sandLit((LW.west.th1 - LW.west.th0) * 0.4, 1); bm.side = THREE.DoubleSide; cyl(rr, LW.west.th0, LW.west.th1, Y.riverBed, Y.walk, bm, ins, 48); }   // update 53: sandstone banks, seen from the water and the walkway
   {
     const wm = waterMat(); wm.map && wm.map.repeat.set(8, 1);
     const m = sector(LW.riverR0, LW.riverR1, LW.west.th0, LW.west.th1, Y.water, wm, 64);
@@ -62,7 +62,7 @@ export function buildLower(city, grp) {
   };
   // west: the wall goes UP from the park; a gap for the stair at +90 and the hospital's door at hospitalTh
   const HT = LW.hospitalTh, hd = ((C.room.doorHw + 0.6) / TR) / D2R;
-  face(LW.west.th0, 90 - dthU - 0.15, Y.park, Y.walk, false); face(90 + dthU + 0.15, HT - hd, Y.park, Y.walk, false); face(HT + hd, LW.west.th1, Y.park, Y.walk, false);
+  face(LW.west.th0, HT - hd, Y.park, Y.walk, false); face(HT + hd, LW.west.th1, Y.park, Y.walk, false);   // update 53: continuous behind the stair's top (the gap there showed the sky)
   face(HT - hd, HT + hd, Y.park + C.room.h + 0.6, Y.walk, false);   // over the hospital's door
   // east: the wall goes DOWN from the park; a gap for the trench stair at -90
   face(LW.east.th0, -90 - dthD - 0.15, Y.low, Y.park, false); face(-90 + dthD + 0.15, LW.east.th1, Y.low, Y.park, false);
@@ -100,11 +100,9 @@ export function buildLower(city, grp) {
     for (const s of [-1, 1]) { const [pa, pb] = pt(s > 0 ? r1 + 0.8 : r0 - 0.8, BT); for (const t of [-1, 1]) { const [qa, qb] = pt(s > 0 ? r1 + 0.8 : r0 - 0.8, BT + (t * (hw + 0.8) / (s > 0 ? r1 : r0)) / D2R); pillar(qb, Y.walk, qa, 0.3, 2.6, gold); } }
     city.lowerBridge = { th: BT, hw };
     // the jetty: a stone pier from the inner walkway's edge out over the water, gold bollards, a lantern; the boat lies beside it
-    const JT = LW.jettyTh, [ja, jb] = pt(LW.riverR0 + 1.6, JT), jry = JT * D2R - Math.PI / 2;
-    const pier = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.6, 4.0), sand(2, 2)); pier.position.set(jb, Y.water + 0.5, ja); pier.rotation.y = jry; grp.add(pier);
-    const [sa, sb] = pt(LW.riverR0 - 0.2, JT); const steps = new THREE.Mesh(new THREE.BoxGeometry(1.2, Y.walk - (Y.water + 0.8), 4.0), sand(1, 3)); steps.position.set(sb, (Y.walk + Y.water + 0.8) / 2, sa); steps.rotation.y = jry; grp.add(steps);
-    { const nS = Math.round((Y.walk - (Y.water + 0.8)) / rise), run = 1.4 / nS; for (let i = 1; i <= nS; i++) { const [ta, tb] = pt(LW.riverR0 - 0.8 - run * (nS - i) - 0.7, JT); const y = Y.water + 0.8 + rise * i; const b2 = new THREE.Mesh(new THREE.BoxGeometry(run + 0.02, y - (Y.water + 0.6), 4.0), stone); b2.position.set(tb, (y + Y.water + 0.6) / 2, ta); b2.rotation.y = jry; grp.add(b2); } }
-    for (const t of [-1, 1]) { const [qa, qb] = pt(LW.riverR0 + 3.2, JT + (t * 1.7 / LW.riverR0) / D2R); pillar(qb, Y.water + 0.8, qa, 0.16, 0.9, goldPlain); }
+    const JT = LW.jettyTh, [ja, jb] = pt(LW.riverR0 + 1.8, JT), jry = JT * D2R - Math.PI / 2;
+    const pier = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.6, 4.0), sand(2, 2)); pier.position.set(jb, Y.walk - 0.3, ja); pier.rotation.y = jry; grp.add(pier);   // update 53: level with the walkway
+    for (const t of [-1, 1]) { const [qa, qb] = pt(LW.riverR0 + 3.4, JT + (t * 1.7 / LW.riverR0) / D2R); pillar(qb, Y.walk, qa, 0.16, 0.9, goldPlain); }
     { const [la, lb] = pt(LW.riverR0 - 1.2, JT + (2.6 / LW.riverR0) / D2R); city.addLantern(lb, Y.walk, la, false, true, 3.0); }
     city.lowerJetty = { a: ja, b: jb, th: JT, boatA: pt(LW.riverR0 + 4.6, JT)[0], boatB: pt(LW.riverR0 + 4.6, JT)[1], y: Y.water };
     { const [ba2, bb2] = pt(LW.riverR0 + 4.6, JT); city.boatLow = prop("et_boat", ba2, bb2, Y.water + 0.15, JT + 90 + (city.boatYawOff || 0) / D2R, () => { const gg = new THREE.Group(); gg.position.set(bb2, Y.water + 0.15, ba2); gg.rotation.y = (JT + 90) * D2R; grp.add(gg); const hull = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.9, 6.0), sand(1, 3)); hull.position.y = 0.3; gg.add(hull); return gg; }); }
@@ -188,6 +186,16 @@ export function buildLower(city, grp) {
     }
   }
 
+  // ---------------- update 53: the homes - the same house fronts as upstairs along every wall of this floor ----------------
+  if (city.facade) {
+    const step = C.facadeStep / R / D2R, stepT = C.facadeStep / TR / D2R, YR = [-270, -150];
+    const clear = (t, list) => list.every(([t0, t1]) => t < t0 || t > t1);
+    const J = LW.jail, dJ = 5, dM = ((LW.mine.hw + 5) / R) / D2R, dS = 8, dR = 7;
+    for (let t = LW.west.th0 + 6; t < LW.west.th1 - 5; t += step) if (clear(t, [[LW.west.th0 - 1, LW.west.th0 + 4], [LW.west.th1 - 4, LW.west.th1 + 1]])) city.facade(t, Y.walk, R, YR);
+    for (let t = LW.east.th0 + 6; t < LW.east.th1 - 5; t += step) if (clear(t, [[J.th0 - dJ, J.th1 + dJ], [LW.mineTh - dM, LW.mineTh + dM], [LW.storeTh - dS, LW.storeTh + dS], [-90 - 9, -90 + 9]])) city.facade(t, Y.low, R, YR);
+    for (let t = LW.east.th1 + 5; t < LW.west.th0 - 4; t += stepT) if (clear(t, [[LW.houseTh - dR, LW.houseTh + dR]])) city.facade(t, Y.park, TR, YR);
+    for (let t = LW.west.th1 + 5; t < LW.east.th0 + 360 - 4; t += stepT) { const tt = t > 180 ? t - 360 : t; if (clear(tt, [[LW.hospitalTh - 9, LW.hospitalTh + 9]])) city.facade(tt, Y.park, TR, YR); }
+  }
   // ---------------- the rooms carved into the walls: the hospital, the house for sale, the mining store, the jail ----------------
   const RM = C.room;
   city.lowerRooms = [];
@@ -311,11 +319,11 @@ export function buildLower(city, grp) {
     { const d = ((LW.mine.hw + 1.0) / R) / D2R; gaps.push([LW.mineTh - d, LW.mineTh + d, Y.low, LW.mine.h + 0.8]); }
     { const d = ((LW.riverR1 - LW.riverR0) / 2 + 0.9) / ((LW.riverR0 + LW.riverR1) / 2) / D2R; for (const t of [LW.west.th0, LW.west.th1]) gaps.push([t - d, t + d, Y.riverBed - 2, Y.walk - (Y.riverBed - 2) + 0.4, "river"]); }   // narrower than the mouth's end wall: no sliver of sky beside it
     gaps.sort((p, q) => p[0] - q[0]);
-    const spans = [[LW.west.th0 - 0.5, LW.west.th1 + 0.5], [LW.east.th0, LW.east.th1]];
-    for (const [s0, s1] of spans) {
+    const spans = [[LW.west.th0 - 0.5, LW.west.th1 + 0.5, Y.riverBed - 4], [LW.east.th0, LW.east.th1, Y.low - 4]];   // update 53: each band's wall starts under ITS floor (the river's bed rose above the gallery)
+    for (const [s0, s1, yBot] of spans) {
       let th = s0;
-      for (const [g0, g1, yF, hD] of gaps) { if (g1 < s0 || g0 > s1) continue; if (g0 > th) ring(R, th, g0, Y.riverBed - 4, wallTop); ring(R, g0, g1, Y.riverBed - 4, yF - 0.3); ring(R, g0, g1, yF + hD, wallTop); th = g1; }
-      if (th < s1) ring(R, th, s1, Y.riverBed - 4, wallTop);
+      for (const [g0, g1, yF, hD] of gaps) { if (g1 < s0 || g0 > s1) continue; if (g0 > th) ring(R, th, g0, yBot, wallTop); ring(R, g0, g1, yBot, yF - 0.3); ring(R, g0, g1, yF + hD, wallTop); th = g1; }
+      if (th < s1) ring(R, th, s1, yBot, wallTop);
     }
     // the closed sectors: rock straight up from the park's edge at TR (gaps for the hospital and the house), a rock ledge out to R at the wall top
     const gapsT = city.lowerRooms.filter((rm) => rm.wallR === TR).map((rm) => { const d = ((rm.hw + 0.6) / TR) / D2R; return [rm.th - d, rm.th + d, rm.y, rm.h + 0.7]; }).sort((p, q) => p[0] - q[0]);
@@ -326,7 +334,7 @@ export function buildLower(city, grp) {
       const ledge = sector(TR - 0.2, R + 0.2, s0, s1, wallTop - 0.2, rock(6, 2), 24); ledge.material.side = THREE.DoubleSide;
     }
     // the bands' four ends: a radial face of rock from TR out to R, floor to wall top (the sky showed through)
-    for (const [t, yF] of [[LW.west.th0, Y.riverBed - 4], [LW.west.th1, Y.riverBed - 4], [LW.east.th0, Y.low - 2], [LW.east.th1, Y.low - 2]]) {
+    for (const [t, yF] of [[LW.west.th0, Y.riverBed - 4], [LW.west.th1, Y.riverBed - 4], [LW.east.th0, Y.low - 4], [LW.east.th1, Y.low - 4]]) {
       const [ea, eb] = pt((TR + R) / 2, t); const em = rock(4, 6); em.side = THREE.DoubleSide; const ew = new THREE.Mesh(new THREE.BoxGeometry(R - TR + 0.6, wallTop - yF, 0.5), em); ew.position.set(eb, (wallTop + yF) / 2, ea); ew.rotation.y = t * D2R - Math.PI / 2; grp.add(ew);
       const [q0a, q0b] = pt(TR, t), [q1a, q1b] = pt(R, t); wallSeg(q0a, q0b, q1a, q1b, 0.4);
     }
