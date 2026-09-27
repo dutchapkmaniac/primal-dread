@@ -1,12 +1,12 @@
 import * as THREE from "three";
-import { CFG } from "./config.js";
-import { STR } from "../strings.js";
-import { Creature } from "./entities.js";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js";
-import { iconUrl } from "./items.js";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js";
-import { buildCity } from "./eternius_build.js";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js";   // update 50
+import { CFG } from "./config.js?v=54";
+import { STR } from "../strings.js?v=54";
+import { Creature } from "./entities.js?v=54";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=54";
+import { iconUrl } from "./items.js?v=54";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=54";
+import { buildCity } from "./eternius_build.js?v=54";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=54";   // update 50
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -27,7 +27,7 @@ export class EterniusCity {
     this.g = game;
     this.coins = 0;
     this.prayedDay = -1;
-    this.stride = false; this.strideOn = false; try { if (localStorage.pdEtStride === "1" && localStorage.pdEtStrideOk !== "1") delete localStorage.pdEtStride; this.stride = localStorage.pdEtStride === "1"; } catch (e) {}   // update 49: the sorcerer's Long Stride, bought once and kept; update 51: a flag not written by the sorcerer's button is dropped once
+    this.stride = false; this.strideOn = false; try { delete localStorage.pdEtStride; delete localStorage.pdEtStrideOk; this.stride = localStorage.pdEtStride2 === "bought"; } catch (e) {}   // update 54: only the sorcerer's button writes pdEtStride2; every older flag is gone for good   // update 49: the sorcerer's Long Stride, bought once and kept; update 51: a flag not written by the sorcerer's button is dropped once
     this.tasksDone = 0; this.task = null; this.keyGiven = false; this.vaultOpen = false;
     this.chapter = 0; this.keeperReady = true;
     this.npcs = []; this.stalls = []; this.lights = []; this.flags = []; this.lanterns = [];
@@ -97,7 +97,7 @@ export class EterniusCity {
   // rooms under the mountain: someone on the rock above must not fall through.
   floorH(x, z, y = 0) {
     const C = E(), L = C.levels, P = this.polar(x, z), { a, b, r, th } = P;
-    if (y < -100) return lowerH(this, a, b, r, th);   // update 50: floor -1
+    if (y < -100) return lowerH(this, a, b, r, th, y);   // update 50: floor -1
     if (r < C.mountainR + 2 || (a > C.tunnel.a0 && a < C.tunnel.a1 + 1)) {
       if (this.inMountainRooms(a, b, r) && (y < 24 || y > 900)) return this.roomH(a, b, r, th);
     }
@@ -257,7 +257,7 @@ export class EterniusCity {
     let moved = false;
     for (const w of this.walls) {
       if (w.off) continue;
-      if (w.y0 !== undefined && (y < w.y0 || y > w.y1)) continue;   // update 51: floor -1's walls stop nobody upstairs (they blocked the entry stair)
+      if (w.y0 !== undefined ? (y < w.y0 || y > w.y1) : y < -100) continue;   // update 51/54: a wall counts on its own floor only (no range = the ground floor; the court walls blocked floor -1's walkway)
       const ex = w.a1 - w.a0, ez = w.b1 - w.b0, L2 = ex * ex + ez * ez || 1e-6;
       let t = ((a - w.a0) * ex + (b - w.b0) * ez) / L2; t = Math.max(0, Math.min(1, t));
       const px = w.a0 + ex * t, pz = w.b0 + ez * t;
@@ -268,7 +268,7 @@ export class EterniusCity {
     {
       const rc = Math.hypot(a, b);
       const Re = this.edgeR(a, b);
-      if (rc < Re - 0.6 && !this.inMountainRooms(a, b, rc) && y < this.mountainH(x, z) - 1.2 && !(y < -100 && lowerInside(this, a, b, rc, Math.atan2(b, a) / D2R))) {   // update 50: floor -1's mine runs beyond the wall
+      if (rc < Re - 0.6 && !this.inMountainRooms(a, b, rc) && y < this.mountainH(x, z) - 1.2 && !(y < -100 && lowerInside(this, a, b, rc, Math.atan2(b, a) / D2R, y))) {   // update 50: floor -1's mine runs beyond the wall
         const k = (Re + 0.2) / (rc || 1e-6); a *= k; b *= k; moved = true;
       }
     }
@@ -457,7 +457,7 @@ export class EterniusCity {
       const npc = { kind, role, body, x, z, y, yaw0: yaw, yawHome: yaw, yaw, name: opts.name || (kind === "female" ? "Eternial woman" : kind === "male" ? "Eternial man" : "Eternial guard"), lines: opts.lines, walk: opts.walk || null, t: Math.random() * 10, h: CFG.modelScale[id] || 3, speed: 0, ...opts };
       this.npcs.push(npc);
       npc.homeX = x; npc.homeZ = z;
-      if (!npc.walk) this.g.world.addTree(x, z, 0.55, "npc");   // update 42: tagged — a knife on an Eternial is not a knife on a tree
+      if (!npc.walk) this.g.world.addTree(x, z, 0.55, "npc", y < -100 ? -270 : undefined, y < -100 ? -150 : undefined);   // update 42: tagged — a knife on an Eternial is not a knife on a tree; update 54: floor -1's people only block down there
       return npc;
     };
     this.mkNpc = mk;
@@ -790,7 +790,7 @@ export class EterniusCity {
     const s = g.npcPanel(n.name, S.mageLines.map((l) => l.replace("%n", C.stride.price)), [["mageBuy", S.mageBuy.replace("%n", C.stride.price)]]);
     s.querySelector("#mageBuy").addEventListener("click", () => {
       if (this.coins < C.stride.price) { g.ui.toast(S.mageNoCoins.replace("%n", C.stride.price)); g.audio.sDeny(); return; }
-      this.coins -= C.stride.price; g.ui.coins(this.coins); this.stride = true; try { localStorage.pdEtStride = "1"; localStorage.pdEtStrideOk = "1"; } catch (e) {}
+      this.coins -= C.stride.price; g.ui.coins(this.coins); this.stride = true; try { localStorage.pdEtStride2 = "bought"; } catch (e) {}
       g.audio.sPickup(); g.ui.closeScreen(); g.npcPanel(n.name, [S.mageBought]);
     });
   }

@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { CFG } from "./config.js";
-import { E, D2R, cityWorld } from "./eternius_frame.js";
+import { CFG } from "./config.js?v=54";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=54";
 
 // ============================================================================
 // update 50: FLOOR -1 — the park under the city, 200 m down. The river leaves the ground floor through the
@@ -18,8 +18,7 @@ export function buildLower(city, grp) {
   const { box, sector, cyl, pillar, archFrame, archWall, archShape } = city.prims;
   // update 51: floor -1's walls and colliders count only 200 m down (they used to block the entry stair upstairs), and its
   // models are listed so they draw only while you are down here
-  const wallSeg = (a0, b0, a1, b1, t) => { const sg = city.prims.wallSeg(a0, b0, a1, b1, t); sg.y0 = -270; sg.y1 = -150; return sg; };
-  const obst = (a, b, r) => w.addTree(...cityWorld(a, b), r, "city", -270, -150);
+  const wallSeg = city.prims.wallSeg, obst = city.prims.obst;   // update 54: they carry city.wallY0..wallY1 — floor -1's range, or a room's own while it is carved
   city.lowerProps = city.lowerProps || [];
   const prop = (id, a, b, y, faceDeg, fb, scaleMul = 1) => { const m = city.prims.prop(id, a, b, y, faceDeg, fb, scaleMul); if (m && m.parent === scene) { city.lowerProps.push(m); m.visible = false; } return m; };   // hidden until you are down here
   const { sand, sandLit, rock, gold, goldPlain, goldBright, gem, dark, glowM, greenGlowM, carpetM, latticeM, waterMat } = city.mats;
@@ -204,6 +203,7 @@ export function buildLower(city, grp) {
     const rad = [Math.cos(th * D2R), Math.sin(th * D2R)], tan = [-Math.sin(th * D2R), Math.cos(th * D2R)];
     const P = (u, v) => [wallR * rad[0] + u * rad[0] + v * tan[0], wallR * rad[1] + u * rad[1] + v * tan[1]];
     const ry = th * D2R, cu = depth / 2, [ca, cb] = P(cu, 0);
+    const wy0 = city.wallY0, wy1 = city.wallY1; city.wallY0 = y - 1.5; city.wallY1 = y + h + 1.5;   // update 54: the room's walls count at the room's height only (the hospital lies under the walkway)
     box(hw * 2 + 1, 0.3, depth + 1.5, cb, y - 0.15, ca, sand(3, 3), ry);
     box(hw * 2 + 1, 0.4, depth + 1.5, cb, y + h + 0.2, ca, sand(3, 3), ry);
     for (const s of [-1, 1]) { const [sa, sb] = P(cu, s * (hw + 0.3)); box(0.6, h, depth + 1, sb, y + h / 2, sa, sand(2, 2), ry); const [q0a, q0b] = P(-0.5, s * hw), [q1a, q1b] = P(depth + 0.5, s * hw); wallSeg(q0a, q0b, q1a, q1b, 0.4); }
@@ -217,6 +217,7 @@ export function buildLower(city, grp) {
     }
     { const [ra, rb] = P(depth * 0.55, 0); box(hw * 1.4, 0.05, depth * 0.6, rb, y + 0.03, ra, carpetM(1.5, 1.5), ry); }
     city.addCeilingLamp(ca, cb, y + h, 1.2, !!opts.green);
+    city.wallY0 = wy0; city.wallY1 = wy1;
     const room = { th, wallR, y, kind, depth, hw, h, P, ry, doorA: P(0, 0)[0], doorB: P(0, 0)[1], u: (a, b) => a * rad[0] + b * rad[1] - wallR, v: (a, b) => -a * rad[1] + b * rad[0] };
     city.lowerRooms.push(room);
     return room;
@@ -224,11 +225,13 @@ export function buildLower(city, grp) {
   // the hospital: under the west walkway, off the park; three beds, the doctor's table
   {
     const rm = carve(LW.hospitalTh, TR, Y.park, "hospital", 11, 6.5, 5, { green: true });
+    const hy0 = city.wallY0, hy1 = city.wallY1; city.wallY0 = Y.park - 1.5; city.wallY1 = Y.park + 6.5;   // update 54: its beds and table block nobody on the walkway above
     city.lowerBeds = [];
     for (let k = 0; k < 3; k++) { const [ba, bb] = rm.P(3.2 + k * 3.4, rm.hw - 1.6); prop("et_bed", ba, bb, Y.park, LW.hospitalTh + 90, () => { const gg = new THREE.Group(); gg.position.set(bb, Y.park, ba); gg.rotation.y = rm.ry + Math.PI / 2; grp.add(gg); const fr = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 3.4), gold); fr.position.y = 0.4; gg.add(fr); const mt = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.3, 3.2), new THREE.MeshStandardMaterial({ color: 0xe8e2d0 })); mt.position.y = 0.8; gg.add(mt); return gg; }); obst(ba, bb, 1.3); const [x, z] = cityWorld(ba, bb); city.lowerBeds.push({ x, z, y: Y.park + 0.9, a: ba, b: bb }); }
     { const [ta, tb] = rm.P(rm.depth * 0.5, -(rm.hw - 2.4)); if (A.glb.k_table) { const m = A.glb.k_table.model.clone(); const [x, z] = cityWorld(ta, tb); m.position.set(x, Y.park, z); m.rotation.y = C.grpYaw + rm.ry; scene.add(m); city.lowerProps.push(m); m.visible = false; } obst(ta, tb, 1.0); }
     for (const s of [-1, 1]) { const [pa, pb] = rm.P(-1.4, s * (rm.hw + 0.6)); pillar(pb, Y.park, pa, 0.35, 4.6, gold); }
     { const [fa, fb] = rm.P(-1.2, 0); const sign = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 0.2), new THREE.MeshStandardMaterial({ color: 0xf2eee6, emissive: 0xf2eee6, emissiveIntensity: 0.35 })); sign.position.set(fb, Y.park + 5.6, fa); sign.rotation.y = rm.ry; grp.add(sign); const crossM = new THREE.MeshStandardMaterial({ color: 0xd8302a, emissive: 0xd8302a, emissiveIntensity: 0.6 }); for (const [w2, h2] of [[1.1, 0.32], [0.32, 1.1]]) { const cr = new THREE.Mesh(new THREE.BoxGeometry(w2, h2, 0.08), crossM); cr.position.set(0, 0, -0.14); sign.add(cr); } }
+    city.wallY0 = hy0; city.wallY1 = hy1;
     city.lowerHospital = rm; rm.npc = rm.P(rm.depth * 0.45, -(rm.hw - 2.4) + 2.2);
   }
   // the house for sale: a brown door (the only one), a bed and a storage chest behind it — the door stays shut until it is yours

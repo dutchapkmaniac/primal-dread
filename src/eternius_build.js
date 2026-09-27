@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { CFG } from "./config.js";
-import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js";
+import { CFG } from "./config.js?v=54";
+import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=54";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";   // update 41
-import { buildLower } from "./eternius_lower.js";   // update 50: floor -1
+import { buildLower } from "./eternius_lower.js?v=54";   // update 50: floor -1
 
 // ============================================================================
 // update 40: everything that is BUILT in Eternius City — the mountain, the castle,
@@ -71,8 +71,8 @@ export function buildCity(city) {
     const mm = new THREE.Mesh(geo, inside ? (() => { const mc = m.clone(); mc.side = THREE.BackSide; return mc; })() : m); mm.position.y = (y0 + y1) / 2; grp.add(mm);
     return mm;
   };
-  const wallSeg = (a0, b0, a1, b1, t = 0.4) => { const s = { a0, b0, a1, b1, t }; city.walls.push(s); return s; };
-  const obst = (a, b, r) => w.addTree(...cityWorld(a, b), r, "city");   // update 42: tagged — not a tree
+  const wallSeg = (a0, b0, a1, b1, t = 0.4) => { const s = { a0, b0, a1, b1, t }; if (city.wallY0 !== undefined) { s.y0 = city.wallY0; s.y1 = city.wallY1; } city.walls.push(s); return s; };   // update 54: while floor -1 builds, every wall gets its height range
+  const obst = (a, b, r) => w.addTree(...cityWorld(a, b), r, "city", city.wallY0, city.wallY1);   // update 42: tagged — not a tree; update 54: floor -1's range while it builds
   const pillar = (b, y, a, r, h, m = gold, cap = true) => {
     const p = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.1, h, 12), m); p.position.set(b, y + h / 2, a); p.castShadow = true; grp.add(p);
     if (cap) { box(r * 2.6, r * 0.6, r * 2.6, b, y + r * 0.3, a, goldPlain); box(r * 2.6, r * 0.6, r * 2.6, b, y + h - r * 0.3, a, goldPlain); }
@@ -1069,7 +1069,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
   buildHomes(city, grp, box, cyl, sand, rock, gold, goldPlain, goldBright, gem, dark, wallSeg, obst, archFrame, carpetM, prop, glowM, greenGlowM);
   // ---- the MARKET, the INN, the lampposts and flags on the terraces, the doors of the mountain gate ----
   for (const st of C.stalls) buildStall(city, st, grp, box, sand, gold, goldPlain, goldBright, gem, dark, obst, prop, latticeM, glowM);
-  buildLower(city, grp);   // update 50: floor -1, the spiral, the boats
+  city.wallY0 = -270; city.wallY1 = -150; buildLower(city, grp); city.wallY0 = city.wallY1 = undefined;   // update 50: floor -1, the spiral, the boats; update 54: its walls, lamps and statues only count down there
   {
     const I = C.inn, y = L.terrace, cs = Math.cos(I.th * D2R), sn = Math.sin(I.th * D2R);
     const [ia, ib] = [I.r * cs, I.r * sn];

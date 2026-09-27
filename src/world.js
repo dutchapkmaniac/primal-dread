@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=54";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js";
-import { Desert } from "./desert.js";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js";
+import { CFG } from "./config.js?v=54";
+import { Desert } from "./desert.js?v=54";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=54";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -3500,7 +3500,7 @@ export class World {
       }
     }
     for (const t of this.treesNear(x, z)) {
-      if (t.y0 !== undefined && (y < t.y0 || y > t.y1)) continue;   // update 51: another floor's collider
+      if (t.y0 !== undefined ? (y < t.y0 || y > t.y1) : y < -100) continue;   // update 51/54: another floor's collider (no range = the surface and the ground floor)
       const dx = x - t.x, dz = z - t.z;
       const rr = r + t.r;
       const d2 = dx * dx + dz * dz;

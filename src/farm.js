@@ -14,7 +14,7 @@
 //   world x = house.x - v,   world z = house.z + u
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js";
+import { CFG } from "./config.js?v=54";
 
 const F = CFG.farm, H = F.house;
 export const X = (v) => H.x - v;   // plan-front (v+) is world -x

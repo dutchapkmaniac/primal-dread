@@ -1,22 +1,22 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js";
-import { STR } from "../strings.js";
+import { CFG, ASSET_V } from "./config.js?v=54";
+import { STR } from "../strings.js?v=54";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js";
-import { loadIcons, iconUrl, Inventory } from "./items.js";
-import { ClipAnimator } from "./skeletal.js";
-import { AudioMan } from "./audio.js";
-import { UI } from "./ui.js";
-import { World } from "./world.js";
-import { Player } from "./player.js";
-import { Creature, ItemDrop } from "./entities.js";
-import { GameMap } from "./map.js";
-import { FarmGame } from "./farmgame.js";
-import { ElisiaSystem } from "./elisia.js";   // update 35
-import { DesertSystem } from "./desert.js";
-import { PortalSystem } from "./portals.js";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=54";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=54";
+import { ClipAnimator } from "./skeletal.js?v=54";
+import { AudioMan } from "./audio.js?v=54";
+import { UI } from "./ui.js?v=54";
+import { World } from "./world.js?v=54";
+import { Player } from "./player.js?v=54";
+import { Creature, ItemDrop } from "./entities.js?v=54";
+import { GameMap } from "./map.js?v=54";
+import { FarmGame } from "./farmgame.js?v=54";
+import { ElisiaSystem } from "./elisia.js?v=54";   // update 35
+import { DesertSystem } from "./desert.js?v=54";
+import { PortalSystem } from "./portals.js?v=54";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=54";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",

@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js";
-import { STR } from "../strings.js";
-import { E, D2R, cityWorld } from "./eternius_frame.js";
+import { CFG } from "./config.js?v=54";
+import { STR } from "../strings.js?v=54";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=54";
 
 // ============================================================================
 // update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat
@@ -13,8 +13,8 @@ const inW = (th) => th > LW().west.th0 && th < LW().west.th1;
 const inEa = (th) => th > LW().east.th0 && th < LW().east.th1;
 
 // the room (hospital, house, store, a cell) that holds (a, b), within margin m
-export function lowerRoom(city, a, b, m = 1) {
-  for (const rm of city.lowerRooms || []) { const u = rm.u(a, b), v = rm.v(a, b); if (u > -m && u < rm.depth + m && Math.abs(v) < rm.hw + m) return rm; }
+export function lowerRoom(city, a, b, m = 1, y) {   // update 54: at the room's own height only (the walkway runs over the hospital)
+  for (const rm of city.lowerRooms || []) { if (y !== undefined && (y < rm.y - 2 || y > rm.y + rm.h + 2)) continue; const u = rm.u(a, b), v = rm.v(a, b); if (u > -m && u < rm.depth + m && Math.abs(v) < rm.hw + m) return rm; }
   return null;
 }
 function mineDist(city, a, b) {
@@ -24,17 +24,17 @@ function mineDist(city, a, b) {
   return best;
 }
 // inside the carved space of floor -1 (the bowl, the two bands, the rooms, the mine)?
-export function lowerInside(city, a, b, r, th) {
+export function lowerInside(city, a, b, r, th, y) {
   const L = LW(), C = E();
   if (r < C.terraceR + 0.5) return true;
   if (r < C.wallR + 0.5 && (inW(th) || inEa(th))) return true;
-  if (lowerRoom(city, a, b, 1)) return true;
+  if (lowerRoom(city, a, b, 1, y)) return true;
   if (mineDist(city, a, b) < L.mine.hw + 0.5) return true;
   return false;
 }
-export function lowerH(city, a, b, r, th) {
+export function lowerH(city, a, b, r, th, y) {
   const C = E(), L = LW(), Y = L.y, rise = C.stairRise, TR = C.terraceR;
-  const rm = lowerRoom(city, a, b, 1); if (rm) return rm.y;
+  const rm = lowerRoom(city, a, b, 1, y); if (rm) return rm.y;
   if (r > C.wallR + 0.5) return mineDist(city, a, b) < L.mine.hw + 0.5 ? Y.low : null;
   const SU = C.stairs.up, SD = C.stairs.down;
   if (Math.abs(a) < SU.hw + 0.3 && b > SU.r0 && b <= SU.r1 + 0.3) { const n = Math.round((Y.walk - Y.park) / rise), run = (SU.r1 - SU.r0) / n; return Y.park + ((Y.walk - Y.park) / n) * Math.min(n, Math.ceil((b - SU.r0) / run)); }
@@ -63,7 +63,7 @@ export function lowerCollide(city, a, b, rad, y) {
   const C = E(), L = LW(), Y = L.y, TR = C.terraceR, R = C.wallR;
   let moved = false;
   let r = Math.hypot(a, b), th = Math.atan2(b, a) / D2R;
-  const room = lowerRoom(city, a, b, 1.2), nearDoor = (city.lowerRooms || []).some((rm) => { const u = rm.u(a, b), v = rm.v(a, b); return u > -3 && u < 2 && Math.abs(v) < (rm.kind === "store" ? 2.2 : rm.kind === "cell" ? 1.15 : C.room.doorHw) + rad; });
+  const room = lowerRoom(city, a, b, 1.2, y), nearDoor = (city.lowerRooms || []).some((rm) => { if (y < rm.y - 2 || y > rm.y + rm.h + 2) return false; const u = rm.u(a, b), v = rm.v(a, b); return u > -3 && u < 2 && Math.abs(v) < (rm.kind === "store" ? 2.2 : rm.kind === "cell" ? 1.15 : C.room.doorHw) + rad; });
   const inMine = mineDist(city, a, b) < L.mine.hw + rad + 1;
   const stairGap = (b > 0 && Math.abs(a) < C.stairs.up.hw + 0.6) || (b < 0 && Math.abs(a) < C.stairs.down.hw + 0.6);
   if (!room && !nearDoor) {
