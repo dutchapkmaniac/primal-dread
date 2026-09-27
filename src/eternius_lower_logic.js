@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=54";
-import { STR } from "../strings.js?v=54";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=54";
+import { CFG } from "./config.js?v=55";
+import { STR } from "../strings.js?v=55";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=55";
 
 // ============================================================================
 // update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat
@@ -38,12 +38,13 @@ export function lowerH(city, a, b, r, th, y) {
   if (r > C.wallR + 0.5) return mineDist(city, a, b) < L.mine.hw + 0.5 ? Y.low : null;
   const SU = C.stairs.up, SD = C.stairs.down;
   if (Math.abs(a) < SU.hw + 0.3 && b > SU.r0 && b <= SU.r1 + 0.3) { const n = Math.round((Y.walk - Y.park) / rise), run = (SU.r1 - SU.r0) / n; return Y.park + ((Y.walk - Y.park) / n) * Math.min(n, Math.ceil((b - SU.r0) / run)); }
-  if (Math.abs(a) < SD.hw + 0.3 && -b > SD.r0 && -b <= SD.r1 + 0.3) { const n = Math.round((Y.park - Y.low) / rise), run = (SD.r1 - SD.r0) / n; return Y.park - ((Y.park - Y.low) / n) * Math.min(n, Math.ceil((-b - SD.r0) / run)); }
+  { const se = L.stairETh * D2R, u = a * Math.cos(se) + b * Math.sin(se), v = -a * Math.sin(se) + b * Math.cos(se);   // update 55: the trench stair at its own angle
+    if (Math.abs(v) < SD.hw + 0.3 && u > SD.r0 && u <= SD.r1 + 0.3) { const n = Math.round((Y.park - Y.low) / rise), run = (SD.r1 - SD.r0) / n; return Y.park - ((Y.park - Y.low) / n) * Math.min(n, Math.ceil((u - SD.r0) / run)); } }
   if (r >= TR) {
     if (inW(th)) {
       if (city.lowerJetty && Math.abs(th - city.lowerJetty.th) < 1.3 && r < L.riverR0 + 3.9) return Y.walk;   // the jetty's pier, level with the walkway
       const B = city.lowerBridge; const bt = B ? Math.abs(-a * Math.sin(B.th * D2R) + b * Math.cos(B.th * D2R)) : 1e9;
-      if (r > L.riverR0 - 1.5 && r < L.riverR1 + 1.5 && bt <= (B ? B.hw : 0) + 0.3) return Y.walk + 0.45;
+      if (B && r > B.r0 && r < B.r1 && bt <= B.hw + 0.3) return Y.walk + B.arch * Math.sin((r - B.r0) / (B.r1 - B.r0) * Math.PI);   // update 55: the arched deck
       if (r > L.riverR0 && r < L.riverR1) return Y.riverBed;
       return Y.walk;
     }
@@ -65,7 +66,8 @@ export function lowerCollide(city, a, b, rad, y) {
   let r = Math.hypot(a, b), th = Math.atan2(b, a) / D2R;
   const room = lowerRoom(city, a, b, 1.2, y), nearDoor = (city.lowerRooms || []).some((rm) => { if (y < rm.y - 2 || y > rm.y + rm.h + 2) return false; const u = rm.u(a, b), v = rm.v(a, b); return u > -3 && u < 2 && Math.abs(v) < (rm.kind === "store" ? 2.2 : rm.kind === "cell" ? 1.15 : C.room.doorHw) + rad; });
   const inMine = mineDist(city, a, b) < L.mine.hw + rad + 1;
-  const stairGap = (b > 0 && Math.abs(a) < C.stairs.up.hw + 0.6) || (b < 0 && Math.abs(a) < C.stairs.down.hw + 0.6);
+  const se = L.stairETh * D2R, su = a * Math.cos(se) + b * Math.sin(se), sv = -a * Math.sin(se) + b * Math.cos(se);
+  const stairGap = (b > 0 && Math.abs(a) < C.stairs.up.hw + 0.6) || (su > 0 && Math.abs(sv) < C.stairs.down.hw + 0.6);
   if (!room && !nearDoor) {
     if (!(inW(th) || inEa(th))) { if (r > TR - rad && r < TR + 30) { const k = (TR - rad) / r; a *= k; b *= k; moved = true; } }   // the closed sectors: rock at the park's edge
     else if (!inMine && r > R - rad && r < R + 8) { const k = (R - rad) / r; a *= k; b *= k; moved = true; }   // the outer wall
@@ -99,9 +101,9 @@ export function lowerNpcs(city) {
   const pt = (r, th) => [r * Math.cos(th * D2R), r * Math.sin(th * D2R)];
   for (const [ga, gb] of city.lowerJailGuards || []) { const [fa, fb] = pt(R, Math.atan2(gb, ga) / D2R); mk("spear", ga, gb, Y.low, fa, fb, "guard", { lines: S.jailerLines }); }
   if (city.lowerCells && city.lowerCells[2]) { const c = city.lowerCells[2]; mk("prisoner", c.inA, c.inB, Y.low, c.rm.doorA, c.rm.doorB, "prisoner", { name: S.prisonerName, lines: S.prisonerLines }); }
-  if (city.lowerHospital) { const h = city.lowerHospital; mk("male", h.npc[0], h.npc[1], Y.park, h.doorA, h.doorB, "doctor", { name: S.doctorName, lines: S.doctorLines, style: "busy" }); }
+  if (city.lowerHospital) { const h = city.lowerHospital; mk("doctor", h.npc[0], h.npc[1], Y.park, h.doorA, h.doorB, "doctor", { name: S.doctorName, lines: S.doctorLines, style: "calm" }); }
   if (city.lowerStore) { const s = city.lowerStore; mk("male", s.npc[0], s.npc[1], Y.low, s.doorA, s.doorB, "minekeeper", { name: S.minekeeperName, lines: S.minekeeperLines, style: "busy" }); }
-  for (const m of city.lowerMiners || []) { const fa = m.a + Math.cos(m.face * D2R) * 3, fb = m.b + Math.sin(m.face * D2R) * 3; mk("male", m.a, m.b, Y.low, fa, fb, "miner", { name: S.minerName, lines: S.minerLines, style: "busy" }); }
+  for (const m of city.lowerMiners || []) { const fa = m.a + Math.cos(m.face * D2R) * 3, fb = m.b + Math.sin(m.face * D2R) * 3; mk("miner", m.a, m.b, Y.low, fa, fb, "miner", { name: S.minerName, lines: S.minerLines, style: "busy", mining: true }); }
   if (city.lowerHouse) { const rm = city.lowerHouse.rm; const [ra, rb] = rm.P(-4.5, 3.2); mk("female", ra, rb, Y.park, rm.doorA, rm.doorB, "realtor", { name: S.realtorName, lines: S.realtorLines }); }
   if (city.lowerJetty) { const J = city.lowerJetty; const [ba, bb] = pt(L.riverR0 - 2.4, J.th - 3); mk("male", ba, bb, Y.walk, J.boatA, J.boatB, "boatman", { name: S.boatmanName, lines: S.boatmanLowerLines }); }
   if (city.jettyUp) { const J = city.jettyUp; const [ba, bb] = pt(C.riverR0 - 2.4, J.th + 3); mk("male", ba, bb, C.levels.lower, J.boatA, J.boatB, "boatman", { name: S.boatmanName, lines: S.boatmanUpperLines }); }
@@ -111,7 +113,7 @@ export function lowerNpcs(city) {
   mk("male", ...pt(34, 200), Y.park, 0, 0, "citizen", { lines: S.parkLines, name: S.homeMale, walk: { pts: ring(34, 200, 12, -1), i: 0, wait: 2, speed: 1.0 } });
   mk("female", ...pt(72, 50), Y.park, 0, 0, "citizen", { lines: S.parkLines, name: S.homeFemale, walk: { pts: [pt(72, 50), pt(60, 30), pt(56, -40), pt(72, -70), pt(80, -30), pt(76, 20)], i: 0, wait: 3, speed: 0.9 } });
   mk("male", ...pt(66, 160), Y.park, 0, 0, "citizen", { lines: S.parkLines, name: S.homeMale, walk: { pts: [pt(66, 160), pt(50, 140), pt(44, 100), pt(58, 125), pt(70, 175)], i: 0, wait: 2, speed: 1.0 } });
-  mk("male", ...pt(R - 5, 60), Y.walk, ...pt(R, 60), "citizen", { lines: S.parkLines, name: S.homeMale, walk: { pts: [pt(R - 5, 60), pt(R - 5, 100), pt(R - 5, 130)], i: 0, wait: 4, speed: 0.9 } });
+  { const arc = []; for (let t = 60; t <= 130; t += 6) arc.push(pt(R - 5, t)); for (let t = 124; t > 60; t -= 6) arc.push(pt(R - 5, t)); mk("male", ...pt(R - 5, 60), Y.walk, ...pt(R, 60), "citizen", { lines: S.parkLines, name: S.homeMale, walk: { pts: arc, i: 0, wait: 4, speed: 0.9 } }); }   // update 55: along the arc, never across the water
 }
 // ---------------- prompts ----------------
 export function lowerInteract(city, consider, p) {

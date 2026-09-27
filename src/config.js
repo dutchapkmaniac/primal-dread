@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=54";
+export const ASSET_V = "?v=55";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -12,7 +12,7 @@ export const CFG = {
 
   world: {
     boundaryR: 402,          // the old circle — still the frame the rings hang on
-    square: 1008,
+    square: 1109,   // update 55: a tenth larger — the mine of floor -1 ran past the old edge
     extraApples: 20,           // update 39: twenty more apple trees, in the emptiest forest left            // update 38: +10% — ring9 grows the frontier (916 before)
     oldBoundaryR: 150,       // the original map stays untouched inside this
     fieldR: 52,              // open field radius around the ruin
@@ -575,7 +575,8 @@ export const CFG = {
     portal: 5.2,   // update 37: the stone portals
     imperator: 5.94, trexdagger3d: 0.4, impdagger3d: 0.4,   // update 38
     et_male: 3.1, et_female: 2.8, et_guardspear: 3.1, et_guardsword: 3.1, et_king: 3.2, et_statue: 9, et_magician: 3.1,
-    et_fountain: 11, et_bigtree: 34, et_boat: 2.4, et_prisoner: 3.5, et_minecart: 1.7, et_emerald: 1.6,   // update 50: floor -1   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_fountain: 11, et_bigtree: 34, et_boat: 2.4, et_prisoner: 3.5, et_minecart: 1.7, et_emerald: 1.6,   // update 50: floor -1
+    et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -613,7 +614,7 @@ export const CFG = {
     // update 36: Duco built new from his two photos (front + side), and the desert's models
     remotus: 0, altai: 0, cactus: 0, palm: 0, nomad: 0, portal: 0,   // the portal's medallion face is the model's +z
     imperator: 0, trexdagger3d: 0, impdagger3d: 0,
-    et_male: 0, et_female: 0, et_guardspear: 0, et_guardsword: 0, et_king: 0, et_statue: 0, et_magician: 0, et_fountain: 0, et_bigtree: 0, et_boat: 0, et_prisoner: 0, et_minecart: 0, et_emerald: 0 },   // update 39/49/50
+    et_male: 0, et_female: 0, et_guardspear: 0, et_guardsword: 0, et_king: 0, et_statue: 0, et_magician: 0, et_fountain: 0, et_bigtree: 0, et_boat: 0, et_prisoner: 0, et_minecart: 0, et_emerald: 0, et_planter: 0, et_miner: 0, et_doctor: 0, et_hospbed: 0 },   // update 39/49/50/55
   // animation clip speed: clip cycles per meter moved (tuned per creature)
   animGait: { trex: 0.22, werewolf: 0.55, chicken: 1.6, croc: 0.9, cow: 0.5, dog: 0.9, elisia: 0.9 },
 
@@ -653,10 +654,11 @@ export const CFG = {
       y: { park: -204, walk: -192, low: -214, riverBed: -195.5, water: -192.5 },   // update 53: the river lies half a metre under its walkway
       west: { th0: 28, th1: 139 }, east: { th0: -168, th1: -33 },
       riverR0: 100, riverR1: 108, bridgeTh: 83, jettyTh: 36, shaftR: 22.5, glassR0: 14.5, glassR1: 22.5,
-      jail: { th0: -76, th1: -35, cells: 5 }, mineTh: -152, mine: { len: 70, hw: 4.5, h: 8 }, storeTh: -138,
+      jail: { th0: -76, th1: -58, cells: 5 }, mineTh: -152, mine: { len: 70, hw: 4.5, h: 8 }, storeTh: -138, stairETh: -106,   // update 55: the cells side by side, the east stair where the map has it
+      culvertN: 24, culvertS: 30,   // update 55: the river's two tunnels (the boat's spiral joins the north one)
       hospitalTh: 122, houseTh: -18, fountainR: 12, planterR: 45,
       planters: [[-52, -8], [72, 112], [-166, -122]],
-      beds: [[30, 76, 48, 74], [-106, -50, 48, 74], [134, 188, 48, 74]],
+      beds: [[27, 79, 43, 76], [-108, -48, 43, 76], [131, 191, 43, 76]],   // update 55: every tree stands wholly on its soil
       trees: [[33, 56], [43, 66], [52, 54], [61, 67], [71, 57], [38, 50], [57, 50], [66, 50], [48, 62],
               [-55, 56], [-64, 66], [-73, 54], [-82, 67], [-91, 57], [-100, 64], [-60, 50], [-78, 50], [-95, 50],
               [138, 56], [148, 66], [157, 54], [166, 67], [175, 58], [184, 52], [143, 50], [161, 50]],   // update 53: none within 22 m of the walkway's edge - no crown over the paths

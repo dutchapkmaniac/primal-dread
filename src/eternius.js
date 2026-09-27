@@ -1,12 +1,12 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=54";
-import { STR } from "../strings.js?v=54";
-import { Creature } from "./entities.js?v=54";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=54";
-import { iconUrl } from "./items.js?v=54";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=54";
-import { buildCity } from "./eternius_build.js?v=54";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=54";   // update 50
+import { CFG } from "./config.js?v=55";
+import { STR } from "../strings.js?v=55";
+import { Creature } from "./entities.js?v=55";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=55";
+import { iconUrl } from "./items.js?v=55";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=55";
+import { buildCity } from "./eternius_build.js?v=55";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=55";   // update 50
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -445,7 +445,7 @@ export class EterniusCity {
     const C = E(), L = C.levels, A = this.g.assets, scene = this.g.scene;
     const K = C.castle, S = STR.et;
     const mk = (kind, a, b, y, faceA, faceB, role, opts = {}) => {
-      const id = { male: "et_male", female: "et_female", spear: "et_guardspear", sword: "et_guardsword", king: "et_king", mage: "et_magician", prisoner: "et_prisoner" }[kind];
+      const id = { male: "et_male", female: "et_female", spear: "et_guardspear", sword: "et_guardsword", king: "et_king", mage: "et_magician", prisoner: "et_prisoner", miner: "et_miner", doctor: "et_doctor" }[kind];
       const asset = A.glb[id];
       const [x, z] = cityWorld(a, b);
       let body;
@@ -631,6 +631,7 @@ export class EterniusCity {
       const d = Math.hypot(p.pos.x - n.x, p.pos.z - n.z);
       let targetYaw = n.yaw0, walking = false;
       n.blockT = Math.max(0, (n.blockT || 0) - dt);
+      if (n.mining) { n.mineT = (n.mineT || 0) - dt; if (n.mineT <= 0 && n.strike === undefined) { n.strike = 0; n.strikeHit = true; n.mineT = 1.8 + Math.random() * 1.4; } if (n.strike !== undefined) { n.strike += dt / 1.1; if (n.strike >= 1) n.strike = undefined; } }   // update 55: the miners swing at the veins
       if (n.hostile) {   // update 42/44: a guard at war — he comes for you (or the beast), winds up and strikes, goes home when it is over
         let beast = n.beast && !n.beast.dead && this.inCastle(n.beast.pos.x, n.beast.pos.z) ? n.beast : null;
         if (n.beast && !beast) { n.beast = null; }

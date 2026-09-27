@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=54";
-import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=54";
+import { CFG } from "./config.js?v=55";
+import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=55";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";   // update 41
-import { buildLower } from "./eternius_lower.js?v=54";   // update 50: floor -1
+import { buildLower } from "./eternius_lower.js?v=55";   // update 50: floor -1
 
 // ============================================================================
 // update 40: everything that is BUILT in Eternius City — the mountain, the castle,
@@ -538,7 +538,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     {
       const r0 = C.lower.glassR0, r1 = C.lower.glassR1;
       sector(0, r0, -180, 180, L.plaza, sand(4, 4), 48);
-      const gm = w.mat("t_glassgreen", 8, 2, 0x2a7a4a); gm.transparent = true; gm.opacity = 0.6; gm.emissive = new THREE.Color(0x1c6a3a); gm.emissiveIntensity = 0.6; gm.metalness = 0.2; gm.roughness = 0.2; gm.side = THREE.DoubleSide; gm.depthWrite = false;
+      const gm = w.mat("t_glassgreen", 8, 2, 0x2a7a4a); gm.transparent = true; gm.opacity = 0.32; gm.emissive = new THREE.Color(0x1c6a3a); gm.emissiveIntensity = 0.22;   // update 55: nearly clear — you look down the shaft gm.metalness = 0.2; gm.roughness = 0.2; gm.side = THREE.DoubleSide; gm.depthWrite = false;
       const glass = sector(r0, r1, -180, 180, L.plaza + 0.02, gm, 96); city.keepExtra.push(glass); city.glassRing = glass;
       cyl(r0, 0, 360, L.plaza - 0.25, L.plaza + 0.12, gold, false, 64); cyl(r1, 0, 360, L.plaza - 0.25, L.plaza + 0.12, gold, true, 64);
       sector(r0 - 0.35, r0 + 0.05, -180, 180, L.plaza + 0.12, goldPlain, 64); sector(r1 - 0.05, r1 + 0.35, -180, 180, L.plaza + 0.12, goldPlain, 64);
@@ -862,10 +862,10 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     cyl(R - 0.3, -180, 180, C.wallTop - 0.9, C.wallTop + 1.1, rock(24, 1), true, 168);   // update 46: the seam between the wall's rings and the dome's rim let sky through — a band of rock over it
     // the beam of light: a soft column plus three faint rays; the pool of light on the dais
     const beamM = new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.09, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(C.shaftR * 0.95, C.shaftR * 1.35, C.cavernH - L.plaza + 4, 40, 1, true), beamM); beam.position.y = (C.cavernH + L.plaza) / 2 + 2; grp.add(beam); city.beam = beam;
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(C.shaftR * 0.95, C.altar.r * 0.9, C.cavernH - L.plaza + 4, 40, 1, true), beamM);   // update 55: narrows to the dais, clear of the glass beam.position.y = (C.cavernH + L.plaza) / 2 + 2; grp.add(beam); city.beam = beam;
     city.rays = [];
     for (let k = 0; k < 3; k++) { const ray = new THREE.Mesh(new THREE.CylinderGeometry(C.shaftR * 0.35, C.shaftR * 0.8, C.cavernH - L.plaza + 4, 12, 1, true), beamM.clone()); ray.material.opacity = 0.05; ray.position.set(Math.sin(k * 2.1) * 4, (C.cavernH + L.plaza) / 2 + 2, Math.cos(k * 2.1) * 4); ray.rotation.z = 0.03 * (k - 1); grp.add(ray); city.rays.push(ray); }
-    const pool = new THREE.Mesh(new THREE.CircleGeometry(C.shaftR * 1.5, 40), new THREE.MeshBasicMaterial({ color: 0xffe3a0, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(C.altar.r * 0.98, 40), new THREE.MeshBasicMaterial({ color: 0xffe3a0, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }));   // update 55: the dais only (it lay over the glass ring like a sand disc)
     pool.rotation.x = -Math.PI / 2; pool.position.y = L.dais + 0.03; grp.add(pool); city.pool = pool;
   }
   // ---- update 42: the ALTAR after the concept picture — a faceted dark-stone drum banded with glowing gold inlay and a sun
@@ -1222,7 +1222,7 @@ function buildHomes(city, grp, box, cyl, sand, rock, gold, goldPlain, goldBright
   const levelAt = (th) => (Math.abs(th) < ET ? L.court : (th >= ET || th <= S.stairTh0) ? L.terrace : th >= S.stairTh1 ? L.lower : null);
   const windowM = new THREE.MeshBasicMaterial({ color: 0xffd08a });
   city.homeGlows = [];
-  const facade = (th, y, wallR = R, yRange = null) => {   // update 53: floor -1 borrows it (its own wall radius, walls that only count down there)
+  const facade = (th, y, wallR = R, yRange = null, opts = {}) => {   // update 53: floor -1 borrows it (its own wall radius, walls that only count down there); update 55: opts.brown — the same door in brown wood with a gold knob (the house for sale), opts.noWall — no blocking line (the room behind has its own)
     const rr = wallR - 0.6, ca = rr * Math.cos(th * D2R), cb = rr * Math.sin(th * D2R), ry = th * D2R + Math.PI;   // faces the heart
     const gg = new THREE.Group(); gg.position.set(cb, y, ca); gg.rotation.y = ry; grp.add(gg);
     const add = (geo, m, x, yy, z) => { const mm = new THREE.Mesh(geo, m); mm.position.set(x, yy, z); mm.castShadow = true; gg.add(mm); return mm; };
@@ -1230,7 +1230,7 @@ function buildHomes(city, grp, box, cyl, sand, rock, gold, goldPlain, goldBright
     add(new THREE.BoxGeometry(7.6, C.facadeH, 0.9), sand(2, 2), 0, C.facadeH / 2, 0);
     add(new THREE.BoxGeometry(2.4, 4.0, 0.3), sand(1, 2), 0, 2.0, 0.1);   // update 43: a sand backing, not a black one
     // update 42: a green wooden door with a golden knob (Higgsfield: et_door) fills the doorway of every house you cannot enter
-    if (A.glb.et_door) { const d = city.warmProp(A.glb.et_door.model.clone(), 0.34); const bb = new THREE.Box3().setFromObject(d), sz = new THREE.Vector3(); bb.getSize(sz); const dg = new THREE.Group(); dg.add(d); dg.scale.set(2.3 / sz.x, 3.9 / sz.y, 1); dg.position.set(0, 0.03, 0.62); dg.rotation.y = Math.PI; gg.add(dg); }   // the knob side out, self-lit
+    if (A.glb.et_door) { const d = city.warmProp(A.glb.et_door.model.clone(), 0.34); if (opts.brown) { d.traverse((o) => { if (o.isMesh && o.material) { const mm = o.material.clone(); const wt = A.tex.t_woodplank || A.tex.t_darkwood; if (wt) { mm.map = wt.clone(); mm.map.wrapS = mm.map.wrapT = THREE.RepeatWrapping; mm.map.repeat.set(1, 2); mm.map.needsUpdate = true; mm.color = new THREE.Color(0xc48a52); } else mm.color = new THREE.Color(0x9a6a3a); mm.emissive = new THREE.Color(0x5a3618); mm.emissiveIntensity = 0.5; o.material = mm; } }); const knob = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), goldPlain); knob.position.set(0.72, 2.0, 0.42); gg.add(knob); } const bb = new THREE.Box3().setFromObject(d), sz = new THREE.Vector3(); bb.getSize(sz); const dg = new THREE.Group(); dg.add(d); dg.scale.set(2.3 / sz.x, 3.9 / sz.y, 1); dg.position.set(0, 0.03, 0.62); dg.rotation.y = Math.PI; gg.add(dg); }   // the knob side out, self-lit
     add(new THREE.BoxGeometry(0.35, 4.2, 0.5), goldPlain, -1.35, 2.1, 0.5); add(new THREE.BoxGeometry(0.35, 4.2, 0.5), goldPlain, 1.35, 2.1, 0.5);
     add(new THREE.BoxGeometry(3.1, 0.4, 0.5), goldPlain, 0, 4.3, 0.5);
     for (const s of [-1, 1]) { add(new THREE.BoxGeometry(1.4, 1.6, 0.3), goldPlain, s * 2.6, 2.6, 0.5); const win = add(new THREE.BoxGeometry(1.1, 1.3, 0.1), windowM, s * 2.6, 2.6, 0.72); city.homeGlows.push(win); add(new THREE.BoxGeometry(0.08, 1.3, 0.06), goldPlain, s * 2.6, 2.6, 0.8); add(new THREE.BoxGeometry(1.1, 0.08, 0.06), goldPlain, s * 2.6, 2.6, 0.8); }   // update 42: the pane stands proud of the frame, a cross mullion
@@ -1243,7 +1243,8 @@ function buildHomes(city, grp, box, cyl, sand, rock, gold, goldPlain, goldBright
     // the blocking wall segment (the front is 0.9 m proud of the rock)
     const ta = [-Math.sin(th * D2R), Math.cos(th * D2R)];   // tangential (a, b)
     const fa = (wallR - 1.1) * Math.cos(th * D2R), fb = (wallR - 1.1) * Math.sin(th * D2R);
-    const sg = wallSeg(fa - ta[0] * 3.8, fb - ta[1] * 3.8, fa + ta[0] * 3.8, fb + ta[1] * 3.8, 0.5); if (yRange) { sg.y0 = yRange[0]; sg.y1 = yRange[1]; }
+    if (!opts.noWall) { const sg = wallSeg(fa - ta[0] * 3.8, fb - ta[1] * 3.8, fa + ta[0] * 3.8, fb + ta[1] * 3.8, 0.5); if (yRange) { sg.y0 = yRange[0]; sg.y1 = yRange[1]; } }
+    return gg;
   };
   city.facade = facade;
   for (let th = -180 + 4; th < 180; th += C.facadeStep / R / D2R) {
