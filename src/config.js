@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=57";
+export const ASSET_V = "?v=58";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -577,7 +577,8 @@ export const CFG = {
     et_male: 3.1, et_female: 2.8, et_guardspear: 3.1, et_guardsword: 3.1, et_king: 3.2, et_statue: 9, et_magician: 3.1,
     et_fountain: 11, et_bigtree: 34, et_boat: 2.4, et_prisoner: 3.5, et_minecart: 1.7, et_emerald: 1.6,   // update 50: floor -1
     et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55
-    et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57
+    et_pickaxe: 0.24,   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -615,7 +616,7 @@ export const CFG = {
     // update 36: Duco built new from his two photos (front + side), and the desert's models
     remotus: 0, altai: 0, cactus: 0, palm: 0, nomad: 0, portal: 0,   // the portal's medallion face is the model's +z
     imperator: 0, trexdagger3d: 0, impdagger3d: 0,
-    et_male: 0, et_female: 0, et_guardspear: 0, et_guardsword: 0, et_king: 0, et_statue: 0, et_magician: 0, et_fountain: 0, et_bigtree: 0, et_boat: 0, et_prisoner: 0, et_minecart: 0, et_emerald: 0, et_planter: 0, et_miner: 0, et_doctor: 0, et_hospbed: 0, et_medcab: 0, et_goldchest: 0, et_counter: 0, et_pickrack: 0, et_emstatue: 0, et_gemcase: 0 },   // update 39/49/50/55
+    et_male: 0, et_female: 0, et_guardspear: 0, et_guardsword: 0, et_king: 0, et_statue: 0, et_magician: 0, et_fountain: 0, et_bigtree: 0, et_boat: 0, et_prisoner: 0, et_minecart: 0, et_emerald: 0, et_planter: 0, et_miner: 0, et_doctor: 0, et_hospbed: 0, et_medcab: 0, et_goldchest: 0, et_counter: 0, et_pickrack: 0, et_emstatue: 0, et_gemcase: 0, et_pickaxe: 0 },   // update 39/49/50/55
   // animation clip speed: clip cycles per meter moved (tuned per creature)
   animGait: { trex: 0.22, werewolf: 0.55, chicken: 1.6, croc: 0.9, cow: 0.5, dog: 0.9, elisia: 0.9 },
 
@@ -654,7 +655,7 @@ export const CFG = {
     lower: {
       y: { park: -204, walk: -192, low: -214, riverBed: -195.5, water: -192.5 },   // update 53: the river lies half a metre under its walkway
       west: { th0: 28, th1: 139 }, east: { th0: -168, th1: -33 },
-      riverR0: 100, riverR1: 108, bridgeTh: 83, jettyTh: 36, shaftR: 22.5, glassR0: 14.5, glassR1: 22.5,
+      riverR0: 100, riverR1: 108, bridgeTh: 83, jettyTh: 36, shaftR: 22.5, shaftR2: 60, glassR0: 14.5, glassR1: 22.5,   // update 58: the shaft is a funnel - shaftR at the glass, shaftR2 where it opens into the park's ceiling
       jail: { th0: -76, th1: -58, cells: 5 }, mineTh: -152, mine: { len: 70, hw: 4.5, h: 8, deep: 60, bend: 34 }, storeTh: -138, stairETh: -116,   // update 55: the cells side by side, the east stair where the map has it
       culvertN: 24, culvertS: 30,   // update 55: the river's two tunnels (the boat's spiral joins the north one)
       hospitalTh: 122, houseTh: -18, fountainR: 12, planterR: 45,
@@ -664,7 +665,8 @@ export const CFG = {
               [-55, 56], [-64, 66], [-73, 54], [-82, 67], [-91, 57], [-100, 64], [-60, 50], [-78, 50], [-95, 50],
               [138, 56], [148, 66], [157, 54], [166, 67], [175, 58], [184, 52], [143, 50], [161, 50]],   // update 53: none within 22 m of the walkway's edge - no crown over the paths
       helix: { ca: 142, cb: 60, r: 30, turns: 4.75, yTop: -30, yBot: -190.5 },
-      ride: { speed: 8, sail: 2.2, fade: 0.8, arrive: 1.4 },   // update 53: two seconds of sailing, a fade, and you are there
+      ride: { speed: 8, sail: 2.2, fade: 0.8, arrive: 1.4 },
+      pick: { pos: [0, 0, 0], rot: [0, 0, 0] },   // update 58: the pickaxe's seat in the animated miner's hand (tuned by eye)   // update 53: two seconds of sailing, a fade, and you are there
     },
     riverTh: { th0: -133, th1: -60.6 },   // update 44: the river runs right up to the radial wall, the culvert's face is flush with it                    // update 43: the river now runs OUT of the grand stair (an open channel through its lowest steps, then a lit arch) to one culvert
     culvert: { depth: 90, w: 8, h: 6.2, wallUp: 5.2, lit: 18 },   // update 46: 90 m round the bend — nothing to see at the end   // update 45: 60 m, curving with the river — no end in sight   // update 44: 30 m of sandstone tunnel, lamps for the first 18 m, then the dark   // update 43: the arch springs from the water, the wall stands 5 m above the gallery; lights inside

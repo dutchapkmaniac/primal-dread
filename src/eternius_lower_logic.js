@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=57";
-import { STR } from "../strings.js?v=57";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=57";
+import { CFG } from "./config.js?v=58";
+import { STR } from "../strings.js?v=58";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=58";
 
 // ============================================================================
 // update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat
@@ -145,7 +145,8 @@ export function lowerUpdate(city, dt) {
   if (city.lowerRiver && city.lowerRiver.material.map) city.lowerRiver.material.map.offset.set(-t * 0.07, 0);
   if (city.lowerFount && city.lowerFount.material.map) city.lowerFount.material.map.offset.set(t * 0.03, t * 0.02);
   if (city.rideWater && city.rideWater.material.map) city.rideWater.material.map.offset.set(-t * 0.25, 0);
-  if (city.lowerBeam) city.lowerBeam.material.opacity = 0.06 + Math.sin(t * 0.5) * 0.015;
+  if (city.lowerBeam) city.lowerBeam.material.opacity = 0.022 + Math.sin(t * 0.5) * 0.006;
+  if (city.gemPulse) { city.gemPulse.mat.emissiveIntensity = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(t * 2.1)); city.gemPulse.mesh.rotation.y += 0.004; }   // update 58: the shop's crystal breathes light
 }
 // ---------------- the boat ride ----------------
 export function startRide(city, dir) {

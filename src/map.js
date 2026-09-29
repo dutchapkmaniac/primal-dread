@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=57";
-import { STR } from "../strings.js?v=57";
+import { CFG, ASSET_V } from "./config.js?v=58";
+import { STR } from "../strings.js?v=58";
 
 // Top-down expedition map: the full parchment map (pause menu) and the small
 // living minimap in the HUD corner. Terrain is always drawn; NAMED landmarks
@@ -328,6 +328,8 @@ export class GameMap {
     c.fillRect(tx(-CFG.world.square), ty(-CFG.world.square), 2 * CFG.world.square * s, 2 * CFG.world.square * s);
     this.paintWorld(c, tx, ty, s, true);
     this.paintLandmarks(c, tx, ty, s, true);
+    // update 58: inside Eternius the minimap says so - a sandstone tint and the city's name (with the floor below the ground)
+    { const city = this.game.city; if (city && city.inside && city.inside(p.pos.x, p.pos.z, p.pos.y)) { c.fillStyle = "rgba(196,160,96,.28)"; c.fillRect(0, 0, size, size); c.fillStyle = "rgba(255,226,150,.95)"; c.font = "bold 11px system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "top"; c.fillText(p.pos.y < -100 ? "Eternius City \u00b7 floor -1" : "Eternius City", size / 2, 8); } }
     this.paintPlayer(c, size / 2, size / 2, p.yaw, 7);
     c.restore();
     // rim

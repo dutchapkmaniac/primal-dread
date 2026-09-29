@@ -1,12 +1,13 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=57";
-import { STR } from "../strings.js?v=57";
-import { Creature } from "./entities.js?v=57";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=57";
-import { iconUrl } from "./items.js?v=57";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=57";
-import { buildCity } from "./eternius_build.js?v=57";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=57";   // update 50
+import { CFG } from "./config.js?v=58";
+import { STR } from "../strings.js?v=58";
+import { Creature } from "./entities.js?v=58";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=58";
+import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 58: the miner comes rigged and animated
+import { iconUrl } from "./items.js?v=58";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=58";
+import { buildCity } from "./eternius_build.js?v=58";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=58";   // update 50
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -91,6 +92,7 @@ export class EterniusCity {
   }
   inMountain(x, z, y = 0) {
     const P = this.polar(x, z);
+    if (y < -100 && P.r < E().mountainR + 60) return true;   // update 58: floor -1's mine and shop lie past the wall - no desert wind or thirst 200 m under the sand
     return this.inMountainRooms(P.a, P.b, P.r) && y < 24;
   }
   // the floor under (x, z), or null outside the city's built ground. `y` gates the
@@ -450,7 +452,32 @@ export class EterniusCity {
       const asset = A.glb[id];
       const [x, z] = cityWorld(a, b);
       let body;
-      if (asset) { body = riggedHumanoid(asset.model, { armIn: kind === "male" || kind === "female" ? 0.22 : 0, tool: kind === "miner" }) || asset.model.clone();   // update 42; update 57: the miner's pick rides with his arms
+      if (asset && kind === "miner" && asset.anims && asset.anims.length) {   // update 58: the miner is a Higgsfield rig playing its chop clip; the pickaxe rides in his right hand
+        body = skeletonClone(asset.model); const mixer = new THREE.AnimationMixer(body); const act = mixer.clipAction(asset.anims[0]); act.play(); body.userData.mixer = mixer;
+        const pickA = A.glb.et_pickaxe; if (pickA) { let hand = null; body.traverse((o) => { if (!hand && o.isBone && /hand/i.test(o.name) && /right|_r\b|\.r\b|^r[_.]/i.test(o.name)) hand = o; }); if (!hand) body.traverse((o) => { if (!hand && o.isBone && /hand/i.test(o.name)) hand = o; });
+          if (hand) {
+            // the pick's own long axis (the vertices' principal axis in the model's frame) and which end carries the head; then
+            // the grip line from the right hand to the left at mid-swing, in the right hand's frame: the pick is turned so its
+            // butt-to-head axis lies along that line, the butt a hand's breadth below the right hand
+            const pk = pickA.model.clone(); const PK = CFG.eternius.lower.pick || {};
+            let mesh = null; pk.traverse((o) => { if (o.isMesh && !mesh) mesh = o; }); pk.updateMatrixWorld(true);
+            const pos = mesh.geometry.attributes.position, v = new THREE.Vector3(), M4 = new THREE.Matrix4().copy(pk.matrixWorld).invert().multiply(mesh.matrixWorld);
+            let n = 0, cx = 0, cy = 0, cz = 0; const pts = []; for (let i = 0; i < pos.count; i += 3) { v.fromBufferAttribute(pos, i).applyMatrix4(M4); pts.push([v.x, v.y, v.z]); cx += v.x; cy += v.y; cz += v.z; n++; } cx /= n; cy /= n; cz /= n;
+            let xx = 0, xz = 0, zz = 0; for (const [x, , z] of pts) { xx += (x - cx) * (x - cx); xz += (x - cx) * (z - cz); zz += (z - cz) * (z - cz); }
+            const ang = 0.5 * Math.atan2(2 * xz, xx - zz), u = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
+            let sp = 0, sm = 0; for (const [x, y, z] of pts) { const t = (x - cx) * u.x + (z - cz) * u.z, w = Math.abs(-(x - cx) * u.z + (z - cz) * u.x) + Math.abs(y - cy); if (t > 0) sp += w; else sm += w; }
+            if (sm > sp) u.negate();   // the head is the fat end: u runs butt -> head
+            let tmin = 1e9; for (const [x, , z] of pts) tmin = Math.min(tmin, (x - cx) * u.x + (z - cz) * u.z);
+            let lhand = null; body.traverse((o) => { if (!lhand && o.isBone && /hand/i.test(o.name) && /left|_l\b|\.l\b|^l[_.]/i.test(o.name)) lhand = o; });
+            mixer.setTime(PK.gripT || 1.4); body.updateMatrixWorld(true);
+            const lp = new THREE.Vector3(); (lhand || hand).getWorldPosition(lp); const d = lhand ? hand.worldToLocal(lp).normalize() : new THREE.Vector3(0, 1, 0);
+            mixer.setTime(0); body.updateMatrixWorld(true);
+            const q = new THREE.Quaternion().setFromUnitVectors(u.clone().normalize(), d); if (PK.rot) q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...PK.rot)));
+            const sc = new THREE.Vector3(); hand.getWorldScale(sc); const k = 1 / (sc.x || 1); pk.scale.multiplyScalar(k); pk.quaternion.copy(q);
+            const grip = new THREE.Vector3(cx, cy, cz).addScaledVector(u, tmin + (PK.grip === undefined ? 0.35 : PK.grip)); pk.position.copy(grip.applyQuaternion(q).multiplyScalar(k).negate()); if (PK.pos) pk.position.add(new THREE.Vector3(...PK.pos));
+            hand.add(pk); body.userData.pick = pk; body.userData.hand = hand; body.userData.lhand = lhand;
+          } }
+      } else if (asset) { body = riggedHumanoid(asset.model, { armIn: kind === "male" || kind === "female" ? 0.22 : 0, tool: kind === "miner" }) || asset.model.clone();   // update 42; update 57: the miner's pick rides with his arms
       if (kind === "prisoner") body.traverse((o) => { if (o.isMesh && o.material) { o.material = o.material.clone(); if (o.material.map) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0xffffff); o.material.emissiveIntensity = 0.34; } } }); }   // update 57: the prisoner was a shadow in his cell
       else { body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 2.0, 4, 8), new THREE.MeshStandardMaterial({ color: 0x6c9c3a })); body.position.y = 1.5; const g2 = new THREE.Group(); g2.add(body); body = g2; }
       const [fx, fz] = cityWorld(faceA, faceB);
@@ -682,7 +709,8 @@ export class EterniusCity {
       // a glance at a visitor a little further out (the body turns only when you are close)
       let headTurn = 0;
       if (d >= 5.5 && d < 12) { const want = Math.atan2(p.pos.x - n.x, p.pos.z - n.z); headTurn = ((want - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; }
-      if (n.body.userData.hrig && d < 140) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm",   // update 51: no rig work for a figure 140 m off
+      if (n.body.userData.mixer) { if (d < 140) n.body.userData.mixer.update(dt); }   // update 58: the animated miner
+      else if (n.body.userData.hrig && d < 140) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm",   // update 51: no rig work for a figure 140 m off
         n.mining ? { attack: 0, block: 0, shove: 0, fall: 0, mine: n.strike !== undefined ? Math.min(1, n.strike) : 0 } : (n.strike !== undefined || n.blockT > 0 || n.shove !== undefined) ? { attack: n.strike !== undefined ? Math.min(1, n.strike) : 0, block: n.blockT > 0 ? 1 - n.blockT / 0.45 : 0, shove: n.shove !== undefined ? n.shove : 0, fall: 0 } : null);   // update 44/49; update 57: the miners swing as one piece
       else if (!n.walk) n.body.position.y = n.y + Math.sin(n.t * 1.3) * 0.012;
     }

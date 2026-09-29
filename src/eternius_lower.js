@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=57";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=57";
+import { CFG } from "./config.js?v=58";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=58";
 
 // ============================================================================
 // update 50: FLOOR -1 — the park under the city, 200 m down. The river leaves the ground floor through the
@@ -206,7 +206,8 @@ export function buildLower(city, grp) {
     }
     // lamps along the park's edge, torch statues by the walls, flags on the walls
     for (let t = -180; t < 180; t += 24) { const [a, b] = pt(TR - 4.5, t); if (Math.abs(t - 90) < 9 || Math.abs(t - LW.stairETh) < 9) continue; city.addLamppost(a, b, Y.park, false); }
-    for (let t = -180 + 12; t < 180; t += 36) { if (Math.abs(t - 90) < 12 || Math.abs(t - LW.stairETh) < 12 || Math.abs(t - LW.hospitalTh) < 8 || Math.abs(t - LW.houseTh) < 8) continue; const [a, b] = pt(TR - 2.2, t); city.addTorchbearer(a, b, Y.park, t + 180); }
+    { const stepT = C.facadeStep / TR / D2R, doorGap = (t) => { let best = 99; for (const b0 of [LW.east.th1 + 5, LW.west.th1 + 5]) { const k = Math.round((t - b0) / stepT); for (const kk of [k - 1, k, k + 1]) { const ft = b0 + kk * stepT; best = Math.min(best, Math.abs(((ft - t) % 360 + 540) % 360 - 180)); } } return best; };   // update 58: no statue in front of a home's door - it steps half a house along
+      for (let t = -180 + 12; t < 180; t += 36) { if (Math.abs(t - 90) < 12 || Math.abs(t - LW.stairETh) < 12 || Math.abs(t - LW.hospitalTh) < 8 || Math.abs(t - LW.houseTh) < 8) continue; const tt = doorGap(t) < 2.2 ? t + stepT / 2 : t; const [a, b] = pt(TR - 2.2, tt); city.addTorchbearer(a, b, Y.park, tt + 180); } }
     for (let t = -170; t < 180; t += 20) { if (inW(t) || inEa(t)) continue; const th = t * D2R; city.addPoleFlag((TR - 0.3) * Math.sin(th), Y.park + 9.2, (TR - 0.3) * Math.cos(th), t + 180, 0.9, 5.0); }
     for (let t = LW.west.th0 + 8; t < LW.west.th1 - 4; t += 22) city.addWallFlag(t, Y.walk + 9.2);
     for (let t = LW.east.th0 + 8; t < LW.east.th1 - 4; t += 22) city.addWallFlag(t, Y.low + 9.2);
@@ -230,8 +231,7 @@ export function buildLower(city, grp) {
         const cv = document.createElement("canvas"); cv.width = im.width; cv.height = im.height; const cx = cv.getContext("2d"); cx.drawImage(im, 0, 0);
         const id = cx.getImageData(0, 0, cv.width, cv.height), dd = id.data, em = cx.createImageData(cv.width, cv.height), ed = em.data;
         for (let i = 0; i < dd.length; i += 4) { const r = dd[i], g = dd[i + 1], b = dd[i + 2];
-          if (g > 150 && r > 110 && r < g && b < 110) { const k = (r * 0.3 + g * 0.59 + b * 0.11) / 190; dd[i] = 78 * k; dd[i + 1] = 117 * k; dd[i + 2] = 30 * k; }   // an apple pixel becomes the leaf beside it
-          const lantern = r > 150 && r > g + 20 && g > 80 && b < 110; ed[i] = lantern ? r : dd[i] * 0.3; ed[i + 1] = lantern ? g : dd[i + 1] * 0.3; ed[i + 2] = lantern ? b : dd[i + 2] * 0.3; ed[i + 3] = 255; }
+          const lantern = r > 150 && r > g + 20 && g > 80 && b < 110; ed[i] = lantern ? r : dd[i] * 0.5; ed[i + 1] = lantern ? g : dd[i + 1] * 0.5; ed[i + 2] = lantern ? b : dd[i + 2] * 0.5; ed[i + 3] = 255; }
         cx.putImageData(id, 0, 0); const t = new THREE.CanvasTexture(cv); t.colorSpace = mat.map.colorSpace; t.flipY = mat.map.flipY; t.wrapS = mat.map.wrapS; t.wrapT = mat.map.wrapT; mat.map = t; mat.needsUpdate = true;
         const cv2 = document.createElement("canvas"); cv2.width = cv.width; cv2.height = cv.height; cv2.getContext("2d").putImageData(em, 0, 0); lanternTex = new THREE.CanvasTexture(cv2); lanternTex.colorSpace = t.colorSpace; lanternTex.flipY = t.flipY; lanternTex.wrapS = t.wrapS; lanternTex.wrapT = t.wrapT; city.treeLanternTex = lanternTex;
         // the crown's surface: every leaf-coloured vertex in the upper part, in the model's own frame, pushed 5 cm out along its normal
@@ -245,7 +245,7 @@ export function buildLower(city, grp) {
     const appleGeo = new THREE.SphereGeometry(0.11, 8, 6);
     const appleM = new THREE.MeshStandardMaterial({ color: 0x8fd83a, roughness: 0.55, emissive: 0x2a5a10, emissiveIntensity: 0.35 });
     const goldM = new THREE.MeshStandardMaterial({ color: 0xffd24a, metalness: 0.85, roughness: 0.3, emissive: 0x9a6a10, emissiveIntensity: 0.6 });
-    const perTree = 160, nT = LW.trees.length, useApples = !!(crownPts && crownPts.length > 50);
+    const perTree = 160, nT = LW.trees.length, useApples = false;   // update 58: the new scan carries its own apples
     const green = useApples ? new THREE.InstancedMesh(appleGeo, appleM, perTree * nT) : null, goldI = useApples ? new THREE.InstancedMesh(appleGeo, goldM, Math.max(8, Math.ceil(perTree * nT * 0.03))) : null;
     let gi = 0, ki = 0; const mtx = new THREE.Matrix4(), wp = new THREE.Vector3(); city.lowerApples = [];
     for (const [t, rr] of LW.trees) {
@@ -338,7 +338,24 @@ export function buildLower(city, grp) {
     { const [ca, cb] = rm.P(6.6, 0); const cm = prop("et_counter", ca, cb, Y.low, LW.storeTh + 180, () => { box(7.0, 1.1, 1.3, cb, Y.low + 0.55, ca, sand(2, 1), rm.ry + Math.PI / 2); return box(7.3, 0.14, 1.6, cb, Y.low + 1.17, ca, gold, rm.ry + Math.PI / 2); }); if (cm && A.glb.et_counter) { cm.scale.x *= 2.2; for (const sd of [-1, 1]) { const [ea, eb] = rm.P(6.6, sd * (2.1 + (rm.hw - 2.1) / 2)); box(rm.hw - 2.1 + 0.2, 1.05, 1.1, eb, Y.low + 0.52, ea, sand(2, 1), rm.ry + Math.PI / 2); box(rm.hw - 2.1 + 0.3, 0.12, 1.3, eb, Y.low + 1.1, ea, gold, rm.ry + Math.PI / 2); } } wallSeg(...rm.P(6.6, -rm.hw), ...rm.P(6.6, rm.hw), 0.9); }   // the Higgsfield counter in the middle (stretched along the room), plain sandstone counter ends to the walls
     { const [ra, rb] = rm.P(rm.depth - 0.5, 0); prop("et_pickrack", ra, rb, Y.low + 1.2, LW.storeTh + 180, () => box(4.0, 2.2, 0.3, rb, Y.low + 2.4, ra, w.mat("t_darkwood", 2, 1, 0x4a3320), rm.ry + Math.PI / 2)); }
     { const [sa2, sb2] = rm.P(2.6, -(rm.hw - 1.5)); prop("et_emstatue", sa2, sb2, Y.low, LW.storeTh + 180, () => { const g2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.5), gem); g2.position.set(sb2, Y.low + 1.4, sa2); grp.add(g2); return g2; }); obst(sa2, sb2, 0.8); }
-    { const [ga, gb] = rm.P(2.6, rm.hw - 1.5); prop("et_gemcase", ga, gb, Y.low, LW.storeTh + 180, () => { const g2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.4), gem); g2.position.set(gb, Y.low + 1.2, ga); grp.add(g2); return g2; }); obst(ga, gb, 0.8); }
+    { const [ga, gb] = rm.P(2.6, rm.hw - 1.5); const gc = prop("et_gemcase", ga, gb, Y.low, LW.storeTh + 180, () => { const g2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.4), gem); g2.position.set(gb, Y.low + 1.2, ga); grp.add(g2); return g2; }); obst(ga, gb, 0.8);
+      // update 58: the scan's painted glass is clipped off above the cushion; real glass and a real crystal take its place - a
+      // deep teal stone with gold veins that breathes light (city.gemPulse, eternius_lower_logic.js lowerUpdate)
+      if (gc && A.glb.et_gemcase) { try {
+        const cut = Y.low + 0.98; scene.updateMatrixWorld && gc.updateMatrixWorld(true); const wcut = grp.localToWorld(new THREE.Vector3(0, cut, 0)).y;
+        city.g.renderer.localClippingEnabled = true; gc.traverse((o) => { if (o.isMesh && o.material) { o.material.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), wcut)]; o.material.clipShadows = true; } });
+        const glassM = new THREE.MeshPhysicalMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.18, roughness: 0.05, metalness: 0, transmission: 0.4, thickness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+        const gw = 0.58, gh = 0.5, gy0 = cut - 0.02; const gbox = new THREE.Mesh(new THREE.BoxGeometry(gw, gh, gw), glassM); gbox.position.set(gb, gy0 + gh / 2, ga); gbox.rotation.y = rm.ry; grp.add(gbox);
+        for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const e = new THREE.Mesh(new THREE.BoxGeometry(0.03, gh, 0.03), goldPlain); e.position.set(dx * gw / 2, gh / 2, dz * gw / 2); gbox.add(e); }
+        for (const yy of [0.015, gh - 0.015]) for (const [rx, rz, len] of [[0, -1, gw], [0, 1, gw], [-1, 0, gw], [1, 0, gw]]) { const e = new THREE.Mesh(new THREE.BoxGeometry(rx ? 0.03 : len, 0.03, rx ? len : 0.03), goldPlain); e.position.set(rx * gw / 2, yy, rz * gw / 2); gbox.add(e); }
+        const cv = document.createElement("canvas"); cv.width = cv.height = 256; const cx = cv.getContext("2d"); cx.fillStyle = "#0b5646"; cx.fillRect(0, 0, 256, 256); cx.strokeStyle = "rgba(255,206,90,0.95)"; cx.lineWidth = 2.2; let sd = 7; const rnd = () => { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; }; for (let v = 0; v < 14; v++) { cx.beginPath(); let x = rnd() * 256, y = rnd() * 256; cx.moveTo(x, y); for (let k = 0; k < 9; k++) { x += (rnd() - 0.5) * 70; y += (rnd() - 0.5) * 70; cx.lineTo(x, y); } cx.stroke(); }
+        const vt = new THREE.CanvasTexture(cv); vt.colorSpace = THREE.SRGBColorSpace; vt.wrapS = vt.wrapT = THREE.RepeatWrapping;
+        const crM = new THREE.MeshStandardMaterial({ map: vt, color: 0xffffff, emissive: 0x1f9c78, emissiveIntensity: 0.6, roughness: 0.22, metalness: 0.15 });
+        const emA = A.glb.et_emerald; let cr; if (emA) { cr = emA.model.clone(); cr.traverse((o) => { if (o.isMesh) o.material = crM; }); const bb = new THREE.Box3().setFromObject(cr), sz = bb.getSize(new THREE.Vector3()); cr.scale.multiplyScalar(0.34 / Math.max(sz.x, sz.z)); } else { cr = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), crM); }
+        const [wx, wz] = cityWorld(ga, gb); cr.position.set(wx, 0, wz); const wyb = grp.localToWorld(new THREE.Vector3(0, gy0 + 0.02, 0)).y; cr.position.y = wyb; cr.rotation.y = C.grpYaw + rm.ry; scene.add(cr); city.lowerProps.push(cr); cr.visible = false; city.gemPulse = { mesh: cr, mat: crM };
+        city.emit(grp, gb, gy0 + 0.35, ga, 0x2fd0a0, 1.6, 9, {});
+      } catch (e) { console.warn("gem case", e); } }
+    }
     for (const [u, v] of [[6.4, -2.0], [6.5, 2.1]]) { const [ga, gb] = rm.P(u, v); prop("et_emerald", ga, gb, Y.low + 1.2, LW.storeTh + 180 + (v > 0 ? 40 : -25), () => null, 0.3); }   // a stone or two on the counter
     city.lowerStore = rm; rm.npc = rm.P(8.4, 0);
   }
@@ -360,7 +377,7 @@ export function buildLower(city, grp) {
       const seg = wallSeg(...rm.P(0.1, -1.15), ...rm.P(0.1, 1.15), 0.25);
       { const [ba, bb] = rm.P(5.4, -(rm.hw - 1.2)); box(2.0, 0.5, 3.2, bb, Y.low + 0.25, ba, sand(1, 1), rm.ry); box(1.8, 0.2, 2.9, bb, Y.low + 0.6, ba, w.mat("t_rug", 1, 1, 0x7a6a50), rm.ry); }
       { const [la, lb] = rm.P(6.5, rm.hw - 0.9); box(0.3, 0.4, 0.3, lb, Y.low + 3.6, la, glowM); }
-      city.lowerCells.push({ rm, hinge, seg, open: 0, bedA: rm.P(5.4, -(rm.hw - 1.2))[0], bedB: rm.P(5.4, -(rm.hw - 1.2))[1], inA: rm.P(2.1, 0)[0], inB: rm.P(2.1, 0)[1] });   // update 55: he stands at the bars, where you can talk to him from the gallery
+      city.lowerCells.push({ rm, hinge, seg, open: 0, bedA: rm.P(5.4, -(rm.hw - 1.2))[0], bedB: rm.P(5.4, -(rm.hw - 1.2))[1], inA: rm.P(1.5, 0)[0], inB: rm.P(1.5, 0)[1] });   // update 58: 1.5 m in, within the prompt's reach   // update 55: he stands at the bars, where you can talk to him from the gallery
     }
     // two guards at the cells, a brazier between them
     const jEnd = J.th0 + step * n; { const [ba, bb] = pt(R - 5.0, (J.th0 + jEnd) / 2); city.addBrazier(bb, Y.low, ba, true); }
@@ -383,20 +400,25 @@ export function buildLower(city, grp) {
     // the profile: a rough half-ellipse; the walls stand at hw+0.5 and are then pushed in and out up to 0.8 m
     const prof2 = []; { const NP = 22; for (let i = 0; i <= NP; i++) { const t = i / NP; prof2.push([-(hw + 0.5) * Math.cos(t * Math.PI), -0.3 + (h + 0.3) * Math.pow(Math.sin(t * Math.PI), 0.85)]); } }
     const noise = (x, y, z) => 0.38 * Math.sin(x * 0.9 + y * 1.3) * Math.sin(z * 0.7 - x * 0.4 + 1.1) + 0.26 * Math.sin(x * 2.1 - z * 1.7 + y * 0.8) + 0.16 * Math.sin(y * 3.3 + z * 2.6 + x * 0.5);
-    const rugged = (u0, u1, steps, dark) => {
+    // update 58: the tunnel glows by itself for its first 30 m; over the next 100 m the glow AND the vertex light fade out step
+    // by step, so the dark comes on like real dark and never as a wall (the stop at M.len sits inside the fade)
+    const rugged = (u0, u1, steps, c0, c1) => {
       const gg = sweepU(path, prof2, u0, u1, steps, 1.0, 0); const p = gg.attributes.position, n = gg.attributes.normal; const v = new THREE.Vector3(), nv = new THREE.Vector3();
-      const col = dark ? new Float32Array(p.count * 3) : null, np = prof2.length;
-      for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); nv.fromBufferAttribute(n, i); const k = Math.min(1, Math.max(0, (v.y - Y.low - 0.35) / 1.2)); v.addScaledVector(nv, noise(v.x, v.y, v.z) * k); p.setXYZ(i, v.x, v.y, v.z); if (col) { const t = Math.floor(i / np) / steps, sh = Math.max(0, 1 - t * 1.3); col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = sh * sh; } }
-      if (col) gg.setAttribute("color", new THREE.BufferAttribute(col, 3));
-      gg.computeVertexNormals(); return gg;
+      const col = new Float32Array(p.count * 3), np = prof2.length;
+      for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); nv.fromBufferAttribute(n, i); const k = Math.min(1, Math.max(0, (v.y - Y.low - 0.35) / 1.2)); v.addScaledVector(nv, noise(v.x, v.y, v.z) * k); p.setXYZ(i, v.x, v.y, v.z); const t = Math.floor(i / np) / steps, sh = c0 + (c1 - c0) * t; col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = sh * sh; }
+      gg.setAttribute("color", new THREE.BufferAttribute(col, 3)); gg.computeVertexNormals(); return gg;
     };
-    const tNear = new THREE.Mesh(rugged(0, uStop, 40, false), rockM(2, 2, 0.2)); grp.add(tNear);
+    const floorGeo = (u0, u1, steps, c0, c1) => { const g2 = sweepU(path, [[-hw - 0.4, 0], [hw + 0.4, 0]], u0, u1, steps, 0.4, 0); const cnt = g2.attributes.position.count, cc = new Float32Array(cnt * 3); for (let i = 0; i < cnt; i++) { const t = Math.floor(i / 2) / steps, sh = c0 + (c1 - c0) * t; cc[i * 3] = cc[i * 3 + 1] = cc[i * 3 + 2] = sh * sh; } g2.setAttribute("color", new THREE.BufferAttribute(cc, 3)); return g2; };
+    const wallMeshes = [], uLit = 30 / pathLen, NSEG = 9;
+    { const m0 = rockM(2, 2, 0.2); m0.vertexColors = true; const t0m = new THREE.Mesh(rugged(0, uLit, 12, 1, 1), m0); grp.add(t0m); wallMeshes.push(t0m); const f0 = rockM(1, 12, 0.16); f0.vertexColors = true; grp.add(new THREE.Mesh(floorGeo(0, uLit, 12, 1, 1), f0)); }
+    for (let k = 0; k < NSEG; k++) {
+      const a0 = uLit + (1 - uLit) * k / NSEG, a1 = uLit + (1 - uLit) * (k + 1) / NSEG, e0 = Math.pow(1 - k / NSEG, 1.4), e1 = Math.pow(1 - (k + 1) / NSEG, 1.4);
+      const wm = rockM(2, 2, 0.2 * e0); wm.vertexColors = true; const seg = new THREE.Mesh(rugged(a0, a1, 6, e0, e1), wm); grp.add(seg); if (a0 * pathLen < M.len + 6) wallMeshes.push(seg);
+      const fm = rockM(1, 12, 0.16 * e0); fm.vertexColors = true; grp.add(new THREE.Mesh(floorGeo(a0, a1, 6, e0, e1), fm));
+    }
     // a vein sits ON the displaced wall: a ray from the tunnel's axis at the vein's height finds the rock, the vein goes 12 cm into it
     grp.updateMatrixWorld(true); const gq = grp.getWorldQuaternion(new THREE.Quaternion());
-    const snap = (p, rtv, side, hy) => { const o = grp.localToWorld(new THREE.Vector3(p.x, p.y + hy, p.z)); const dw = new THREE.Vector3(rtv.x * side, 0, rtv.z * side).applyQuaternion(gq).normalize(); const hit = new THREE.Raycaster(o, dw, 0, hw + 3).intersectObject(tNear, false)[0]; if (!hit) return p.clone().addScaledVector(rtv, side * (hw - 0.35)); return grp.worldToLocal(hit.point.clone()).addScaledVector(rtv, -side * 0.12); };
-    { const farM = rockM(2, 2, 0); farM.vertexColors = true; grp.add(new THREE.Mesh(rugged(uStop, 1, 34, true), farM)); }   // the deep: unlit, fading to black
-    { const fl = new THREE.Mesh(sweepU(path, [[-hw - 0.4, 0], [hw + 0.4, 0]], 0, uStop, 40, 0.4, 0), rockM(1, 12, 0.16)); grp.add(fl);
-      const fmF = rockM(1, 12, 0); fmF.vertexColors = true; const g2 = sweepU(path, [[-hw - 0.4, 0], [hw + 0.4, 0]], uStop, 1, 34, 0.4, 0); { const cnt = g2.attributes.position.count, cc = new Float32Array(cnt * 3); for (let i = 0; i < cnt; i++) { const t = Math.floor(i / 2) / 34, sh = Math.max(0, 1 - t * 1.3); cc[i * 3] = cc[i * 3 + 1] = cc[i * 3 + 2] = sh * sh; } g2.setAttribute("color", new THREE.BufferAttribute(cc, 3)); } grp.add(new THREE.Mesh(g2, fmF)); }
+    const snap = (p, rtv, side, hy) => { const o = grp.localToWorld(new THREE.Vector3(p.x, p.y + hy, p.z)); const dw = new THREE.Vector3(rtv.x * side, 0, rtv.z * side).applyQuaternion(gq).normalize(); const hit = new THREE.Raycaster(o, dw, 0, hw + 3).intersectObjects(wallMeshes, false)[0]; if (!hit) return p.clone().addScaledVector(rtv, side * (hw - 0.35)); return grp.worldToLocal(hit.point.clone()).addScaledVector(rtv, -side * 0.12); };
     { const e = path.getPointAt(1), t = path.getTangentAt(1); const cap = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 4, h + 4, 1), new THREE.MeshBasicMaterial({ color: 0x000000, fog: false })); cap.position.copy(e); cap.position.y += h / 2; cap.rotation.y = Math.atan2(t.x, t.z); grp.add(cap); }
     city.lowerMine = { path, len: M.len, hw, h, th: MT, total: pathLen, samples: path.getSpacedPoints(120) };
     // the mouth in the gallery wall: rock round the tunnel's own profile, a gold frame following it, timber posts, lampposts
@@ -404,10 +426,10 @@ export function buildLower(city, grp) {
       const ry = MT * D2R, hole = new THREE.Path(); prof2.forEach(([x, y], i) => i ? hole.lineTo(x * 0.995, y) : hole.moveTo(x * 0.995, y)); hole.closePath();
       const shp = new THREE.Shape(); shp.moveTo(-7.5, -4.6); shp.lineTo(7.5, -4.6); shp.lineTo(7.5, wallTopM - Y.low + 0.8); shp.lineTo(-7.5, wallTopM - Y.low + 0.8); shp.closePath(); shp.holes.push(hole);
       const pg = new THREE.ExtrudeGeometry(shp, { depth: 1.2, bevelEnabled: false }); { const uv = pg.attributes.uv, pp = pg.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, (pp.getX(i) + pp.getZ(i)) / 4, (pp.getY(i) + pp.getZ(i)) / 4); }
-      const [pa, pb] = pt(R - 0.6, MT); const panel = new THREE.Mesh(pg, rockM(1, 1, 0.14)); panel.position.set(pb, Y.low, pa); panel.rotation.y = ry; grp.add(panel);
-      const fr = new THREE.Shape(); prof2.forEach(([x, y], i) => { const X = x * (hw + 1.1) / (hw + 0.5), Y2 = -0.3 + (y + 0.3) * (h + 0.9) / (h + 0.3); i ? fr.lineTo(X, Y2) : fr.moveTo(X, Y2); }); fr.closePath(); fr.holes.push(hole);
+      const [pa, pb] = pt(R - 0.6, MT); const pm = rock(3, 8); pm.side = THREE.DoubleSide; pm.color = new THREE.Color(0x2a1f16); pm.emissive = new THREE.Color(0x2a1d12); pm.emissiveIntensity = 0.8; const panel = new THREE.Mesh(pg, pm); panel.position.set(pb, Y.low, pa); panel.rotation.y = ry; grp.add(panel); city.keepExtra.push(panel);
+      const fr = new THREE.Shape(); prof2.forEach(([x, y], i) => { const X = x * (hw + 1.1) / (hw + 0.5), Y2 = -0.3 + (y + 0.3) * (h + 0.9) / (h + 0.3); i ? fr.lineTo(X, Y2) : fr.moveTo(X, Y2); }); for (let i2 = prof2.length - 1; i2 >= 0; i2--) fr.lineTo(prof2[i2][0], prof2[i2][1]); fr.closePath();   // update 58: one closed band - the bow and nothing along the floor (the hole touching the outline left a gold wedge)
       const fg = new THREE.ExtrudeGeometry(fr, { depth: 0.7, bevelEnabled: false }); { const uv = fg.attributes.uv, pp = fg.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, pp.getX(i) / 2, pp.getY(i) / 2); }
-      const [fa, fb] = pt(R - 1.3, MT); const frame = new THREE.Mesh(fg, gold); frame.position.set(fb, Y.low, fa); frame.rotation.y = ry; grp.add(frame);
+      const [fa, fb] = pt(R - 1.3, MT); const frame = new THREE.Mesh(fg, gold); frame.position.set(fb, Y.low, fa); frame.rotation.y = ry; grp.add(frame); city.keepExtra.push(frame);
       for (const s2 of [-1, 1]) { const [qa, qb] = pt(R - 1.2, MT + (s2 * (hw + 1.9) / R) / D2R); pillar(qb, Y.low, qa, 0.4, h + 1.4, w.mat("t_darkwood", 1, 3, 0x4a3320)); city.addLamppost(qa, qb + (s2 > 0 ? 1.4 : -1.4) * Math.cos(MT * D2R), Y.low, false); }
     }
     // rails, timber props, lamps, emerald veins along the way; carts; the miners' spots - lamps, veins, carts and miners only
@@ -434,7 +456,7 @@ export function buildLower(city, grp) {
     const wallTop = Y.park + C.wallTop + 4, apex = Y.park + C.cavernH + 4;
     // the outer ring (R) along the two bands with gaps for the cells, the store, the mine, the two mouths
     const gaps = [];
-    for (const rm of city.lowerRooms) { if (rm.wallR !== R) continue; const d = ((rm.hw + 0.6) / R) / D2R; gaps.push([rm.th - d, rm.th + d, rm.y, rm.h + 0.7]); }
+    for (const rm of city.lowerRooms) { if (rm.wallR !== R) continue; const d = ((rm.hw + 0.6) / R) / D2R; gaps.push([rm.th - d, rm.th + d, rm.y, rm.h + 0.35]); }   // update 58: the ring starts inside the ceiling slab (0.7 left a strip of sky)
     { const d = (7.3 / R) / D2R; gaps.push([LW.mineTh - d, LW.mineTh + d, Y.low - 4, wallTop - Y.low + 6]); }   // update 57: the whole column - the mouth's own rock panel fills it
     { const d = ((LW.riverR1 - LW.riverR0) / 2 + 0.9) / ((LW.riverR0 + LW.riverR1) / 2) / D2R; for (const t of [LW.west.th0, LW.west.th1]) gaps.push([t - d, t + d, Y.riverBed - 2, Y.walk - (Y.riverBed - 2) + 0.4, "river"]); }   // narrower than the mouth's end wall: no sliver of sky beside it
     gaps.sort((p, q) => p[0] - q[0]);
@@ -445,7 +467,7 @@ export function buildLower(city, grp) {
       if (th < s1) ring(R, th, s1, yBot, wallTop);
     }
     // the closed sectors: rock straight up from the park's edge at TR (gaps for the hospital and the house), a rock ledge out to R at the wall top
-    const gapsT = city.lowerRooms.filter((rm) => Math.abs(rm.wallR - TR) < 2).map((rm) => { const d = ((rm.hw + 0.6) / TR) / D2R; return [rm.th - d, rm.th + d, rm.y, rm.h + 0.7]; }).sort((p, q) => p[0] - q[0]);
+    const gapsT = city.lowerRooms.filter((rm) => Math.abs(rm.wallR - TR) < 2).map((rm) => { const d = ((rm.hw + 0.6) / TR) / D2R; return [rm.th - d, rm.th + d, rm.y, rm.h + 0.35]; }).sort((p, q) => p[0] - q[0]);
     for (const [s0, s1] of [[LW.east.th1, LW.west.th0], [LW.west.th1, LW.east.th0 + 360]]) {
       let th = s0;
       for (const [g0, g1, yF, hD] of gapsT) { const a0 = g0 < s0 - 180 ? g0 + 360 : g0, a1 = g1 < s0 - 180 ? g1 + 360 : g1; if (a1 < s0 || a0 > s1) continue; if (a0 > th) ring(TR, th, a0, Y.park - 1, wallTop); ring(TR, a0, a1, Y.park - 1, yF - 0.3); ring(TR, a0, a1, yF + hD, wallTop); th = a1; }
@@ -462,19 +484,22 @@ export function buildLower(city, grp) {
       const [q0a, q0b] = pt(TR, t), [q1a, q1b] = pt(R, t); wallSeg(q0a, q0b, q1a, q1b, 0.4);
     }
     // the dome: the same lathe as upstairs, opening into the glass shaft (radius shaftR1) instead of the light hole
-    const SR = LW.shaftR, pts = [], N = 16;
-    for (let i = 0; i <= N; i++) { const t = i / N; const rr = R - (R - SR) * Math.sin(t * Math.PI / 2); const yy = wallTop + (apex - wallTop) * Math.sin(t * Math.PI / 2); pts.push(new THREE.Vector2(rr, yy)); }
+    const SR = LW.shaftR, SR2 = LW.shaftR2 || SR, pts = [], N = 16;   // update 58: the dome opens into the funnel's wide end
+    for (let i = 0; i <= N; i++) { const t = i / N; const rr = R - (R - SR2) * Math.sin(t * Math.PI / 2); const yy = wallTop + (apex - wallTop) * Math.sin(t * Math.PI / 2); pts.push(new THREE.Vector2(rr, yy)); }
     const domeGeo = new THREE.LatheGeometry(pts, 96);
-    { const p = domeGeo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), rr = Math.hypot(x, z), th2 = Math.atan2(x, z); if (rr < SR + 1) continue; const k = (rr - SR) / (R - SR); const nse = 1.6 * Math.sin(th2 * 5 + rr * 0.12) * Math.sin(y * 0.4 + th2 * 3) + 0.9 * Math.sin(th2 * 13 + rr * 0.3); const rim = Math.min(1, Math.max(0, (R - rr) / 12)); p.setY(i, y + nse * (0.4 + 0.6 * k) * Math.min(1, (rr - SR - 1) / 4) * rim); } domeGeo.computeVertexNormals(); }
+    { const p = domeGeo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), rr = Math.hypot(x, z), th2 = Math.atan2(x, z); if (rr < SR2 + 1) continue; const k = (rr - SR2) / (R - SR2); const nse = 1.6 * Math.sin(th2 * 5 + rr * 0.12) * Math.sin(y * 0.4 + th2 * 3) + 0.9 * Math.sin(th2 * 13 + rr * 0.3); const rim = Math.min(1, Math.max(0, (R - rr) / 12)); p.setY(i, y + nse * (0.4 + 0.6 * k) * Math.min(1, (rr - SR2 - 1) / 4) * rim); } domeGeo.computeVertexNormals(); }
     const dm = rock(24, 4); dm.side = THREE.BackSide; grp.add(new THREE.Mesh(domeGeo, dm));
     cyl(R - 0.3, -180, 180, wallTop - 0.9, wallTop + 1.1, rock(24, 1), true, 96);
     // the shaft: rock all the way up to the glass ring, gold bands every 25 m, a green beam of light down it
     const shaftTop = C.levels.plaza - 0.6;
-    { const sm = rock(16, 30); sm.side = THREE.BackSide; cyl(SR, -180, 180, apex - 0.5, shaftTop, sm, true, 64); }
-    for (let yy = apex + 10; yy < shaftTop - 5; yy += 25) cyl(SR - 0.15, -180, 180, yy, yy + 0.6, gold, true, 64);
+    // update 58: a FUNNEL - shaftR at the glass ring, shaftR2 where it opens into the park's ceiling: from the glass you look
+    // down onto the fountain, the benches, the beds and the near trees, not into a pipe
+    const rAt = (yy) => SR + (SR2 - SR) * (shaftTop - yy) / (shaftTop - (apex - 0.5));
+    { const sm = rock(16, 30); sm.side = THREE.BackSide; const cone = new THREE.Mesh(new THREE.CylinderGeometry(SR, SR2, shaftTop - (apex - 0.5), 64, 12, true), sm); cone.position.y = (shaftTop + apex - 0.5) / 2; grp.add(cone); }
+    for (let yy = apex + 10; yy < shaftTop - 5; yy += 25) cyl(rAt(yy) - 0.15, -180, 180, yy, yy + 0.6, gold, true, 64);
     const beamM = new THREE.MeshBasicMaterial({ color: 0xa8ffc8, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(SR * 0.9, SR * 1.5, apex - Y.park + 6, 40, 1, true), beamM); beam.position.y = (apex + Y.park) / 2 + 2; grp.add(beam); city.keepExtra.push(beam); city.lowerBeam = beam;
-    const pool = new THREE.Mesh(new THREE.CircleGeometry(SR * 1.3, 40), new THREE.MeshBasicMaterial({ color: 0xa0ffc0, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false })); pool.rotation.x = -Math.PI / 2; pool.position.y = Y.park + 0.96; grp.add(pool); city.keepExtra.push(pool);
+    beamM.opacity = 0.025; const beam = new THREE.Mesh(new THREE.CylinderGeometry(SR * 0.9, SR2 * 1.05, apex - Y.park + 6, 40, 1, true), beamM);   // update 58: fainter - it read as a pale wall at the top of the east stair beam.position.y = (apex + Y.park) / 2 + 2; grp.add(beam); city.keepExtra.push(beam); city.lowerBeam = beam;
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(SR * 1.3, 40), new THREE.MeshBasicMaterial({ color: 0xa0ffc0, transparent: true, opacity: 0.05, blending: THREE.AdditiveBlending, depthWrite: false })); pool.rotation.x = -Math.PI / 2; pool.position.y = Y.park + 0.96; grp.add(pool); city.keepExtra.push(pool);
     // the light itself: a green glow high in the shaft and a fill over the park
     city.emit(grp, 0, Y.park + 40, 0, 0x9cffb0, 14, 120, {});
   }
