@@ -1,12 +1,12 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=56";
-import { STR } from "../strings.js?v=56";
-import { Creature } from "./entities.js?v=56";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=56";
-import { iconUrl } from "./items.js?v=56";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=56";
-import { buildCity } from "./eternius_build.js?v=56";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=56";   // update 50
+import { CFG } from "./config.js?v=57";
+import { STR } from "../strings.js?v=57";
+import { Creature } from "./entities.js?v=57";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=57";
+import { iconUrl } from "./items.js?v=57";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=57";
+import { buildCity } from "./eternius_build.js?v=57";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=57";   // update 50
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -27,7 +27,7 @@ export class EterniusCity {
     this.g = game;
     this.coins = 0;
     this.prayedDay = -1;
-    this.stride = false; this.strideOn = false; try { delete localStorage.pdEtStride; delete localStorage.pdEtStrideOk; this.stride = localStorage.pdEtStride2 === "bought"; } catch (e) {}   // update 54: only the sorcerer's button writes pdEtStride2; every older flag is gone for good   // update 49: the sorcerer's Long Stride, bought once and kept; update 51: a flag not written by the sorcerer's button is dropped once
+    this.stride = false; this.strideOn = false; try { delete localStorage.pdEtStride; delete localStorage.pdEtStrideOk; delete localStorage.pdEtStride2; } catch (e) {}   // update 57: the Long Stride is bought PER RUN, like every quest (a purchase kept in the browser turned the bar turquoise in every later session without paying)   // update 54: only the sorcerer's button writes pdEtStride2; every older flag is gone for good   // update 49: the sorcerer's Long Stride, bought once and kept; update 51: a flag not written by the sorcerer's button is dropped once
     this.tasksDone = 0; this.task = null; this.keyGiven = false; this.vaultOpen = false;
     this.chapter = 0; this.keeperReady = true;
     this.npcs = []; this.stalls = []; this.lights = []; this.flags = []; this.lanterns = [];
@@ -173,6 +173,7 @@ export class EterniusCity {
   }
   inside(x, z, y = 0) {
     const P = this.polar(x, z), C = E();
+    if (y < -100 && P.r < C.mountainR + 60) return true;   // update 57: all of floor -1 is the city - the mine and its store run out past the wall (their music was the desert's)
     if (this.inMountainRooms(P.a, P.b, P.r) && y < 24) return true;
     const K = C.castle;
     return P.a >= K.a0 && P.a <= K.a1 && Math.abs(P.b) < K.hw;
@@ -449,7 +450,8 @@ export class EterniusCity {
       const asset = A.glb[id];
       const [x, z] = cityWorld(a, b);
       let body;
-      if (asset) body = riggedHumanoid(asset.model, { armIn: kind === "male" || kind === "female" ? 0.22 : 0 }) || asset.model.clone();   // update 42
+      if (asset) { body = riggedHumanoid(asset.model, { armIn: kind === "male" || kind === "female" ? 0.22 : 0, tool: kind === "miner" }) || asset.model.clone();   // update 42; update 57: the miner's pick rides with his arms
+      if (kind === "prisoner") body.traverse((o) => { if (o.isMesh && o.material) { o.material = o.material.clone(); if (o.material.map) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0xffffff); o.material.emissiveIntensity = 0.34; } } }); }   // update 57: the prisoner was a shadow in his cell
       else { body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 2.0, 4, 8), new THREE.MeshStandardMaterial({ color: 0x6c9c3a })); body.position.y = 1.5; const g2 = new THREE.Group(); g2.add(body); body = g2; }
       const [fx, fz] = cityWorld(faceA, faceB);
       const yaw = Math.atan2(fx - x, fz - z);
@@ -681,7 +683,7 @@ export class EterniusCity {
       let headTurn = 0;
       if (d >= 5.5 && d < 12) { const want = Math.atan2(p.pos.x - n.x, p.pos.z - n.z); headTurn = ((want - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; }
       if (n.body.userData.hrig && d < 140) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm",   // update 51: no rig work for a figure 140 m off
-        (n.strike !== undefined || n.blockT > 0 || n.shove !== undefined) ? { attack: n.strike !== undefined ? Math.min(1, n.strike) : 0, block: n.blockT > 0 ? 1 - n.blockT / 0.45 : 0, shove: n.shove !== undefined ? n.shove : 0, fall: 0 } : null);   // update 44/49
+        n.mining ? { attack: 0, block: 0, shove: 0, fall: 0, mine: n.strike !== undefined ? Math.min(1, n.strike) : 0 } : (n.strike !== undefined || n.blockT > 0 || n.shove !== undefined) ? { attack: n.strike !== undefined ? Math.min(1, n.strike) : 0, block: n.blockT > 0 ? 1 - n.blockT / 0.45 : 0, shove: n.shove !== undefined ? n.shove : 0, fall: 0 } : null);   // update 44/49; update 57: the miners swing as one piece
       else if (!n.walk) n.body.position.y = n.y + Math.sin(n.t * 1.3) * 0.012;
     }
     if (!this.keeperReady) { const k = this.npcs.find((n) => n.role === "keeper"); if (k && Math.hypot(p.pos.x - k.x, p.pos.z - k.z) > 25) this.keeperReady = true; }
@@ -791,7 +793,7 @@ export class EterniusCity {
     const s = g.npcPanel(n.name, S.mageLines.map((l) => l.replace("%n", C.stride.price)), [["mageBuy", S.mageBuy.replace("%n", C.stride.price)]]);
     s.querySelector("#mageBuy").addEventListener("click", () => {
       if (this.coins < C.stride.price) { g.ui.toast(S.mageNoCoins.replace("%n", C.stride.price)); g.audio.sDeny(); return; }
-      this.coins -= C.stride.price; g.ui.coins(this.coins); this.stride = true; try { localStorage.pdEtStride2 = "bought"; } catch (e) {}
+      this.coins -= C.stride.price; g.ui.coins(this.coins); this.stride = true;
       g.audio.sPickup(); g.ui.closeScreen(); g.npcPanel(n.name, [S.mageBought]);
     });
   }

@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=56";
-import { STR } from "../strings.js?v=56";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=56";
+import { CFG } from "./config.js?v=57";
+import { STR } from "../strings.js?v=57";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=57";
 
 // ============================================================================
 // update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat
@@ -19,9 +19,16 @@ export function lowerRoom(city, a, b, m = 1, y) {   // update 54: at the room's 
 }
 function mineDist(city, a, b) {
   const M = city.lowerMine; if (!M) return 1e9;
+  if (M.samples) { let best = 1e9; for (const p of M.samples) { const d = Math.hypot(p.x - b, p.z - a); if (d < best) best = d; } return best; }   // update 57: the longer tunnel, sampled once
   let best = 1e9; const q = new THREE.Vector3(b, 0, a);
   for (let i = 0; i <= 40; i++) { const p = M.path.getPointAt(i / 40); const d = Math.hypot(p.x - q.x, p.z - q.z); if (d < best) best = d; }
   return best;
+}
+// update 57: how far along the mine you are (metres from its mouth) and how far off its centre line
+export function mineAlong(city, a, b) {
+  const M = city.lowerMine; if (!M || !M.samples) return null;
+  let best = 1e9, bi = 0; for (let i = 0; i < M.samples.length; i++) { const p = M.samples[i]; const d = Math.hypot(p.x - b, p.z - a); if (d < best) { best = d; bi = i; } }
+  return { d: best, along: bi / (M.samples.length - 1) * M.total };
 }
 // inside the carved space of floor -1 (the bowl, the two bands, the rooms, the mine)?
 export function lowerInside(city, a, b, r, th, y) {
@@ -66,6 +73,15 @@ export function lowerCollide(city, a, b, rad, y) {
   let r = Math.hypot(a, b), th = Math.atan2(b, a) / D2R;
   const room = lowerRoom(city, a, b, 1.2, y), nearDoor = (city.lowerRooms || []).some((rm) => { if (y < rm.y - 2 || y > rm.y + rm.h + 2) return false; const u = rm.u(a, b), v = rm.v(a, b); return u > -3 && u < 2 && Math.abs(v) < (rm.kind === "store" ? 2.2 : rm.kind === "cell" ? 1.15 : C.room.doorHw) + rad; });
   const inMine = mineDist(city, a, b) < L.mine.hw + rad + 1;
+  if (inMine && city.lowerMine && city.lowerMine.total) {   // update 57: the working face - the tunnel runs on into the dark past the last miner, but not for you
+    const M = city.lowerMine, al = mineAlong(city, a, b);
+    if (al && al.along > L.mine.len) {
+      const u = Math.min(1, (L.mine.len - 0.6) / M.total), p = M.path.getPointAt(u), t = M.path.getTangentAt(u);
+      const lat = Math.max(-(L.mine.hw - rad - 0.3), Math.min(L.mine.hw - rad - 0.3, (b - p.x) * t.z - (a - p.z) * t.x));
+      b = p.x + t.z * lat; a = p.z - t.x * lat; moved = true;
+      const g = city.g; if (g && g.ui && (city.mineWarnT === undefined || city.t - city.mineWarnT > 4)) { city.mineWarnT = city.t; g.ui.toast(`${STR.et.minerName}: ${STR.et.minerBack}`); }
+    }
+  }
   const se = L.stairETh * D2R, su = a * Math.cos(se) + b * Math.sin(se), sv = -a * Math.sin(se) + b * Math.cos(se);
   const stairGap = (b > 0 && Math.abs(a) < C.stairs.up.hw + 0.6) || (su > 0 && Math.abs(sv) < C.stairs.down.hw + 0.6);
   if (!room && !nearDoor) {

@@ -1,22 +1,22 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=56";
-import { STR } from "../strings.js?v=56";
+import { CFG, ASSET_V } from "./config.js?v=57";
+import { STR } from "../strings.js?v=57";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=56";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=56";
-import { ClipAnimator } from "./skeletal.js?v=56";
-import { AudioMan } from "./audio.js?v=56";
-import { UI } from "./ui.js?v=56";
-import { World } from "./world.js?v=56";
-import { Player } from "./player.js?v=56";
-import { Creature, ItemDrop } from "./entities.js?v=56";
-import { GameMap } from "./map.js?v=56";
-import { FarmGame } from "./farmgame.js?v=56";
-import { ElisiaSystem } from "./elisia.js?v=56";   // update 35
-import { DesertSystem } from "./desert.js?v=56";
-import { PortalSystem } from "./portals.js?v=56";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=56";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=57";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=57";
+import { ClipAnimator } from "./skeletal.js?v=57";
+import { AudioMan } from "./audio.js?v=57";
+import { UI } from "./ui.js?v=57";
+import { World } from "./world.js?v=57";
+import { Player } from "./player.js?v=57";
+import { Creature, ItemDrop } from "./entities.js?v=57";
+import { GameMap } from "./map.js?v=57";
+import { FarmGame } from "./farmgame.js?v=57";
+import { ElisiaSystem } from "./elisia.js?v=57";   // update 35
+import { DesertSystem } from "./desert.js?v=57";
+import { PortalSystem } from "./portals.js?v=57";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=57";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -95,7 +95,7 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
   "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician",
   "et_fountain", "et_bigtree", "et_boat", "et_prisoner", "et_minecart", "et_emerald",
-  "et_planter", "et_miner", "et_doctor", "et_hospbed"];   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
+  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase"];   // update 57   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {

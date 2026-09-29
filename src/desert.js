@@ -16,12 +16,12 @@
 // and the map painting. The two Alioramus live in entities.js and only ask
 // this module where the desert is.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=56";
-import { cityFlatten, cityLakeDip } from "./eternius.js?v=56";   // update 39
-import { STR } from "../strings.js?v=56";
+import { CFG } from "./config.js?v=57";
+import { cityFlatten, cityLakeDip } from "./eternius.js?v=57";   // update 39
+import { STR } from "../strings.js?v=57";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { ClipAnimator } from "./skeletal.js?v=56";
+import { ClipAnimator } from "./skeletal.js?v=57";
 
 const D = () => CFG.desert;
 
@@ -226,6 +226,9 @@ export class Desert {
       pos.setY(i, y);
     }
     geo.computeVertexNormals();
+    // update 57: no sand under the glass ring - the triangles inside the light shaft are dropped (the -40 m sand layer
+    // was what you saw looking down through the glass instead of the park)
+    { const idx = geo.index; if (idx) { const keep = [], cxm = CFG.eternius.cx, czm = CFG.eternius.cz, hole = CFG.eternius.lower.shaftR + 9; for (let i = 0; i < idx.count; i += 3) { let inside = false; for (let k = 0; k < 3; k++) { const j = idx.getX(i + k); if (Math.hypot(pos.getX(j) - cxm, pos.getZ(j) - czm) < hole) { inside = true; break; } } if (!inside) keep.push(idx.getX(i), idx.getX(i + 1), idx.getX(i + 2)); } geo.setIndex(keep); } }
     const sandMat = w.mat("t_sand", 60, 60, 0xc9a25a);
     if (sandMat.map) { sandMat.map.repeat.set((X1 - X0) / 9, (Z1 - Z0) / 9); }
     const sand = new THREE.Mesh(geo, sandMat);

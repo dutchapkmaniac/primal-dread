@@ -45,9 +45,12 @@ export function riggedHumanoid(sourceGroup, opts = {}) {
   // stretches between the head, the chest and the arm the way it did; the same bone flips it for the thrust
   let prop = null;
   { let tx = 0, tz = 0, tn = 0; for (let i = 0; i < n; i++) { v.fromBufferAttribute(pos, i); if (v.y > bb.max.y - H * 0.035) { tx += v.x - cx; tz += v.z - cz; tn++; } }
-    if (tn && Math.abs(tx / tn) > H * 0.08) prop = { x: tx / tn, z: tz / tn, r: H * 0.05, s: tx / tn < 0 ? 0 : 1 }; }
+    if (tn && Math.abs(tx / tn) > H * 0.08) prop = { x: tx / tn, z: tz / tn, r: H * (opts.tool ? 0.11 : 0.05), s: tx / tn < 0 ? 0 : 1 }; }
   const propBone = new THREE.Bone(); const gripY = bb.min.y + H * 0.42;
-  if (prop) { propBone.position.set(prop.x - (prop.s ? 1 : -1) * shoulderX, gripY - elbowY, prop.z); fore[prop.s].add(propBone); } else { propBone.position.set(0, 0, 0); hips.add(propBone); }
+  // update 57: a TOOL (the miner's pick, both hands on it) hangs from the chest on the shoulder line: the two arms and the
+  // tool then turn about one and the same axis and nothing between the hands can stretch
+  if (opts.tool) { propBone.position.set(0, shoulderY - chestY, 0); chest.add(propBone); }
+  else if (prop) { propBone.position.set(prop.x - (prop.s ? 1 : -1) * shoulderX, gripY - elbowY, prop.z); fore[prop.s].add(propBone); } else { propBone.position.set(0, 0, 0); hips.add(propBone); }
   const bones = [hips, chest, head, arms[0], arms[1], fore[0], fore[1], legs[0], legs[1], knees[0], knees[1], propBone];
   const I = { hips: 0, chest: 1, head: 2, armL: 3, armR: 4, foreL: 5, foreR: 6, legL: 7, legR: 8, kneeL: 9, kneeR: 10, prop: 11 };
   const blend2 = (i, b1, w1, b2, w2) => { idx[i * 4] = b1; wgt[i * 4] = w1; idx[i * 4 + 1] = b2; wgt[i * 4 + 1] = w2; idx[i * 4 + 2] = 0; wgt[i * 4 + 2] = Math.max(0, 1 - w1 - w2); };
@@ -55,6 +58,7 @@ export function riggedHumanoid(sourceGroup, opts = {}) {
     v.fromBufferAttribute(pos, i);
     const x = v.x - cx, y = v.y;
     if (prop && Math.hypot(x - prop.x, v.z - cz - prop.z) < prop.r) { blend2(i, I.prop, 1, I.prop, 0); continue; }   // update 49: the shaft, whole
+    if (opts.tool && y > neckY + fade && Math.abs(x) > size.x * 0.2) { blend2(i, I.prop, 1, I.prop, 0); continue; }   // update 57: the raised arms and the pick's head above the neck line go with the tool, never with the head or the chest
     if (y > neckY - fade && Math.abs(x) < size.x * 0.2) {        // the head (and the neck ramp)
       const k = Math.min(1, (y - (neckY - fade)) / (2 * fade));
       blend2(i, I.head, k, I.chest, 1 - k);
@@ -88,7 +92,7 @@ export function riggedHumanoid(sourceGroup, opts = {}) {
   skinned.add(hips);
   skinned.bind(new THREE.Skeleton(bones));
   const g = new THREE.Group(); g.add(skinned);
-  g.userData.hrig = { hips, chest, head, arms, fore, legs, knees, H, hipsY0: hips.position.y, phase: Math.random() * 6.28, look: 0, lookT: 0, lookTarget: 0, shift: 0, shiftT: 2 + Math.random() * 4, shiftTarget: 0, armIn: opts.armIn || 0, prop: prop ? propBone : null, propSide: prop ? prop.s : -1 };
+  g.userData.hrig = { hips, chest, head, arms, fore, legs, knees, H, hipsY0: hips.position.y, phase: Math.random() * 6.28, look: 0, lookT: 0, lookTarget: 0, shift: 0, shiftT: 2 + Math.random() * 4, shiftTarget: 0, armIn: opts.armIn || 0, prop: prop ? propBone : null, propSide: prop ? prop.s : -1, tool: !!opts.tool };
   return g;
 }
 
@@ -137,7 +141,15 @@ export function driveHumanoid(group, state, speed, dt, headTurn = 0, style = "ca
   // attack: the weapon arm (right) winds up over the head, the chest coils back, then the blow sweeps down and
   // forward as the chest and hips unwind, the shield arm up; then it recovers. block: both arms snap up in front,
   // the chest leans back, the knees give a little, then it eases out.
-  if (fx) {
+  if (fx && fx.mine !== undefined && R.tool) {
+    // update 57: the miner's swing - arms and pick turn as ONE piece about the shoulder line (no elbow, no sway, so nothing
+    // stretches): a short lift back, the blow down and forward onto the vein, then back up to the ready pose
+    const k = fx.mine; let th;
+    if (k <= 0) th = 0; else if (k < 0.3) th = -0.3 * Math.sin((k / 0.3) * Math.PI / 2); else if (k < 0.55) { const q = (k - 0.3) / 0.25; th = -0.3 + 1.5 * q * q; } else { const q = (k - 0.55) / 0.45; th = 1.2 * (1 - q * q * (3 - 2 * q)); }
+    R.arms[0].rotation.x = th; R.arms[1].rotation.x = th; R.fore[0].rotation.x = 0; R.fore[1].rotation.x = 0; R.arms[0].rotation.z = R.armIn; R.arms[1].rotation.z = -R.armIn;
+    R.hips.rotation.y = 0; R.hips.rotation.z = 0; R.chest.rotation.y = 0; R.chest.rotation.z = 0; R.chest.rotation.x = 0.04 + 0.2 * Math.max(0, th);
+    if (R.prop) R.prop.rotation.set(th, 0, 0);
+  } else if (fx) {
     // update 49: the weapon hand is the one the scan holds its shaft in (propSide); the other is the free hand
     const w = R.propSide >= 0 ? R.propSide : 1, o = 1 - w, inW = w === 0 ? 1 : -1, inO = o === 0 ? 1 : -1;   // in*: +z-rotation brings that arm in toward the body
     if (fx.attack > 0 && R.prop) {

@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=56";
-import { STR } from "../strings.js?v=56";
-import { Inventory } from "./items.js?v=56";
+import { CFG } from "./config.js?v=57";
+import { STR } from "../strings.js?v=57";
+import { Inventory } from "./items.js?v=57";
 
 export class Player {
   constructor(camera, ctx) {
