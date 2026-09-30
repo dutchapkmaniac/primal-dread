@@ -1,13 +1,14 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=59";
-import { STR } from "../strings.js?v=59";
-import { Creature } from "./entities.js?v=59";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=59";
+import { CFG } from "./config.js?v=60";
+import { STR } from "../strings.js?v=60";
+import { Creature } from "./entities.js?v=60";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=60";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 58: the miner comes rigged and animated
-import { iconUrl } from "./items.js?v=59";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=59";
-import { buildCity } from "./eternius_build.js?v=59";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=59";   // update 50
+import { iconUrl } from "./items.js?v=60";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=60";
+const MINER_FWD = 1;   // update 60: the miner rig's forward axis (+1 = the model faces +z, as the props do)
+import { buildCity } from "./eternius_build.js?v=60";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=60";   // update 50
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -453,7 +454,8 @@ export class EterniusCity {
       const [x, z] = cityWorld(a, b);
       let body;
       if (asset && kind === "miner" && asset.anims && asset.anims.length) {   // update 58: the miner is a Higgsfield rig playing its chop clip; the pickaxe rides in his right hand
-        body = skeletonClone(asset.model); const mixer = new THREE.AnimationMixer(body); const act = mixer.clipAction(asset.anims[0]); act.play(); body.userData.mixer = mixer;
+        body = skeletonClone(asset.model); const mixer = new THREE.AnimationMixer(body); const act = mixer.clipAction(asset.anims[0]); act.play(); body.userData.mixer = null;   // update 60: the library clip only poses him ONCE, for the pick fit below - it is not played (it let go of the handle with one hand); the swing is mineSwing() on the rig's bones
+        const bones = {}, bind = {}, bindP = {}; body.traverse((o) => { if (o.isBone) bones[o.name] = o; }); for (const k2 of Object.keys(bones)) { bind[k2] = bones[k2].quaternion.clone(); bindP[k2] = bones[k2].position.clone(); } body.userData.bones = bones; body.userData.bind = bind; body.updateMatrixWorld(true);
         const pickA = A.glb.et_pickaxe; if (pickA) { let hand = null; body.traverse((o) => { if (!hand && o.isBone && /hand/i.test(o.name) && /right|_r\b|\.r\b|^r[_.]/i.test(o.name)) hand = o; }); if (!hand) body.traverse((o) => { if (!hand && o.isBone && /hand/i.test(o.name)) hand = o; });
           if (hand) {
             // the pick's own long axis (the vertices' principal axis in the model's frame) and which end carries the head; then
@@ -471,7 +473,7 @@ export class EterniusCity {
             let lhand = null; body.traverse((o) => { if (!lhand && o.isBone && /hand/i.test(o.name) && /left|_l\b|\.l\b|^l[_.]/i.test(o.name)) lhand = o; });
             mixer.setTime(PK.gripT || 1.4); body.updateMatrixWorld(true);
             const lp = new THREE.Vector3(); (lhand || hand).getWorldPosition(lp); const d = lhand ? hand.worldToLocal(lp).normalize() : new THREE.Vector3(0, 1, 0);
-            mixer.setTime(0); body.updateMatrixWorld(true);
+            mixer.setTime(0); for (const k2 of Object.keys(bones)) { bones[k2].quaternion.copy(bind[k2]); bones[k2].position.copy(bindP[k2]); } body.updateMatrixWorld(true);   // update 60: back to the rest pose the swing builds on
             const q = new THREE.Quaternion().setFromUnitVectors(u.clone().normalize(), d);
             const sc = new THREE.Vector3(); hand.getWorldScale(sc); const k = 1 / (sc.x || 1); pk.scale.multiplyScalar(k); pk.quaternion.copy(q);
             const grip = new THREE.Vector3(cx, cy, cz).addScaledVector(u, tmin + (PK.grip === undefined ? 0.35 : PK.grip)); pk.position.copy(grip.clone().applyQuaternion(q).multiplyScalar(k).negate());
@@ -709,7 +711,8 @@ export class EterniusCity {
       // a glance at a visitor a little further out (the body turns only when you are close)
       let headTurn = 0;
       if (d >= 5.5 && d < 12) { const want = Math.atan2(p.pos.x - n.x, p.pos.z - n.z); headTurn = ((want - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; }
-      if (n.body.userData.mixer) { if (d < 140) { n.body.userData.mixer.update(dt); this.fitPick(n.body); } }   // update 58: the animated miner; update 59: the pick follows both hands every frame
+      if (n.body.userData.bones && n.mining) { if (d < 140) { this.mineSwing(n); this.fitPick(n.body); } }   // update 60: the miner's own swing on the rig's bones (timed by n.strike), the pick along both hands
+      else if (n.body.userData.mixer) { if (d < 140) { n.body.userData.mixer.update(dt); this.fitPick(n.body); } }   // update 58: the animated miner; update 59: the pick follows both hands every frame
       else if (n.body.userData.hrig && d < 140) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm",   // update 51: no rig work for a figure 140 m off
         n.mining ? { attack: 0, block: 0, shove: 0, fall: 0, mine: n.strike !== undefined ? Math.min(1, n.strike) : 0 } : (n.strike !== undefined || n.blockT > 0 || n.shove !== undefined) ? { attack: n.strike !== undefined ? Math.min(1, n.strike) : 0, block: n.blockT > 0 ? 1 - n.blockT / 0.45 : 0, shove: n.shove !== undefined ? n.shove : 0, fall: 0 } : null);   // update 44/49; update 57: the miners swing as one piece
       else if (!n.walk) n.body.position.y = n.y + Math.sin(n.t * 1.3) * 0.012;
@@ -735,6 +738,41 @@ export class EterniusCity {
     this.g.ui.coins(this.coins);
   }
 
+  // update 60: the mining swing, built on the rig's bones in WORLD axes (his right R, up U, forward F) so it does not
+  // depend on Meshy's bone frames. Each hand is PLACED (two-bone IK per arm) on the pick's shaft: the right hand at a
+  // point in front of him, the left hand a grip's width further along the shaft's direction - so both hands are always
+  // on one handle and the pick (aimed along them by fitPick) points where the shaft points. The blow is timed by
+  // n.strike (0..1 over 1.1 s, set every 1.8-3.2 s): ready at chest height, cocked over the shoulder, down into the
+  // rock, a hold, back to ready. Between blows he stands ready. Positions are metres from his feet: right, forward, up.
+  mineSwing(n) {
+    const body = n.body, B = body.userData.bones, Q0 = body.userData.bind; if (!B || !Q0 || !B.RightArm || !B.LeftArm || !B.RightForeArm || !B.LeftForeArm || !B.RightHand || !B.LeftHand) return;
+    const k = n.strike === undefined ? 0 : Math.min(1, n.strike);
+    // strike phase, right hand [right, forward, up], shaft direction [right, forward, up] (butt -> head), spine lean forward (deg)
+    const way = [[0, [0.05, 0.42, 1.62], [-0.25, 0.55, 0.8], 4], [0.3, [0.08, 0.02, 3.0], [-0.3, -0.85, 0.45], -8], [0.5, [0.05, 0.45, 1.72], [-0.28, 0.75, -0.6], 28], [0.66, [0.05, 0.45, 1.72], [-0.28, 0.75, -0.6], 28], [1.0, [0.05, 0.42, 1.62], [-0.25, 0.55, 0.8], 4]];
+    let i = 0; while (i < way.length - 2 && k >= way[i + 1][0]) i++; const [k0, h0, d0, s0] = way[i], [k1, h1, d1, s1] = way[i + 1]; let e = (k - k0) / Math.max(1e-6, k1 - k0); e = e * e * (3 - 2 * e);
+    const mix = (a, b) => [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e]; const rh = mix(h0, h1), sd = mix(d0, d1), sp = (s0 + (s1 - s0) * e) * D2R;
+    const qb = body.getWorldQuaternion(new THREE.Quaternion()), F = new THREE.Vector3(0, 0, MINER_FWD).applyQuaternion(qb), U = new THREE.Vector3(0, 1, 0), R = new THREE.Vector3().crossVectors(F, U).normalize();   // R = F x U points to HIS right
+    const at = (v) => body.position.clone().addScaledVector(R, v[0]).addScaledVector(F, v[1]).addScaledVector(U, v[2]);
+    const dirW = new THREE.Vector3().addScaledVector(R, sd[0]).addScaledVector(F, sd[1]).addScaledVector(U, sd[2]).normalize();
+    const TR = at(rh), TL = TR.clone().addScaledVector(dirW, 0.34);   // the left hand a grip's width further along the shaft
+    for (const nm of ["Spine", "Spine01", "Spine02", "RightArm", "RightForeArm", "LeftArm", "LeftForeArm"]) if (B[nm] && Q0[nm]) B[nm].quaternion.copy(Q0[nm]);
+    body.updateMatrixWorld(true);
+    const pw = new THREE.Quaternion(), pinv = new THREE.Quaternion();
+    const turn = (b, qWorld) => { b.parent.getWorldQuaternion(pw); pinv.copy(pw).invert(); b.quaternion.copy(pinv.clone().multiply(qWorld).multiply(pw).multiply(b.quaternion)); };
+    const spine = B.Spine02 || B.Spine01 || B.Spine; if (spine) { turn(spine, new THREE.Quaternion().setFromAxisAngle(R, -sp)); body.updateMatrixWorld(true); }   // about R, minus = forward
+    const P = (b, v) => b.getWorldPosition(v);
+    const S = new THREE.Vector3(), E = new THREE.Vector3(), H = new THREE.Vector3(), cur = new THREE.Vector3(), dir = new THREE.Vector3(), perp = new THREE.Vector3(), pole = new THREE.Vector3(), q = new THREE.Quaternion();
+    for (const [side, sgn, T] of [["Right", 1, TR], ["Left", -1, TL]]) {
+      const arm = B[side + "Arm"], fore = B[side + "ForeArm"], hand = B[side + "Hand"];
+      P(arm, S); P(fore, E); P(hand, H); const L1 = S.distanceTo(E), L2 = E.distanceTo(H); if (L1 < 1e-3 || L2 < 1e-3) continue;
+      dir.copy(T).sub(S); const d = Math.min(L1 + L2 - 0.01, Math.max(0.05, dir.length())); dir.normalize();
+      const a1 = Math.acos(Math.max(-1, Math.min(1, (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d))));   // shoulder angle between the reach line and the upper arm
+      pole.set(0, 0, 0).addScaledVector(R, sgn * 0.9).addScaledVector(U, -0.4).addScaledVector(F, -0.15); perp.copy(pole).addScaledVector(dir, -pole.dot(dir)); if (perp.lengthSq() < 1e-6) perp.copy(U); perp.normalize();   // the elbow points out and down
+      const upper = dir.clone().multiplyScalar(Math.cos(a1)).addScaledVector(perp, Math.sin(a1));
+      cur.copy(E).sub(S).normalize(); turn(arm, q.setFromUnitVectors(cur, upper)); body.updateMatrixWorld(true);
+      P(fore, E); P(hand, H); cur.copy(H).sub(E).normalize(); dir.copy(T).sub(E).normalize(); turn(fore, q.setFromUnitVectors(cur, dir)); body.updateMatrixWorld(true);
+    }
+  }
   // update 59: the pick lies along the line from the right hand to the left, every frame - the clip moves the hands apart
   // and together, and a pick fitted once ended up through his face
   fitPick(body) {

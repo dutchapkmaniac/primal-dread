@@ -1,6 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=59";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=59";
+import { CFG } from "./config.js?v=60";
+const VEIN_BURY = { et_vein1: 0.5, et_vein3: 0.3, et_vein2: 0.8 };   // update 60: how much of each vein model's height sits inside the rock (its grey base); vein1 = the double crystal, vein3 = a single spike with a tall base, vein2 = a slab with crystals along its edges (not used on the walls - its grey face shows whichever way it is turned)
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=60";
 
 // ============================================================================
 // update 50: FLOOR -1 — the park under the city, 200 m down. The river leaves the ground floor through the
@@ -45,7 +46,7 @@ export function buildLower(city, grp) {
     // update 55: a golden beam round the soil, a green gem every few metres — you can walk on the earth, but it reads as not meant for it
     cyl(r0, t0, t1, Y.park, Y.park + 0.45, gold, true, 24); cyl(r1, t0, t1, Y.park, Y.park + 0.45, gold, false, 24); cyl(r0 - 0.25, t0, t1, Y.park, Y.park + 0.45, gold, false, 24); cyl(r1 + 0.25, t0, t1, Y.park, Y.park + 0.45, gold, true, 24);
     sector(r0 - 0.25, r0, t0, t1, Y.park + 0.45, goldPlain, 24); sector(r1, r1 + 0.25, t0, t1, Y.park + 0.45, goldPlain, 24);
-    for (const t of [t0, t1]) { const [a, b] = pt((r0 + r1) / 2, t); box(0.5, 0.45, r1 - r0 + 0.5, b, Y.park + 0.22, a, gold, t * D2R - Math.PI / 2); }
+    for (const t of [t0, t1]) { const [a, b] = pt((r0 + r1) / 2, t); box(0.5, 0.45, r1 - r0 + 0.5, b, Y.park + 0.22, a, gold, t * D2R); for (const rr of [r0 + 4, (r0 + r1) / 2, r1 - 4]) { const [ga, gb] = pt(rr, t); const g2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), gem); g2.position.set(gb, Y.park + 0.55, ga); grp.add(g2); } }   // update 60: ALONG the soil's edge - they lay across it, half on the earth and half on the paving - with gems like the arcs
     for (const rr of [r0 - 0.12, r1 + 0.12]) for (let t = t0 + 2; t < t1 - 1; t += 4) { const [a, b] = pt(rr, t); const g2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), gem); g2.position.set(b, Y.park + 0.55, a); grp.add(g2); }
     sector(r0 + 0.2, r1 - 0.2, t0 + 0.5, t1 - 0.5, Y.park + 0.28, soilM(4, 4), 24);
   }
@@ -144,19 +145,26 @@ export function buildLower(city, grp) {
       archWall(cb, yB, ca, wd, Math.max(Hh + 0.4, yTop - yB), 0.8, W, Hh, sand(3, 2), ry);
       archFrame(cb, yB, ca, W, Hh, 0.5, 0.9, gold, ry);
       const segL = 5, nSeg = Math.round(depth / segL), slope = grade * Math.atan2(1.0, 30), dth = segL / rm;
-      const tunM = sand(2, 3); tunM.side = THREE.BackSide;
+      const tunM = sand(2, 3); tunM.side = THREE.BackSide; if (tunM.map) { tunM.emissiveMap = tunM.map; tunM.emissive = new THREE.Color(0xffffff); tunM.emissiveIntensity = 0.14; }   // update 60: a little self-lit - the black past the last lamp read as a dead end
       const tw = waterMat(); tw.map && tw.map.repeat.set(2, 3);
       const segGeo = (() => { const ex = new THREE.ExtrudeGeometry(archShape(W, Hh + 0.2, 0, true), { depth: segL + 0.3, bevelEnabled: false }); ex.translate(0, -0.1, -(segL + 0.3) / 2); const gs = ex.groups.find((g) => g.materialIndex === 1) || { start: 0, count: ex.attributes.position.count }; const pick = (at) => new THREE.BufferAttribute(at.array.slice(gs.start * at.itemSize, (gs.start + gs.count) * at.itemSize), at.itemSize); const g2 = new THREE.BufferGeometry(); g2.setAttribute("position", pick(ex.attributes.position)); g2.setAttribute("uv", pick(ex.attributes.uv)); const uv = g2.attributes.uv, pp = g2.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, (pp.getX(i) + pp.getZ(i)) / 3, pp.getY(i) / 3); g2.computeVertexNormals(); g2.computeBoundingSphere(); return g2; })();
       const bandGeo = new THREE.BoxGeometry(0.2, 0.3, segL + 0.3), waterGeo = new THREE.PlaneGeometry(W - 0.2, segL + 0.3);
       const segAt = (k) => { const t = th + sgn * (k + 0.5) * dth, u = (k + 0.5) * segL; return { t, u, a: rm * Math.cos(t), b: rm * Math.sin(t), y: yB + Math.tan(slope) * u, ry: t - Math.PI / 2 + (sgn > 0 ? Math.PI : 0) }; };
+      // update 60: past 30 m the tunnel fades to black the way the mine does - the walls, the gold bands and the water darken
+      // segment by segment - and a black cap closes the end. A tunnel bending round this ring hides its end only after ~75 m
+      // of arc, and both ends are as far as the rock allows (the house, the east gallery), so the dark does the rest. The north
+      // cap sits where the spiral's tube joins: the boat ride fades to black long before it gets there
+      const fadeAt = (u) => u < 30 ? 1 : Math.pow(Math.max(0, 1 - (u - 30) / Math.max(1, depth - 30)), 1.4);
       for (let k = 0; k < nSeg; k++) {
-        const S2 = segAt(k);
-        const seg = new THREE.Mesh(segGeo, tunM); seg.rotation.order = "YXZ"; seg.rotation.y = S2.ry; seg.rotation.x = -slope; seg.position.set(S2.b, S2.y, S2.a); grp.add(seg);
-        for (const sd of [-1, 1]) { const bm = new THREE.Mesh(bandGeo, goldPlain); bm.rotation.order = "YXZ"; bm.rotation.y = S2.ry; bm.rotation.x = -slope; bm.position.set(S2.b + Math.sin(S2.t) * sd * (W / 2 - 0.12), S2.y + 3.0, S2.a + Math.cos(S2.t) * sd * (W / 2 - 0.12)); grp.add(bm); }
-        const wm2 = new THREE.Mesh(waterGeo, tw); wm2.rotation.order = "YXZ"; wm2.rotation.y = S2.ry; wm2.rotation.x = -Math.PI / 2 - slope; wm2.position.set(S2.b, S2.y + 0.5, S2.a); grp.add(wm2); city.keepExtra.push(wm2);
+        const S2 = segAt(k), fd = fadeAt(S2.u);
+        const sm = tunM.clone(); sm.color.multiplyScalar(fd); sm.emissiveIntensity *= fd;
+        const seg = new THREE.Mesh(segGeo, sm); seg.rotation.order = "YXZ"; seg.rotation.y = S2.ry; seg.rotation.x = -slope; seg.position.set(S2.b, S2.y, S2.a); grp.add(seg);
+        if (fd > 0.25) for (const sd of [-1, 1]) { const gm2 = goldPlain.clone(); gm2.color.multiplyScalar(fd); gm2.emissive.multiplyScalar(fd); const bm = new THREE.Mesh(bandGeo, gm2); bm.rotation.order = "YXZ"; bm.rotation.y = S2.ry; bm.rotation.x = -slope; bm.position.set(S2.b + Math.sin(S2.t) * sd * (W / 2 - 0.12), S2.y + 3.0, S2.a + Math.cos(S2.t) * sd * (W / 2 - 0.12)); grp.add(bm); }
+        const wmat = tw.clone(); wmat.color.multiplyScalar(fd); wmat.emissive.multiplyScalar(fd); const wm2 = new THREE.Mesh(waterGeo, wmat); wm2.rotation.order = "YXZ"; wm2.rotation.y = S2.ry; wm2.rotation.x = -Math.PI / 2 - slope; wm2.position.set(S2.b, S2.y + 0.5, S2.a); grp.add(wm2); city.keepExtra.push(wm2);
       }
-      if (!open) { const E2 = segAt(nSeg - 0.5); const cm = sand(2, 2); cm.emissiveIntensity = 0.05; const cap = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.4, Hh + 1), cm); cap.rotation.y = E2.ry + Math.PI; cap.position.set(E2.b, E2.y + Hh / 2, E2.a); grp.add(cap); }
-      for (let u = 3; u <= Math.min(CV.lit || depth, depth); u += 4.5) { const t = th + sgn * u / rm, yy = yB + Math.tan(slope) * u; for (const sd of [-1, 1]) { const rr = rm + sd * (W / 2 - 0.4), lb = rr * Math.sin(t), la = rr * Math.cos(t); box(0.32, 0.12, 0.42, lb, yy + 3.5, la, goldPlain, t); const cage = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.5, 0.34), goldPlain); cage.position.set(lb, yy + 3.2, la); grp.add(cage); const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.18), gem); core.position.copy(cage.position); grp.add(core); city.emit(grp, lb, yy + 3.2, la, 0x9cffb0, 2.4, 14, {}); } }
+      { const E2 = segAt(nSeg - 0.5); const cap = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.4, Hh + 1), new THREE.MeshBasicMaterial({ color: 0x000000, fog: false })); cap.rotation.y = E2.ry + Math.PI; cap.position.set(E2.b, E2.y + Hh / 2, E2.a); grp.add(cap); }
+      // update 60: lamps for the first 40 m (they stopped at 18 m), then the dark
+      for (let u = 3; u <= Math.min(depth - 2, 40); u += 6) { const t = th + sgn * u / rm, yy = yB + Math.tan(slope) * u; for (const sd of [-1, 1]) { const rr = rm + sd * (W / 2 - 0.4), lb = rr * Math.sin(t), la = rr * Math.cos(t); box(0.32, 0.12, 0.42, lb, yy + 3.5, la, goldPlain, t); const cage = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.5, 0.34), goldPlain); cage.position.set(lb, yy + 3.2, la); grp.add(cage); const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.18), gem); core.position.copy(cage.position); grp.add(core); city.emit(grp, lb, yy + 3.2, la, 0x9cffb0, 2.4, 14, {}); } }
       const yAt = (tdeg) => yB + Math.tan(slope) * Math.min(depth, Math.max(0, sgn * (tdeg - thd) * D2R * rm)) + 0.5;
       return { endTh: thd + sgn * (depth / rm) / D2R, rm, yB, endY: yB + Math.tan(slope) * depth, yAt };
     };
@@ -427,7 +435,7 @@ export function buildLower(city, grp) {
     }
     // a vein sits ON the displaced wall: a ray from the tunnel's axis at the vein's height finds the rock, the vein goes 12 cm into it
     grp.updateMatrixWorld(true); const gq = grp.getWorldQuaternion(new THREE.Quaternion());
-    const snap = (p, rtv, side, hy) => { const o = grp.localToWorld(new THREE.Vector3(p.x, p.y + hy, p.z)); const dw = new THREE.Vector3(rtv.x * side, 0, rtv.z * side).applyQuaternion(gq).normalize(); const hit = new THREE.Raycaster(o, dw, 0, hw + 3).intersectObjects(wallMeshes, false)[0]; if (!hit) return p.clone().addScaledVector(rtv, side * (hw - 0.35)); return grp.worldToLocal(hit.point.clone()).addScaledVector(rtv, -side * 0.28); };
+    const wallHit = (p, rtv, side, hy) => { const o = grp.localToWorld(new THREE.Vector3(p.x, p.y + hy, p.z)); const dw = new THREE.Vector3(rtv.x * side, 0, rtv.z * side).applyQuaternion(gq).normalize(); const hit = new THREE.Raycaster(o, dw, 0, hw + 3).intersectObjects(wallMeshes, false)[0]; return hit ? grp.worldToLocal(hit.point.clone()) : p.clone().addScaledVector(rtv, side * (hw - 0.35)); };   // update 60: the point on the rock itself
     { const e = path.getPointAt(1), t = path.getTangentAt(1); const cap = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 4, h + 4, 1), new THREE.MeshBasicMaterial({ color: 0x000000, fog: false })); cap.position.copy(e); cap.position.y += h / 2; cap.rotation.y = Math.atan2(t.x, t.z); grp.add(cap); }
     // update 59: real stones - three Higgsfield rock chunks scattered over the walls and the ceiling at every size and angle, a
     // third of each sunk into the rock; instanced, kept out of the merge, hidden with the rest of floor -1 while you are upstairs
@@ -458,10 +466,16 @@ export function buildLower(city, grp) {
       const yaw = Math.atan2(t.x, t.z), work = d <= M.len + 0.5;
       if (i < N && d < total - 8) { for (const side of [-1.0, 1.0]) { const q = p.clone().addScaledVector(rt, side * 0.75); const seg = path.getPointAt(Math.min(1, s2 + 1 / N)).sub(p); const L2 = seg.length(); const r2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, L2 + 0.05), railM); r2.position.copy(q).add(seg.clone().multiplyScalar(0.5)); r2.position.y += 0.05; r2.rotation.y = yaw; grp.add(r2); } if (i % 2 === 0) { const sl = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 0.35), timberM); sl.position.copy(p); sl.position.y += 0.02; sl.rotation.y = yaw; grp.add(sl); } }
       if (i % 5 === 2 && d < total - 10) { for (const side of [-1, 1]) { const q = p.clone().addScaledVector(rt, side * (hw - 0.35)); const post = new THREE.Mesh(new THREE.BoxGeometry(0.45, h - 1.6, 0.45), timberM); post.position.copy(q); post.position.y += (h - 1.6) / 2; grp.add(post); } const beam = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 - 0.2, 0.45, 0.45), timberM); beam.position.copy(p); beam.position.y += h - 1.6; beam.rotation.y = yaw; grp.add(beam); if (work) { const lq = p.clone().addScaledVector(rt, -(hw - 1.6)); city.addCeilingLamp(lq.z, lq.x, Y.low + h - 1.65, 1.1, false); const lq2 = p.clone().addScaledVector(rt, (hw - 1.6)); if (i % 10 === 7) city.addCeilingLamp(lq2.z, lq2.x, Y.low + h - 1.65, 1.1, true); } }
-      const veinIds = ["et_vein1", "et_vein2", "et_vein3"].filter((id) => A.glb[id]);   // update 59: three shapes, fewer of them, each its own size and tilt
-      if (work && i > 1 && i % 5 !== 2 && (i % 4 === 1 || i % 4 === 3)) for (const side of [i % 8 < 4 ? 1 : -1]) { const hy = 0.3 + ((i * 7 + (side > 0 ? 3 : 0)) % 5) * 0.9, sc = 0.55 + ((i * 3) % 4) * 0.2; const q = snap(p, rt, side, hy + 0.3); const [va, vb] = [q.z, q.x]; const m = prop(veinIds.length ? veinIds[(i * 7 + side + 9) % veinIds.length] : "et_emerald", va, vb, Y.low + hy, yaw / D2R + (side > 0 ? 90 : -90) + ((i * 37) % 60 - 30), () => { const g2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.6), gem); g2.position.set(vb, Y.low + 1.2, va); grp.add(g2); return g2; }, sc); if (i % 2 === 0) city.emit(grp, vb, Y.low + hy + 0.6, va, 0x4fff8a, 1.2, 8, {}); city.lowerVeins.push({ a: va, b: vb, y: Y.low + hy, model: m, left: 3 }); }
+      const veinIds = ["et_vein1", "et_vein3", "et_vein1"].filter((id) => A.glb[id]);
+      // update 60: a vein grows OUT of the rock: its up axis is turned to point into the tunnel (tilted a little upward
+      // higher on the wall) and the model is pushed into the wall by VEIN_BURY of its height, so the grey base is inside the
+      // rock and only the crystals stand out; nearly twice as many, on both walls where the path allows
+      if (work && i > 1 && i % 5 !== 2 && i % 4 !== 0) for (const side of (i % 6 === 3 ? [1, -1] : [i % 2 ? 1 : -1])) { const hy = 0.5 + ((i * 7 + (side > 0 ? 3 : 0)) % 5) * 0.95, sc = 0.55 + ((i * 3 + side + 4) % 4) * 0.2; const q = wallHit(p, rt, side, hy); const [va, vb] = [q.z, q.x]; const id = veinIds.length ? veinIds[(i * 7 + side + 9) % veinIds.length] : "et_emerald"; const m = prop(id, va, vb, Y.low + hy, 0, () => { const g2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.6), gem); g2.position.set(vb, Y.low + 1.2, va); grp.add(g2); return g2; }, sc);
+        let inward = new THREE.Vector3(-side * rt.x, 0, -side * rt.z);
+        if (m && veinIds.length) { const tilt = (hy - 0.5) / h * 40 * D2R; inward = new THREE.Vector3(inward.x * Math.cos(tilt), Math.sin(tilt), inward.z * Math.cos(tilt)).applyQuaternion(gq).normalize(); const qv = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), inward); const twist = new THREE.Quaternion().setFromAxisAngle(inward, ((i * 37 + side * 11) % 360) * D2R); m.quaternion.copy(twist.multiply(qv)); const Hm = (CFG.modelScale[id] || 1) * sc; m.position.addScaledVector(inward, -(VEIN_BURY[id] || 0.5) * Hm); }
+        if (i % 2 === 0) city.emit(grp, vb - side * rt.x * 0.5, Y.low + hy + 0.3, va - side * rt.z * 0.5, 0x4fff8a, 1.2, 8, {}); city.lowerVeins.push({ a: va, b: vb, y: Y.low + hy, model: m, left: 3 }); }
       if (i === 14 || i === 27) { const yaw2 = yaw; prop("et_minecart", p.z, p.x, Y.low + 0.05, yaw2 / D2R + 90, () => { const c = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 2.0), dark); c.position.set(p.x, Y.low + 0.7, p.z); c.rotation.y = yaw2; grp.add(c); return c; }, 1.4); obst(p.z, p.x, 1.3); }   // update 57: turned to run ON the rails, grown to their gauge
-      if (i === 10 || i === 20 || i === 30) { const side = i === 20 ? -1 : 1; const q = p.clone().addScaledVector(rt, side * (hw - 2.6)); city.lowerMiners.push({ a: q.z, b: q.x, face: yaw / D2R + (side > 0 ? 90 : -90) }); }
+      if (i === 10 || i === 20 || i === 30) { const side = i === 20 ? -1 : 1; const q = p.clone().addScaledVector(rt, side * (hw - 1.6)); city.lowerMiners.push({ a: q.z, b: q.x, face: yaw / D2R + (side > 0 ? 90 : -90) }); }
     }
     for (let i = 0; i < N; i++) { const p0 = path.getPointAt(i / N), p1 = path.getPointAt((i + 1) / N); if (i / N * pathLen > M.len + 5) break; const t = p1.clone().sub(p0), rt = new THREE.Vector3(t.z, 0, -t.x).normalize(); for (const side of [-1, 1]) { const q0 = p0.clone().addScaledVector(rt, side * hw), q1 = p1.clone().addScaledVector(rt, side * hw); wallSeg(q0.z, q0.x, q1.z, q1.x, 0.3); } }
   }

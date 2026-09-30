@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=59";
-import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=59";
+import { CFG } from "./config.js?v=60";
+import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=60";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";   // update 41
-import { buildLower } from "./eternius_lower.js?v=59";   // update 50: floor -1
+import { buildLower } from "./eternius_lower.js?v=60";   // update 50: floor -1
 
 // ============================================================================
 // update 40: everything that is BUILT in Eternius City — the mountain, the castle,
@@ -538,7 +538,7 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     {
       const r0 = C.lower.glassR0, r1 = C.lower.glassR1;
       sector(0, r0, -180, 180, L.plaza, sand(4, 4), 48);
-      const gm = w.mat("t_glassgreen", 8, 2, 0x2a7a4a); gm.transparent = true; gm.opacity = 0.14; gm.emissive = new THREE.Color(0x1c6a3a); gm.emissiveIntensity = 0.08;   // update 59: nearly clear - the park below must read   // update 55: nearly clear — you look down the shaft gm.metalness = 0.2; gm.roughness = 0.2; gm.side = THREE.DoubleSide; gm.depthWrite = false;
+      const gm = w.mat("t_glassgreen", 8, 2, 0x2a7a4a); gm.transparent = true; gm.opacity = 0.32; gm.emissive = new THREE.Color(0x1c6a3a); gm.emissiveIntensity = 0.22;   // update 60: the glow of update 55 again - that was the second layer of light over the altar; the park below still reads through it   // update 55: nearly clear — you look down the shaft gm.metalness = 0.2; gm.roughness = 0.2; gm.side = THREE.DoubleSide; gm.depthWrite = false;
       const glass = sector(r0, r1, -180, 180, L.plaza + 0.02, gm, 96); city.keepExtra.push(glass); city.glassRing = glass;
       cyl(r0, 0, 360, L.plaza - 0.25, L.plaza + 0.12, gold, false, 64); cyl(r1, 0, 360, L.plaza - 0.25, L.plaza + 0.12, gold, true, 64);
       sector(r0 - 0.35, r0 + 0.05, -180, 180, L.plaza + 0.12, goldPlain, 64); sector(r1 - 0.05, r1 + 0.35, -180, 180, L.plaza + 0.12, goldPlain, 64);

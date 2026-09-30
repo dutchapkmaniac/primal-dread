@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=59";
+export const ASSET_V = "?v=60";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -658,7 +658,7 @@ export const CFG = {
       west: { th0: 28, th1: 139 }, east: { th0: -168, th1: -33 },
       riverR0: 100, riverR1: 108, bridgeTh: 83, jettyTh: 36, shaftR: 22.5, shaftR2: 80, glassR0: 14.5, glassR1: 22.5,   // update 58: the shaft is a funnel - shaftR at the glass, shaftR2 where it opens into the park's ceiling
       jail: { th0: -76, th1: -58, cells: 5 }, mineTh: -152, mine: { len: 70, hw: 4.5, h: 8, deep: 60, bend: 34 }, storeTh: -138, stairETh: -116,   // update 55: the cells side by side, the east stair where the map has it
-      culvertN: 60, culvertS: 60,   // update 59: long enough to curve out of sight - the north one climbs, the south one falls (grade 1:30)   // update 55: the river's two tunnels (the boat's spiral joins the north one)
+      culvertN: 70, culvertS: 85,   // update 60: as long as the rock allows - the north one stops short of the house for sale (-18 deg), the south one short of the east gallery (-168 deg)   // update 59: long enough to curve out of sight - the north one climbs, the south one falls (grade 1:30)   // update 55: the river's two tunnels (the boat's spiral joins the north one)
       hospitalTh: 122, houseTh: -18, fountainR: 12, planterR: 45,
       planters: [[-52, -8], [72, 112], [-166, -122]],
       beds: [[27, 79, 43, 76], [-108, -48, 43, 76], [131, 191, 43, 76]],   // update 55: every tree stands wholly on its soil
