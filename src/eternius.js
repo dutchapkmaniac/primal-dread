@@ -1,13 +1,13 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=58";
-import { STR } from "../strings.js?v=58";
-import { Creature } from "./entities.js?v=58";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=58";
+import { CFG } from "./config.js?v=59";
+import { STR } from "../strings.js?v=59";
+import { Creature } from "./entities.js?v=59";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=59";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 58: the miner comes rigged and animated
-import { iconUrl } from "./items.js?v=58";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=58";
-import { buildCity } from "./eternius_build.js?v=58";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=58";   // update 50
+import { iconUrl } from "./items.js?v=59";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=59";
+import { buildCity } from "./eternius_build.js?v=59";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=59";   // update 50
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -472,10 +472,10 @@ export class EterniusCity {
             mixer.setTime(PK.gripT || 1.4); body.updateMatrixWorld(true);
             const lp = new THREE.Vector3(); (lhand || hand).getWorldPosition(lp); const d = lhand ? hand.worldToLocal(lp).normalize() : new THREE.Vector3(0, 1, 0);
             mixer.setTime(0); body.updateMatrixWorld(true);
-            const q = new THREE.Quaternion().setFromUnitVectors(u.clone().normalize(), d); if (PK.rot) q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...PK.rot)));
+            const q = new THREE.Quaternion().setFromUnitVectors(u.clone().normalize(), d);
             const sc = new THREE.Vector3(); hand.getWorldScale(sc); const k = 1 / (sc.x || 1); pk.scale.multiplyScalar(k); pk.quaternion.copy(q);
-            const grip = new THREE.Vector3(cx, cy, cz).addScaledVector(u, tmin + (PK.grip === undefined ? 0.35 : PK.grip)); pk.position.copy(grip.applyQuaternion(q).multiplyScalar(k).negate()); if (PK.pos) pk.position.add(new THREE.Vector3(...PK.pos));
-            hand.add(pk); body.userData.pick = pk; body.userData.hand = hand; body.userData.lhand = lhand;
+            const grip = new THREE.Vector3(cx, cy, cz).addScaledVector(u, tmin + (PK.grip === undefined ? 0.35 : PK.grip)); pk.position.copy(grip.clone().applyQuaternion(q).multiplyScalar(k).negate());
+            hand.add(pk); body.userData.pick = pk; body.userData.hand = hand; body.userData.lhand = lhand; body.userData.pickFit = { u: u.clone().normalize(), grip, k };   // update 59: refitted every frame (fitPick)
           } }
       } else if (asset) { body = riggedHumanoid(asset.model, { armIn: kind === "male" || kind === "female" ? 0.22 : 0, tool: kind === "miner" }) || asset.model.clone();   // update 42; update 57: the miner's pick rides with his arms
       if (kind === "prisoner") body.traverse((o) => { if (o.isMesh && o.material) { o.material = o.material.clone(); if (o.material.map) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0xffffff); o.material.emissiveIntensity = 0.34; } } }); }   // update 57: the prisoner was a shadow in his cell
@@ -552,10 +552,10 @@ export class EterniusCity {
     if (!near) return;
     const night = g.isNight ? 1 : 0;
     lowerUpdate(this, dt);   // update 50: floor -1's water and light
-    { const low = p.pos.y < -100; if (low !== this._propsLow) { this._propsLow = low; for (const m of this.lowerProps || []) m.visible = low; for (const m of this.upperProps || []) m.visible = !low; } }   // update 51: each floor's models draw only while you are on it
+    { const low = p.pos.y < -100 || (p.pos.y > -40 && this.polar(p.pos.x, p.pos.z).r < C.lower.glassR1 + 14); if (low !== this._propsLow) { this._propsLow = low; for (const m of this.lowerProps || []) m.visible = low; for (const m of this.upperProps || []) m.visible = !low; } }   // update 51: each floor's models draw only while you are on it
     // inside the mountain the day's fog would swallow the far wall: push it back while you are in
     const P = this.polar(p.pos.x, p.pos.z);
-    const inRooms = this.inMountainRooms(P.a, P.b, P.r) && p.pos.y < 24;
+    const inRooms = this.inMountain(p.pos.x, p.pos.z, p.pos.y);   // update 59: the mine and the shop too (the desert's mist hung in the mine's mouth)
     if (g.scene.fog && inRooms) { g.scene.fog.near = Math.max(g.scene.fog.near, 150); g.scene.fog.far = Math.max(g.scene.fog.far, 460); }
     for (const L of this.lights) {
       if (!L.night) continue;
@@ -709,7 +709,7 @@ export class EterniusCity {
       // a glance at a visitor a little further out (the body turns only when you are close)
       let headTurn = 0;
       if (d >= 5.5 && d < 12) { const want = Math.atan2(p.pos.x - n.x, p.pos.z - n.z); headTurn = ((want - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; }
-      if (n.body.userData.mixer) { if (d < 140) n.body.userData.mixer.update(dt); }   // update 58: the animated miner
+      if (n.body.userData.mixer) { if (d < 140) { n.body.userData.mixer.update(dt); this.fitPick(n.body); } }   // update 58: the animated miner; update 59: the pick follows both hands every frame
       else if (n.body.userData.hrig && d < 140) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm",   // update 51: no rig work for a figure 140 m off
         n.mining ? { attack: 0, block: 0, shove: 0, fall: 0, mine: n.strike !== undefined ? Math.min(1, n.strike) : 0 } : (n.strike !== undefined || n.blockT > 0 || n.shove !== undefined) ? { attack: n.strike !== undefined ? Math.min(1, n.strike) : 0, block: n.blockT > 0 ? 1 - n.blockT / 0.45 : 0, shove: n.shove !== undefined ? n.shove : 0, fall: 0 } : null);   // update 44/49; update 57: the miners swing as one piece
       else if (!n.walk) n.body.position.y = n.y + Math.sin(n.t * 1.3) * 0.012;
@@ -735,6 +735,13 @@ export class EterniusCity {
     this.g.ui.coins(this.coins);
   }
 
+  // update 59: the pick lies along the line from the right hand to the left, every frame - the clip moves the hands apart
+  // and together, and a pick fitted once ended up through his face
+  fitPick(body) {
+    const F = body.userData.pickFit, pk = body.userData.pick, hand = body.userData.hand, lh = body.userData.lhand; if (!F || !pk || !hand || !lh) return;
+    body.updateMatrixWorld(true); const lp = new THREE.Vector3(); lh.getWorldPosition(lp); const d = hand.worldToLocal(lp); if (d.length() < 0.25) return; d.normalize();
+    const q = new THREE.Quaternion().setFromUnitVectors(F.u, d); pk.quaternion.copy(q); pk.position.copy(F.grip.clone().applyQuaternion(q).multiplyScalar(F.k).negate());
+  }
   // ---------------- interaction ----------------
   interact(consider, p) {
     const g = this.g, C = E(), S = STR.et;

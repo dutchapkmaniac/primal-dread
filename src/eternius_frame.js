@@ -1,4 +1,4 @@
-import { CFG } from "./config.js?v=58";
+import { CFG } from "./config.js?v=59";
 
 // ============================================================================
 // update 40: the city's local frame, shared by eternius.js (the game logic),
