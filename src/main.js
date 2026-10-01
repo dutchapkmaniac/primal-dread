@@ -1,22 +1,22 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=62";
-import { STR } from "../strings.js?v=62";
+import { CFG, ASSET_V } from "./config.js?v=63";
+import { STR } from "../strings.js?v=63";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=62";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=62";
-import { ClipAnimator } from "./skeletal.js?v=62";
-import { AudioMan } from "./audio.js?v=62";
-import { UI } from "./ui.js?v=62";
-import { World } from "./world.js?v=62";
-import { Player } from "./player.js?v=62";
-import { Creature, ItemDrop } from "./entities.js?v=62";
-import { GameMap } from "./map.js?v=62";
-import { FarmGame } from "./farmgame.js?v=62";
-import { ElisiaSystem } from "./elisia.js?v=62";   // update 35
-import { DesertSystem } from "./desert.js?v=62";
-import { PortalSystem } from "./portals.js?v=62";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=62";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=63";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=63";
+import { ClipAnimator } from "./skeletal.js?v=63";
+import { AudioMan } from "./audio.js?v=63";
+import { UI } from "./ui.js?v=63";
+import { World } from "./world.js?v=63";
+import { Player } from "./player.js?v=63";
+import { Creature, ItemDrop } from "./entities.js?v=63";
+import { GameMap } from "./map.js?v=63";
+import { FarmGame } from "./farmgame.js?v=63";
+import { ElisiaSystem } from "./elisia.js?v=63";   // update 35
+import { DesertSystem } from "./desert.js?v=63";
+import { PortalSystem } from "./portals.js?v=63";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=63";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -95,7 +95,7 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
   "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician",
   "et_fountain", "et_bigtree", "et_boat", "et_prisoner", "et_minecart", "et_emerald",
-  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
+  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
@@ -165,6 +165,7 @@ class Game {
     this.hutStorage = new Inventory(CFG.hutStorageSlots, CFG.storageStackMax);
     this.campStorage = new Inventory(CFG.storageSlots, CFG.storageStackMax);
     this.ruinsStorage = new Inventory(CFG.storageSlots, CFG.storageStackMax);
+    this.houseStorage = new Inventory(CFG.storageSlots, CFG.storageStackMax);   // update 63: the chest in the house you buy under the mountain
     this.drunkT = 0;
     this.wineDay = -1;
     this.prayedDay = -1;
@@ -615,6 +616,7 @@ class Game {
       if (slot.id === "climbing_anchor") return `${name}: ${STR.hintAnchor}`;
       if (slot.id === "silver_bar") return `${name}: ${STR.hintSilverBar}`;
       if (slot.id === "branch") return `${useKey} light a campfire — needs a tinderbox`;
+      if (slot.id === "pickaxe" || slot.id === "et_pickaxe") return `${useKey} hold at an emerald vein in the mine`;   // update 63
       if (slot.id === "fishing_rod") return `${useKey} cast — at the lake shore`;
       if (slot.id === "rope") return `${name}: craft a fishing rod at the crafting table`;
       if (slot.id === "tinderbox") return `${name}: lights campfires, torches and the beacon`;
@@ -1750,6 +1752,8 @@ class Game {
     const p = this.player;
     if (!this.world.nearShore(p.pos.x, p.pos.z)) { this.ui.toast(STR.items.fishing_rod.desc); return; }
     if (this.fishing) return;
+    if (!p.inv.has("bait")) { this.ui.toast(STR.needBait); this.audio.sDeny(); return; }   // update 63: one bait on the hook for every cast
+    p.inv.remove("bait", 1); this.ui.renderHotbar(p.inv);
     this.fishing = { x: p.pos.x, z: p.pos.z, t: CFG.fishing.min + this.rng() * (CFG.fishing.max - CFG.fishing.min) };
     this.ui.toast(STR.fishCast);
   }
@@ -2318,11 +2322,11 @@ class Game {
     const p = this.player;
     const R = CFG.player.interactR;
     let best = null, bd = R;
-    const consider = (x, z, y, label, fn) => {
+    const consider = (x, z, y, label, fn, alt) => {   // update 63: alt - the prompt's second action, on R
       const dy = Math.abs((y ?? p.pos.y) - p.pos.y);
       if (dy > 2.4) return;
       const d = Math.hypot(x - p.pos.x, z - p.pos.z);
-      if (d < bd) { bd = d; best = { label, fn }; }
+      if (d < bd) { bd = d; best = { label, fn, alt }; }
     };
     // egg gathering is rate-limited: 5 per minute, silently (no UI text)
     const now = this.time;
@@ -2658,6 +2662,7 @@ class Game {
       input.interact = false;
       if (best && !this.cooking) best.fn();
     }
+    if (input.steal) { input.steal = false; if (best && best.alt && !this.cooking) best.alt(); }   // update 63: R - stealing from a stall
   }
 
   // the compass of death: while selected, the HUD whispers bearing + distance

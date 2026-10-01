@@ -1,6 +1,6 @@
-import { STR } from "../strings.js?v=62";
-import { CFG } from "./config.js?v=62";
-import { iconUrl } from "./items.js?v=62";
+import { STR } from "../strings.js?v=63";
+import { CFG } from "./config.js?v=63";
+import { iconUrl } from "./items.js?v=63";
 
 const $ = (s) => document.querySelector(s);
 
@@ -18,7 +18,7 @@ export class UI {
     this.input = {
       move: { x: 0, z: 0 }, look: { dx: 0, dy: 0 }, turn: 0,
       sprint: false, sneak: false, jump: false,
-      interact: false, use: false,
+      interact: false, use: false, steal: false,
     };
     this.shakeV = 0;
     this.toastT = null;
@@ -68,6 +68,7 @@ export class UI {
         this.navKey(e); return;
       }
       if (e.code === "KeyF") this.input.interact = true;
+      if (e.code === "KeyR") this.input.steal = true;   // update 63: the second action of a prompt (steal from a stall)
       if (e.code === "Space") { this.input.jump = true; e.preventDefault(); }
       if (e.code === "KeyC") this.input.sneak = !this.input.sneak;
       if (e.code === "Escape" && this.onPause) this.onPause();

@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=62";
-import { STR } from "../strings.js?v=62";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=62";
+import { CFG } from "./config.js?v=63";
+import { STR } from "../strings.js?v=63";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=63";
 
 // ============================================================================
 // update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat
@@ -115,7 +115,7 @@ export function lowerNpcs(city) {
   const C = E(), L = LW(), Y = L.y, S = STR.et, mk = city.mkNpc, R = C.wallR, TR = C.terraceR;
   if (!mk) return;
   const pt = (r, th) => [r * Math.cos(th * D2R), r * Math.sin(th * D2R)];
-  for (const [ga, gb] of city.lowerJailGuards || []) { const [fa, fb] = pt(R, Math.atan2(gb, ga) / D2R); mk("spear", ga, gb, Y.low, fa, fb, "guard", { lines: S.jailerLines }); }
+  for (const [ga, gb] of city.lowerJailGuards || []) { const [fa, fb] = pt(R, Math.atan2(gb, ga) / D2R); mk("spear", ga, gb, Y.low, fa, fb, "guard", { lines: S.jailerLines, jailer: true }); }
   if (city.lowerCells && city.lowerCells[2]) { const c = city.lowerCells[2]; mk("prisoner", c.inA, c.inB, Y.low, c.rm.doorA, c.rm.doorB, "prisoner", { name: S.prisonerName, lines: S.prisonerLines }); }
   if (city.lowerHospital) { const h = city.lowerHospital; mk("doctor", h.npc[0], h.npc[1], Y.park, h.doorA, h.doorB, "doctor", { name: S.doctorName, lines: S.doctorLines, style: "calm" }); }
   if (city.lowerStore) { const s = city.lowerStore; mk("male", s.npc[0], s.npc[1], Y.low, s.doorA, s.doorB, "minekeeper", { name: S.minekeeperName, lines: S.minekeeperLines, style: "busy" }); }
@@ -137,7 +137,25 @@ export function lowerInteract(city, consider, p) {
   const near = (pa, pb, d) => { const [x, z] = cityWorld(pa, pb); return Math.hypot(p.pos.x - x, p.pos.z - z) < d; };
   if (city.jettyUp && !g.ride && near(city.jettyUp.a, city.jettyUp.b, 6.5) && Math.abs(p.pos.y - C.levels.lower) < 3) { const [x, z] = cityWorld(city.jettyUp.a, city.jettyUp.b); consider(x, z, p.pos.y, `${S.boatDown} [${STR.interact}]`, () => startRide(city, 1)); }
   if (city.lowerJetty && !g.ride && near(city.lowerJetty.a, city.lowerJetty.b, 6.5) && Math.abs(p.pos.y - L.y.walk) < 3) { const [x, z] = cityWorld(city.lowerJetty.a, city.lowerJetty.b); consider(x, z, p.pos.y, `${S.boatUp} [${STR.interact}]`, () => startRide(city, -1)); }
-  if (city.lowerHouse && near(city.lowerHouse.rm.doorA, city.lowerHouse.rm.doorB, 3.2) && Math.abs(p.pos.y - L.y.park) < 3) { const [x, z] = cityWorld(city.lowerHouse.rm.doorA, city.lowerHouse.rm.doorB); consider(x, z, p.pos.y, `${S.enterHome} [${STR.interact}]`, () => { g.ui.toast(S.notYourHome); g.audio.sDeny(); }); }
+  if (city.lowerHouse && near(city.lowerHouse.rm.doorA, city.lowerHouse.rm.doorB, 3.2) && Math.abs(p.pos.y - L.y.park) < 3) { const [x, z] = cityWorld(city.lowerHouse.rm.doorA, city.lowerHouse.rm.doorB); if (city.houseOwned) consider(x, z, p.pos.y, `${city.houseDoorOpen ? S.houseClose : S.houseOpen} [${STR.interact}]`, () => city.houseToggleDoor()); else consider(x, z, p.pos.y, `${S.enterHome} [${STR.interact}]`, () => { g.ui.toast(S.notYourHome); g.audio.sDeny(); }); }   // update 63: yours once bought
+  // update 63: your bed and your chest once the house is bought; the hospital's beds when you are badly hurt; the cell's cot and the
+  // jailer at the bars while you sit; the emerald veins with a pickaxe in hand
+  if (city.lowerHouse && city.houseOwned && Math.abs(p.pos.y - L.y.park) < 3) {
+    const H = city.lowerHouse; if (near(H.bed.a, H.bed.b, 3.0)) { const [x, z] = cityWorld(H.bed.a, H.bed.b); consider(x, z, p.pos.y, `${S.houseBed} [${STR.interact}]`, () => { if (!g.isNight) return g.ui.toast(STR.sleepNotNight); g.sleep(); }); }
+    if (near(H.chest.a, H.chest.b, 3.0)) { const [x, z] = cityWorld(H.chest.a, H.chest.b); consider(x, z, p.pos.y, `${S.houseChest} [${STR.interact}]`, () => g.openStorage(g.houseStorage, S.houseChestTitle)); }
+  }
+  if (city.lowerHospBeds && Math.abs(p.pos.y - L.y.park) < 3) for (const [ba, bb] of city.lowerHospBeds) if (near(ba, bb, 3.0)) { const [x, z] = cityWorld(ba, bb); consider(x, z, p.pos.y, `${S.hospSleep} [${STR.interact}]`, () => { if (p.hp >= 20) { g.ui.toast(S.bedsForHurt); g.audio.sDeny(); return; } if (!g.isNight) return g.ui.toast(STR.sleepNotNight); g.sleep(); }); }
+  if (city.jail && city.lowerCells && Math.abs(p.pos.y - L.y.low) < 3) {
+    const cell = city.lowerCells[city.jail.cell];
+    if (near(cell.bedA, cell.bedB, 3.0)) { const [x, z] = cityWorld(cell.bedA, cell.bedB); consider(x, z, p.pos.y, `${S.jailSleep} [${STR.interact}]`, () => { if (!g.isNight) return g.ui.toast(STR.sleepNotNight); g.sleep().then(() => city.releaseJail(true)); }); }
+    const [qa, qb] = cell.rm.P(0.6, 0); if (near(qa, qb, 2.6)) { const [x, z] = cityWorld(qa, qb); consider(x, z, p.pos.y, `${S.callJailer.replace("%n", city.jail.bail)} [${STR.interact}]`, () => city.openJailer()); }
+  }
+  if (city.lowerVeins && Math.abs(p.pos.y - L.y.low) < 3) for (const v of city.lowerVeins) {
+    if (!v.model || v.left <= 0 || !near(v.a, v.b, 3.6)) continue;
+    const sel = p.inv.selected(), [x, z] = cityWorld(v.a, v.b), M = city.mining;
+    if (sel && (sel.id === "pickaxe" || sel.id === "et_pickaxe")) consider(x, z, p.pos.y, M && M.v === v ? `${S.mining.replace("%n", Math.round(100 * M.t / M.need))} [${STR.interact}]` : `${S.minePrompt} [${STR.interact}]`, () => city.mineStart(v, sel.id));
+    else consider(x, z, p.pos.y, S.needPick, () => { g.ui.toast(S.needPick); g.audio.sDeny(); });
+  }
 }
 // ---------------- each frame ----------------
 export function lowerUpdate(city, dt) {

@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=62";
+import { CFG } from "./config.js?v=63";
 const VEIN_BURY = { et_vein1: 0.5, et_vein3: 0.3, et_vein2: 0.8 };   // update 60: how much of each vein model's height sits inside the rock (its grey base); vein1 = the double crystal, vein3 = a single spike with a tall base, vein2 = a slab with crystals along its edges (not used on the walls - its grey face shows whichever way it is turned)
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=62";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=63";
 
 // ============================================================================
 // update 50: FLOOR -1 — the park under the city, 200 m down. The river leaves the ground floor through the
@@ -261,7 +261,7 @@ export function buildLower(city, grp) {
     const appleM = new THREE.MeshStandardMaterial({ color: 0xa4e83c, roughness: 0.35, emissive: 0x3c7a12, emissiveIntensity: 0.45 });
     const goldM = new THREE.MeshStandardMaterial({ color: 0xffd24a, metalness: 0.85, roughness: 0.3, emissive: 0x9a6a10, emissiveIntensity: 0.6 });
     const perTree = 380, nT = LW.trees.length, useApples = !!(crownPts && crownPts.length > 50);   // update 59: apple-sized apples on the leaves' surface, one golden apple on every third tree
-    const green = useApples ? new THREE.InstancedMesh(appleGeo, appleM, perTree * nT) : null, goldI = useApples ? new THREE.InstancedMesh(appleGeo, goldM, nT) : null;
+    const green = useApples ? new THREE.InstancedMesh(appleGeo, appleM, perTree * nT) : null, goldI = useApples ? new THREE.InstancedMesh(appleGeo, goldM, Math.max(8, Math.ceil(perTree * nT * 0.03))) : null;   // update 63: one apple in a hundred is gold
     let gi = 0, ki = 0; const mtx = new THREE.Matrix4(), wp = new THREE.Vector3(); city.lowerApples = [];
     let treeIdx = -1;
     for (const [t, rr] of LW.trees) {
@@ -273,7 +273,7 @@ export function buildLower(city, grp) {
         return gg;
       });
       if (m && lanternTex) m.traverse((o) => { if (o.isMesh && o.material) { o.material.emissiveMap = lanternTex; o.material.emissive = new THREE.Color(0xffffff); o.material.emissiveIntensity = 1.0; o.material.needsUpdate = true; } });   // the lanterns glow, the leaves keep their warm 0.3
-      if (m && useApples) { m.updateMatrixWorld(true); let seed = (Math.round(t) * 7919 + Math.round(rr) * 31) | 0; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }; const goldK = treeIdx % 3 === 1 ? Math.floor(rnd() * perTree) : -1; for (let k = 0; k < perTree; k++) { const P0 = crownPts[Math.floor(rnd() * crownPts.length)]; wp.set(P0[0], P0[1], P0[2]).applyMatrix4(m.matrixWorld); mtx.makeTranslation(wp.x, wp.y, wp.z); const isGold = k === goldK; if (isGold && ki < goldI.count) goldI.setMatrixAt(ki++, mtx); else if (gi < green.count) green.setMatrixAt(gi++, mtx); city.lowerApples.push({ x: wp.x, y: wp.y, z: wp.z, gold: isGold }); } }
+      if (m && useApples) { m.updateMatrixWorld(true); let seed = (Math.round(t) * 7919 + Math.round(rr) * 31) | 0; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }; const goldK = -1; for (let k = 0; k < perTree; k++) { const P0 = crownPts[Math.floor(rnd() * crownPts.length)]; wp.set(P0[0], P0[1], P0[2]).applyMatrix4(m.matrixWorld); mtx.makeTranslation(wp.x, wp.y, wp.z); const isGold = rnd() < 0.01 || k === goldK; if (isGold && ki < goldI.count) goldI.setMatrixAt(ki++, mtx); else if (gi < green.count) green.setMatrixAt(gi++, mtx); city.lowerApples.push({ x: wp.x, y: wp.y, z: wp.z, gold: isGold }); } }
       // lantern light: three warm lights round the trunk where the lanterns hang (the pool of real lights follows you)
       for (let k = 0; k < 3; k++) { const ang = (k * 120 + t) * D2R; city.emit(grp, b + Math.sin(ang) * 4.5, Y.park + 10.5, a + Math.cos(ang) * 4.5, 0xffc35a, 2.6, 24, {}); }
       obst(a, b, 5.6);   // update 55: the trunk's own girth - nobody stands inside it, and the way between two trees stays open
@@ -331,6 +331,7 @@ export function buildLower(city, grp) {
     for (const s of [-1, 1]) { const [pa, pb] = rm.P(-1.4, s * (rm.hw + 0.6)); pillar(pb, Y.park, pa, 0.35, 4.6, gold); }
     { const [fa, fb] = rm.P(-1.2, 0); const sign = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 0.2), new THREE.MeshStandardMaterial({ color: 0xf2eee6, emissive: 0xf2eee6, emissiveIntensity: 0.35 })); sign.position.set(fb, Y.park + 5.6, fa); sign.rotation.y = rm.ry; grp.add(sign); const crossM = new THREE.MeshStandardMaterial({ color: 0xd8302a, emissive: 0xd8302a, emissiveIntensity: 0.6 }); for (const [w2, h2] of [[1.1, 0.32], [0.32, 1.1]]) { const cr = new THREE.Mesh(new THREE.BoxGeometry(w2, h2, 0.08), crossM); cr.position.set(0, 0, -0.14); sign.add(cr); } }
     city.wallY0 = hy0; city.wallY1 = hy1;
+    city.lowerHospBeds = [0, 1, 2].map((k) => rm.P(3.2 + k * 3.4, rm.hw - 1.6));   // update 63: where you may sleep when badly hurt
     city.lowerHospital = rm; rm.npc = rm.P(rm.depth * 0.45, -(rm.hw - 2.4) + 2.2);
   }
   // the house for sale: a brown door (the only one), a bed and a storage chest behind it — the door stays shut until it is yours

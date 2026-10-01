@@ -1,14 +1,15 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=62";
-import { STR } from "../strings.js?v=62";
-import { Creature } from "./entities.js?v=62";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=62";
+import { CFG } from "./config.js?v=63";
+import { STR } from "../strings.js?v=63";
+import { Creature } from "./entities.js?v=63";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=63";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 58: the miner comes rigged and animated
-import { iconUrl } from "./items.js?v=62";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=62";
+import { iconUrl } from "./items.js?v=63";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=63";
 const MINER_FWD = 1;   // update 60: the miner rig's forward axis (+1 = the model faces +z, as the props do)
-import { buildCity } from "./eternius_build.js?v=62";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=62";   // update 50
+import { buildCity } from "./eternius_build.js?v=63";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=63";   // update 50
+import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=63";   // update 63: the hadrosaurus line
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -338,6 +339,7 @@ export class EterniusCity {
     this.buildRex();
     this.buildNpcs();
     lowerNpcs(this);   // update 50: floor -1's people
+    buildDino(this);   // update 63: the hadrosaurs and their keepers at the four stops
   }
   buildStatue() {
     const C = E(), A = this.g.assets, S = C.statue, [x, z] = cityWorld(S.a, S.b), y = C.levels.court;
@@ -554,6 +556,7 @@ export class EterniusCity {
     if (!near) return;
     const night = g.isNight ? 1 : 0;
     lowerUpdate(this, dt);   // update 50: floor -1's water and light
+    this.updateCrime(dt); this.updateMining(dt); dinoUpdate(this, dt, null);   // update 63
     { const low = p.pos.y < -100 || (p.pos.y > -40 && this.polar(p.pos.x, p.pos.z).r < C.lower.glassR1 + 14); if (low !== this._propsLow) { this._propsLow = low; for (const m of this.lowerProps || []) m.visible = low; for (const m of this.upperProps || []) m.visible = !low; } }   // update 51: each floor's models draw only while you are on it
     // inside the mountain the day's fog would swallow the far wall: push it back while you are in
     const P = this.polar(p.pos.x, p.pos.z);
@@ -669,7 +672,7 @@ export class EterniusCity {
         const dh = Math.hypot(p.pos.x - n.homeX, p.pos.z - n.homeZ);
         let tx, tz, atFoe = false;
         if (beast) { tx = beast.pos.x; tz = beast.pos.z; n.calmT = 0; atFoe = true; }
-        else if (n.war && dh < GD.chaseR) { tx = p.pos.x; tz = p.pos.z; n.calmT = 0; atFoe = true; }
+        else if (n.war && dh < (this.theft ? 1e9 : GD.chaseR)) { tx = p.pos.x; tz = p.pos.z; n.calmT = 0; atFoe = true; }   // update 63: a thief is chased until the guards tire of it (four minutes)
         else { tx = n.homeX; tz = n.homeZ; n.calmT = (n.calmT || 0) + dt; }
         const dx = tx - n.x, dz = tz - n.z, dd = Math.hypot(dx, dz);
         const reach = beast ? GD.reach + 1.4 : GD.reach;
@@ -684,12 +687,12 @@ export class EterniusCity {
           if (!n.strikeHit && n.strike > 0.52) {   // the blow lands as the arm comes down
             n.strikeHit = true;
             if (beast) { if (dd < reach + 1.2) { beast.guardHits = (beast.guardHits || 0) + 1; g.audio.sHit(); if (beast.guardHits >= GD.beastHits) { beast.die(g); n.beast = null; if (Math.hypot(p.pos.x - n.x, p.pos.z - n.z) < 60) g.ui.toast(STR.et.guardBeast); } } }
-            else if (atFoe && dd < reach + 0.9) p.damage(GD.dmg, "guard", new THREE.Vector3(n.x, n.y, n.z));
+            else if (atFoe && dd < reach + 0.9) { if (n.war && p.hp - GD.dmg <= C.theft.jailHp) this.jailPlayer(this.theft ? "theft" : "guard"); else p.damage(GD.dmg, "guard", new THREE.Vector3(n.x, n.y, n.z)); }   // update 63: the blow that would leave you under a tenth lands you in the cells instead
           }
           if (n.strike >= 1) n.strike = undefined;
         }
         if (!beast && !n.war && !striking && dd < 1) { n.hostile = false; n.calmT = 0; n.yaw0 = n.yawHome !== undefined ? n.yawHome : n.yaw0; }   // the hunt is over and he is back at his post
-        if (n.war && n.calmT > 6 && dd < 1) { n.hostile = false; n.war = false; n.hits = 0; n.hp = GD.hp; n.yaw0 = n.yawHome !== undefined ? n.yawHome : n.yaw0; if (!this.npcs.some((o) => o.war)) g.ui.toast(STR.et.guardCalm); }
+        if (n.war && n.calmT > 6 && dd < 1 && !this.theft) { n.hostile = false; n.war = false; n.hits = 0; n.hp = GD.hp; n.yaw0 = n.yawHome !== undefined ? n.yawHome : n.yaw0; if (!this.npcs.some((o) => o.war)) g.ui.toast(STR.et.guardCalm); }
       } else if (n.walk) {
         const W = n.walk;
         if (d < 3.5) { W.wait = Math.max(W.wait, 0.8); }
@@ -787,7 +790,7 @@ export class EterniusCity {
     for (const n of this.npcs) {
       if (n.role === "stall") {
         const st = n.stall, d = Math.hypot(p.pos.x - st.frontX, p.pos.z - st.frontZ);
-        if (d < 3.4) consider(st.frontX, st.frontZ, st.y, `${S.trade} ${n.name} [${STR.interact}]`, () => this.openStall(st));
+        if (d < 3.4) consider(st.frontX, st.frontZ, st.y, `${S.trade} ${n.name} [${STR.interact}] - ${S.stealPrompt}`, () => this.openStall(st), () => this.trySteal(st, n));   // update 63: R steals
         continue;
       }
       const d = Math.hypot(p.pos.x - n.x, p.pos.z - n.z);
@@ -797,6 +800,10 @@ export class EterniusCity {
       else if (n.role === "keeper") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openKeeper());
       else if (n.role === "inn") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openInn());
       else if (n.role === "advisor") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openAdvisor(n));
+      else if (n.role === "doctor") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openDoctor(n));   // update 63
+      else if (n.role === "realtor") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openRealtor(n));
+      else if (n.role === "minekeeper") consider(n.x, n.z, n.y, `${S.trade} ${n.name} [${STR.interact}]`, () => this.openStall(C.mineStall));
+      else if (n.role === "dinokeeper") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.talk(n));
       else if (n.role === "prisoner") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.talkRandom(n));   // update 50: a different story every time
       else consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.talk(n));
     }
@@ -814,6 +821,7 @@ export class EterniusCity {
       });
     }
     lowerInteract(this, consider, p);   // update 50: the boats, the house door
+    dinoInteract(this, consider, p);   // update 63: the hadrosaurs
     for (const b of this.innBeds || []) {
       if (Math.hypot(p.pos.x - b.x, p.pos.z - b.z) < 3.0) consider(b.x, b.z, b.y, `${S.sleepFor.replace("%n", C.innPrice)} [${STR.interact}]`, () => {
         if (!g.isNight) return g.ui.toast(STR.sleepNotNight);
@@ -841,7 +849,7 @@ export class EterniusCity {
     const g = this.g, lines = n.lines || STR.et.maleLines; let i = Math.floor(Math.random() * lines.length); if (lines.length > 1 && i === n.lineI) i = (i + 1) % lines.length; n.lineI = i;
     g.npcPanel(n.name, [lines[i]]); g.audio.sSelect && g.audio.sSelect();
   }
-  updateRide(dt, input) { updateRide(this, dt, input); }   // update 50
+  updateRide(dt, input) { if (this.g.ride && this.g.ride.kind === "dino") return dinoUpdate(this, dt, input); updateRide(this, dt, input); }   // update 50; update 63: the hadrosaurus ride
   talk(n) {
     const g = this.g, lines = n.lines || STR.et.maleLines;
     n.lineI = ((n.lineI ?? -1) + 1) % lines.length;
@@ -869,6 +877,116 @@ export class EterniusCity {
       this.coins -= C.stride.price; g.ui.coins(this.coins); this.stride = true;
       g.audio.sPickup(); g.ui.closeScreen(); g.npcPanel(n.name, [S.mageBought]);
     });
+  }
+  // ---------------- update 63: stealing, the cells, the healer, the house, the mine ----------------
+  // R at a stall palms a random thing it sells. The odds of being seen start at 30% and climb a tenth with every steal that
+  // went unseen (the guards start paying attention); four minutes after your last theft they let it rest. Seen, the keeper
+  // shouts and every guard within reach of the stall comes for you - across the whole city - until four minutes have
+  // passed or they beat you under a tenth of your blood, which puts you in the cells without what you stole.
+  trySteal(st, n) {
+    const g = this.g, C = E(), p = g.player, S = STR.et; if (this.jail || g.ride) return;
+    if (st.id === "smith") { g.ui.toast(S.stealGuarded); g.audio.sDeny(); return; }
+    const pool = (st.sells || []).filter((id) => id !== "fill_water"); if (!pool.length) return;
+    const id = pool[Math.floor(Math.random() * pool.length)], n2 = C.bundles[id] || 1;
+    if (!p.inv.add(id, n2)) { g.ui.toast(STR.inventoryFull); g.audio.sDeny(); return; }
+    g.ui.renderHotbar(p.inv); const name = STR.items[id] ? STR.items[id].name : id;
+    this.theftLastT = g.time;
+    const seen = Math.min(C.theft.seenMax, C.theft.seen0 + C.theft.seenStep * (this.theftStreak || 0));
+    if (Math.random() < seen) {
+      this.theft = this.theft || { items: {} }; this.theft.items[id] = (this.theft.items[id] || 0) + n2;
+      for (const o of this.npcs) if (o.role === "guard" && !o.dead && Math.hypot(o.x - st.frontX, o.z - st.frontZ) < C.theft.chaseR) { o.hostile = true; o.war = true; o.beast = null; o.hp = o.hp || C.guard.hp; o.atkT = 0.6; }
+      g.ui.toast(S.stealSeen.replace("%i", name).replace("%k", n.name)); g.audio.sDeny();
+    } else { this.theftStreak = (this.theftStreak || 0) + 1; g.ui.toast(S.stealOk.replace("%i", name)); g.audio.sPickup(); }
+  }
+  jailPlayer(reason) {
+    const g = this.g, C = E(), p = g.player, S = STR.et, cell = this.lowerCells && this.lowerCells[0]; if (!cell || this.jail) return;
+    for (const o of this.npcs) if (o.role === "guard") { o.war = false; o.hostile = false; o.calmT = 0; o.hits = 0; o.hp = C.guard.hp; }
+    if (this.theft) { for (const [id, k] of Object.entries(this.theft.items)) p.inv.remove(id, k); g.ui.renderHotbar(p.inv); }
+    this.theft = null; this.theftStreak = 0; this.theftLastT = undefined; this.mining = null;
+    this.jail = { reason, bail: reason === "guard" ? C.theft.bailGuard : C.theft.bailSteal, cell: 0 };
+    if (reason === "guard") p.hp = Math.max(p.hp, C.theft.hpAfter); else p.hp = Math.max(p.hp, 15);
+    const [x, z] = cityWorld(cell.inA, cell.inB); p.pos.set(x, C.lower.y.low + 0.1, z); p.vel && p.vel.set(0, 0, 0);
+    const [da, db] = cell.rm.P(-3, 0), [dx, dz] = cityWorld(da, db); p.yaw = Math.atan2(-(dx - x), -(dz - z));
+    // night is never more than three minutes away once you sit
+    const T = CFG.time, cyc = T.dayLen + T.nightLen, t = g.time % cyc; if (t < T.dayLen - C.theft.nightIn) g.time += T.dayLen - C.theft.nightIn - t;
+    g.ui.toast(reason === "guard" ? S.jailedGuard : S.jailedSteal); g.audio.sDeny();
+  }
+  releaseJail(free) {
+    const g = this.g, C = E(), p = g.player, S = STR.et; if (!this.jail) return;
+    const cell = this.lowerCells[this.jail.cell]; cell.openT = g.time;
+    const [qa, qb] = cell.rm.P(-2.8, 0), [x, z] = cityWorld(qa, qb); p.pos.set(x, C.lower.y.low + 0.1, z); p.vel && p.vel.set(0, 0, 0);
+    this.jail = null; if (free) g.ui.toast(S.jailFree);
+  }
+  openJailer() {
+    const g = this.g, S = STR.et; if (!this.jail) return;
+    const bail = this.jail.bail;
+    const s = g.npcPanel(S.jailerName, S.jailerTalk, [["bailBtn", S.jailerBail.replace("%n", bail)]]);
+    s.querySelector("#bailBtn").addEventListener("click", () => {
+      if (this.coins < bail) { g.ui.toast(S.noCoins); g.audio.sDeny(); return; }
+      this.coins -= bail; g.ui.coins(this.coins); g.audio.sPickup(); g.ui.closeScreen(); g.resume(); this.releaseJail(false); g.ui.toast(S.bailPaid.replace("%n", bail));
+    });
+  }
+  updateCrime(dt) {
+    const g = this.g, C = E(), S = STR.et;
+    if (this.theftLastT !== undefined && g.time - this.theftLastT > C.theft.forget) {
+      if (this.theft) { for (const o of this.npcs) if (o.role === "guard" && o.war) { o.war = false; o.hostile = false; o.calmT = 0; o.hits = 0; } g.ui.toast(S.guardsForgot); }
+      this.theft = null; this.theftStreak = 0; this.theftLastT = undefined;
+    }
+    for (const cell of this.lowerCells || []) {
+      if (cell.openT === undefined && !cell.openK) continue;
+      const want = cell.openT !== undefined && g.time - cell.openT < 8 ? 1 : 0; if (!want) cell.openT = undefined;
+      cell.openK = cell.openK || 0; cell.openK += Math.sign(want - cell.openK) * Math.min(Math.abs(want - cell.openK), dt * 1.4);
+      cell.hinge.rotation.y = cell.rm.ry - cell.openK * 1.35; cell.seg.off = cell.openK > 0.4;
+    }
+  }
+  openDoctor(n) {
+    const g = this.g, S = STR.et, p = g.player;
+    const s = g.npcPanel(n.name, n.lines || [], [["healBtn", S.healPrompt]]);
+    s.querySelector("#healBtn").addEventListener("click", () => {
+      if (this.healedDay === g.dayNum) { g.ui.toast(S.healedAlready); g.audio.sDeny(); return; }
+      this.healedDay = g.dayNum; p.hp = 100; p.en = 100; g.audio.sPickup(); g.ui.toast(S.healed); g.ui.closeScreen(); g.resume();
+    });
+  }
+  openRealtor(n) {
+    const g = this.g, S = STR.et, C = E();
+    if (this.houseOwned) { g.npcPanel(n.name, S.houseYours); return; }
+    const s = g.npcPanel(n.name, n.lines || [], [["buyBtn", S.houseBuy.replace("%n", C.house.price)]]);
+    s.querySelector("#buyBtn").addEventListener("click", () => {
+      if (this.coins < C.house.price) { g.ui.toast(S.noCoins); g.audio.sDeny(); return; }
+      this.coins -= C.house.price; g.ui.coins(this.coins); this.houseOwned = true; g.audio.sChest && g.audio.sChest(); g.ui.toast(S.houseBought); g.ui.closeScreen(); g.resume();
+    });
+  }
+  // the brown door swings on a pivot made the first time you open it (the facade is one group; the door is its only sub-group)
+  houseToggleDoor() {
+    const g = this.g, H = this.lowerHouse; if (!H) return;
+    if (!this.houseDoorPivot) {
+      const gg = this.lowerHouseFront, d = gg && gg.children.find((c) => c.isGroup);
+      if (d) { const bb = new THREE.Box3().setFromObject(d), sz = bb.getSize(new THREE.Vector3()); const w = Math.max(sz.x, sz.z); const piv = new THREE.Group(); piv.position.copy(d.position); piv.position.x -= w / 2; gg.add(piv); d.position.set(w / 2, 0, 0); piv.add(d); this.houseDoorPivot = piv; }
+      else this.houseDoorPivot = new THREE.Group();
+    }
+    this.houseDoorOpen = !this.houseDoorOpen; this.houseDoorPivot.rotation.y = this.houseDoorOpen ? -1.55 : 0; H.seg.off = this.houseDoorOpen; g.audio.sSelect && g.audio.sSelect();
+  }
+  // mining: hold F at a vein with a pickaxe in hand; a plain pick needs six seconds a stone and splinters after fifteen,
+  // the Eternial pick two seconds and lasts. A worked-out vein shrinks away and grows back after five minutes.
+  mineStart(v, pickId) {
+    const g = this.g, C = E(); if (this.mining && this.mining.v === v) return;
+    this.mining = { v, pick: pickId, t: 0, need: pickId === "et_pickaxe" ? C.mining.tEternal : C.mining.tPlain, swingT: 0 };
+  }
+  updateMining(dt) {
+    const g = this.g, C = E(), S = STR.et, p = g.player;
+    for (const v of this.lowerVeins || []) if (v.emptyT !== undefined && g.time - v.emptyT > C.mining.regrow) { v.emptyT = undefined; v.left = C.mining.perVein; if (v.model) v.model.scale.copy(v.scale0); }
+    const M = this.mining; if (!M) return;
+    const held = g.ui.held && g.ui.held.has("KeyF"), [vx, vz] = cityWorld(M.v.a, M.v.b);
+    const sel = p.inv.selected();
+    if (!held || g.menuOpen || !sel || sel.id !== M.pick || Math.hypot(p.pos.x - vx, p.pos.z - vz) > 3.8) { this.mining = null; return; }
+    M.t += dt; M.swingT += dt; if (M.swingT > 0.7) { M.swingT = 0; g.audio.sHit && g.audio.sHit(); }
+    if (M.t < M.need) return;
+    M.t = 0;
+    if (!p.inv.add("emerald", 1)) { g.ui.toast(STR.inventoryFull); g.audio.sDeny(); this.mining = null; return; }
+    g.ui.renderHotbar(p.inv); g.ui.toast(S.mineGot); g.audio.sPickup();
+    M.v.left -= 1;
+    if (M.pick === "pickaxe") { this.pickUses = (this.pickUses || 0) + 1; if (this.pickUses >= C.mining.plainUses) { this.pickUses = 0; p.inv.remove("pickaxe", 1); g.ui.renderHotbar(p.inv); g.ui.toast(S.pickBroke); g.audio.sDeny(); this.mining = null; } }
+    if (M.v.left <= 0) { M.v.emptyT = g.time; if (M.v.model) { M.v.scale0 = M.v.scale0 || M.v.model.scale.clone(); M.v.model.scale.setScalar(0.001); } g.ui.toast(S.veinEmpty); this.mining = null; }
   }
   openInn() {
     const g = this.g, S = STR.et, C = E();
@@ -926,7 +1044,7 @@ export class EterniusCity {
     // update 42: a stall with a `limit` sells that many of each thing a day (the water is never limited)
     if (!this.bought || this.bought.day !== g.dayNum) this.bought = { day: g.dayNum };
     const B = this.bought[st.id] || (this.bought[st.id] = {});
-    const limitOf = (id) => st.limit && id !== "fill_water" ? st.limit : 0;
+    const limitOf = (id) => (st.limits && st.limits[id]) || (st.limit && id !== "fill_water" && !(st.noLimit && st.noLimit.includes(id)) ? st.limit : 0);   // update 63: per-item limits (the mine store), items a stall never limits (bait, the rod)
     const left = (id) => limitOf(id) ? Math.max(0, limitOf(id) - (B[id] || 0)) : Infinity;
     const rows = [];
     if (st.sells && st.sells.length) {

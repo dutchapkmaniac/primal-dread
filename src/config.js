@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=62";
+export const ASSET_V = "?v=63";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -579,7 +579,7 @@ export const CFG = {
     et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55
     et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57
     et_pickaxe: 0.24,
-    et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_hadro: 4.6, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -693,24 +693,35 @@ export const CFG = {
     inn: { r: 104, th: 135 }, keeper: { r: 100, th: -112 },   // update 40: the keeper moved off the grand stair
     advisor: { a: -134, b: 8.5 },   // update 43: beside the dais, not in it
     innPrice: 5, fishTime: 4, vaultTasks: 3,
+    // update 63: stealing and the cells, the mine store, mining, the house for sale, the hadrosaurus line
+    theft: { seen0: 0.3, seenStep: 0.1, seenMax: 0.9, forget: 240, chaseR: 60, bailSteal: 25, bailGuard: 50, jailHp: 10, nightIn: 180, hpAfter: 50 },
+    mineStall: { id: "mine", name: "Bakenre, mine store", sells: ["emerald", "pickaxe", "et_pickaxe"], limits: { emerald: 2 }, buys: {}, blurb: "mineBlurb" },
+    mining: { tPlain: 6, tEternal: 2, perVein: 3, regrow: 300, plainUses: 15 },
+    house: { price: 2500 },
+    dino: { ride: 2, ticket: 10, walk: 2.2, walkFor: 2.8, fade: 0.8, arrive: 0.6, saddle: 2.55, stops: [{ id: "castle", a: 228, b: -67, face: 180 }, { id: "throne", r: 105, th: 170, y: 8, face: 80 }, { id: "market", r: 44, th: 120, y: -4, face: 30, tickets: true }, { id: "park", r: 38, th: -130, y: -204, face: -40 }] },
     stride: { price: 35, drain: 0.5, r: 48, th: 150 },   // update 49: the sorcerer's Long Stride — run energy drains at `drain` inside the mountain, hallway and castle; he stands at (r, theta) on the plaza
     guard: { hp: 450, dmg: 14, warnDmg: 10, speed: 3.4, hitEvery: 1.3, reach: 2.6, chaseR: 45, coins: [8, 15], respawn: 20, atkDur: 0.8, beastHits: 3 },   // update 44: ten Eternal-dagger blows, back on duty after 20 s, three strikes fell a desert hunter   // update 42: strike a guard once and he warns you, twice and it is a fight
     stalls: [
       { id: "food", name: "Neferu's kitchen", kind: "female", r: 44, th: -50, limit: 5,   // update 42: five of each a day color: 0x2f7a3a, wares: 0xb0402a, blurb: "foodBlurb", lines: "foodLines",
-        sells: ["apple", "egg", "blueberries", "cooked_pork", "cooked_chicken", "cooked_fish", "chocolate", "energy_drink", "fishing_rod", "fill_water"],
+        sells: ["apple", "egg", "blueberries", "cooked_pork", "cooked_chicken", "chocolate", "energy_drink", "fill_water"],   // update 63: the fish and the rod moved to the fishing stall
         buys: { apple: 1, egg: 1, blueberries: 1, lemon: 1, raw_pork: 1, raw_chicken: 1, raw_fish: 1, raw_beef: 1, raw_goat: 1, raw_wolf: 1, cooked_pork: 2, cooked_chicken: 2, cooked_fish: 2, cooked_eggs: 2, cooked_beef: 3, cooked_goat: 3, cooked_wolf: 3, cooked_trex: 5, chocolate: 2, bowl_yogurt: 3, bowl_yogurt_blueberries: 5 } },
       { id: "tools", name: "Khamet's tools", kind: "male", r: 44, th: -18, color: 0x8a5a2a, wares: 0x555a60, blurb: "toolsBlurb", lines: "toolsLines",
-        sells: ["knife", "hammer", "axe", "rope", "torch", "tinderbox", "bandage", "needle", "thread", "arrow", "bowl"],   // update 40: no climbing anchor
+        sells: ["hammer", "rope", "torch", "tinderbox", "bandage", "needle", "thread", "arrow"],   // update 63: the knife, the axe and the bowl moved to the resource stall   // update 40: no climbing anchor
         buys: { knife: 3, hammer: 4, axe: 10, rope: 1, torch: 1, tinderbox: 2, bandage: 1, needle: 1, thread: 1, arrow: 1, pestle: 4, spear: 6, bowl: 1, crossbow: 40 } },
       { id: "rare", name: "Sethra's rarities", kind: "female", r: 44, th: 18, color: 0x3a2a6a, wares: 0xc9a227, blurb: "rareBlurb", lines: "rareLines", rare: true, sells: [],
-        buys: { silver_dagger: 100, holy_water: 250, unholy_water: 250, trex_dagger: 25, imp_dagger: 500, fossil: 750, gold_statuette: 2500, trex_tooth: 15, imp_tooth: 60, unholy_tiara: 300, silver_bar: 40, croc_skin: 20, wolf_fur: 8, goat_horn: 6, wolf_tooth: 6 } },
+        buys: { emerald: 30, golden_apple: 100, silver_dagger: 100, holy_water: 250, unholy_water: 250, trex_dagger: 25, imp_dagger: 500, fossil: 750, gold_statuette: 2500, trex_tooth: 15, imp_tooth: 60, unholy_tiara: 300, silver_bar: 40, croc_skin: 20, wolf_fur: 8, goat_horn: 6, wolf_tooth: 6 } },
       { id: "smith", name: "Ankhu the smith", kind: "male", r: 44, th: 52, color: 0x6a2a1a, wares: 0xd9ad2e, blurb: "smithBlurb", lines: "smithLines",
         sells: ["et_dagger", "et_sword", "et_spear"], buys: { et_dagger: 75, et_sword: 250, et_spear: 175 } },   // update 40: dearer
+      // update 63: the fishing stall (five fish of each kind a day; bait and the rod always) and the resource stall (wood, the axe, the bowl, the knife)
+      { id: "fish", name: "Ipuy's catch", kind: "male", r: 44, th: -84, limit: 5, noLimit: ["bait", "fishing_rod"], color: 0x2a5a7a, wares: 0x7a97a0, blurb: "fishBlurb", lines: "fishLines",
+        sells: ["raw_fish", "cooked_fish", "bait", "fishing_rod"], buys: { raw_fish: 1, cooked_fish: 2 } },
+      { id: "wood", name: "Hori's timber", kind: "male", r: 44, th: 86, color: 0x5a3a1a, wares: 0x8a6a3a, blurb: "woodBlurb", lines: "woodLines",
+        sells: ["branch", "axe", "bowl", "knife"], buys: { branch: 1, axe: 10, bowl: 1, knife: 3 } },
     ],
-    prices: { apple: 1, egg: 1, blueberries: 2, cooked_pork: 3, cooked_chicken: 3, cooked_fish: 3, chocolate: 4, energy_drink: 3, fishing_rod: 12, fill_water: 2,
+    prices: { raw_fish: 2, bait: 3, branch: 2, emerald: 60, pickaxe: 30, et_pickaxe: 250, apple: 1, egg: 1, blueberries: 2, cooked_pork: 3, cooked_chicken: 3, cooked_fish: 3, chocolate: 4, energy_drink: 3, fishing_rod: 12, fill_water: 2,
       knife: 8, hammer: 10, axe: 25, rope: 4, torch: 3, tinderbox: 5, bandage: 4, needle: 3, thread: 2, arrow: 6, bowl: 3,
       et_dagger: 150, et_sword: 500, et_spear: 350 },   // update 40: the weapons take work to earn
-    bundles: { arrow: 5 },
+    bundles: { arrow: 5, bait: 5 },
     tasks: [
       { need: [["apple", 5]], reward: 15 }, { need: [["cookedMeat", 3]], reward: 18 }, { need: [["branch", 8]], reward: 10 },
       { need: [["egg", 4]], reward: 10 }, { need: [["blueberries", 6]], reward: 12 }, { need: [["wolf_fur", 1]], reward: 30 },
