@@ -1,14 +1,14 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=60";
-import { STR } from "../strings.js?v=60";
-import { Creature } from "./entities.js?v=60";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=60";
+import { CFG } from "./config.js?v=61";
+import { STR } from "../strings.js?v=61";
+import { Creature } from "./entities.js?v=61";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=61";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 58: the miner comes rigged and animated
-import { iconUrl } from "./items.js?v=60";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=60";
+import { iconUrl } from "./items.js?v=61";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=61";
 const MINER_FWD = 1;   // update 60: the miner rig's forward axis (+1 = the model faces +z, as the props do)
-import { buildCity } from "./eternius_build.js?v=60";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=60";   // update 50
+import { buildCity } from "./eternius_build.js?v=61";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=61";   // update 50
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -454,7 +454,7 @@ export class EterniusCity {
       const [x, z] = cityWorld(a, b);
       let body;
       if (asset && kind === "miner" && asset.anims && asset.anims.length) {   // update 58: the miner is a Higgsfield rig playing its chop clip; the pickaxe rides in his right hand
-        body = skeletonClone(asset.model); const mixer = new THREE.AnimationMixer(body); const act = mixer.clipAction(asset.anims[0]); act.play(); body.userData.mixer = null;   // update 60: the library clip only poses him ONCE, for the pick fit below - it is not played (it let go of the handle with one hand); the swing is mineSwing() on the rig's bones
+        body = skeletonClone(asset.model); const mixer = new THREE.AnimationMixer(body); const act = mixer.clipAction(asset.anims[0]); act.play(); body.userData.mixer = /Hammer|Mining|Pick/i.test(asset.anims[0].name || "") ? mixer : null;   // update 61: the rig's Heavy_Hammer_Swing clip IS played (the user's pick over the IK swing); any other clip (the old one-handed chop) only poses him once for the pick fit and mineSwing() takes over
         const bones = {}, bind = {}, bindP = {}; body.traverse((o) => { if (o.isBone) bones[o.name] = o; }); for (const k2 of Object.keys(bones)) { bind[k2] = bones[k2].quaternion.clone(); bindP[k2] = bones[k2].position.clone(); } body.userData.bones = bones; body.userData.bind = bind; body.updateMatrixWorld(true);
         const pickA = A.glb.et_pickaxe; if (pickA) { let hand = null; body.traverse((o) => { if (!hand && o.isBone && /hand/i.test(o.name) && /right|_r\b|\.r\b|^r[_.]/i.test(o.name)) hand = o; }); if (!hand) body.traverse((o) => { if (!hand && o.isBone && /hand/i.test(o.name)) hand = o; });
           if (hand) {
@@ -711,8 +711,8 @@ export class EterniusCity {
       // a glance at a visitor a little further out (the body turns only when you are close)
       let headTurn = 0;
       if (d >= 5.5 && d < 12) { const want = Math.atan2(p.pos.x - n.x, p.pos.z - n.z); headTurn = ((want - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; }
-      if (n.body.userData.bones && n.mining) { if (d < 140) { this.mineSwing(n); this.fitPick(n.body); } }   // update 60: the miner's own swing on the rig's bones (timed by n.strike), the pick along both hands
-      else if (n.body.userData.mixer) { if (d < 140) { n.body.userData.mixer.update(dt); this.fitPick(n.body); } }   // update 58: the animated miner; update 59: the pick follows both hands every frame
+      if (n.body.userData.mixer) { if (d < 140) { n.body.userData.mixer.update(dt); this.fitPick(n.body); } }   // update 58: the animated miner; update 59: the pick follows both hands every frame; update 61: the hammer-swing clip
+      else if (n.body.userData.bones && n.mining) { if (d < 140) { this.mineSwing(n); this.fitPick(n.body); } }   // update 60: the miner's own swing on the rig's bones (timed by n.strike), the pick along both hands
       else if (n.body.userData.hrig && d < 140) driveHumanoid(n.body, walking ? "walk" : "idle", walking ? n.speed : 0, dt, headTurn, n.style || "calm",   // update 51: no rig work for a figure 140 m off
         n.mining ? { attack: 0, block: 0, shove: 0, fall: 0, mine: n.strike !== undefined ? Math.min(1, n.strike) : 0 } : (n.strike !== undefined || n.blockT > 0 || n.shove !== undefined) ? { attack: n.strike !== undefined ? Math.min(1, n.strike) : 0, block: n.blockT > 0 ? 1 - n.blockT / 0.45 : 0, shove: n.shove !== undefined ? n.shove : 0, fall: 0 } : null);   // update 44/49; update 57: the miners swing as one piece
       else if (!n.walk) n.body.position.y = n.y + Math.sin(n.t * 1.3) * 0.012;

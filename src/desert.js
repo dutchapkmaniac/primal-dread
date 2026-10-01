@@ -16,12 +16,12 @@
 // and the map painting. The two Alioramus live in entities.js and only ask
 // this module where the desert is.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=60";
-import { cityFlatten, cityLakeDip } from "./eternius.js?v=60";   // update 39
-import { STR } from "../strings.js?v=60";
+import { CFG } from "./config.js?v=61";
+import { cityFlatten, cityLakeDip } from "./eternius.js?v=61";   // update 39
+import { STR } from "../strings.js?v=61";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { ClipAnimator } from "./skeletal.js?v=60";
+import { ClipAnimator } from "./skeletal.js?v=61";
 
 const D = () => CFG.desert;
 

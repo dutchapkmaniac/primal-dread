@@ -223,7 +223,7 @@ t_glassgreen,texture,assets/tex/t_glassgreen_basecolor.webp,Higgsfield nano_bana
 t_soil,texture,assets/tex/t_soil_basecolor.webp,Higgsfield nano_banana_pro 2026-09-27,"update 50: the soil beds under the park's trees (job f0473a70)"
 et_bigtree,model,assets/models/et_bigtree.glb,Higgsfield nano_banana_pro -> image_to_3d (textured) 2026-09-27,"update 55: regenerated with apple-sized apples (jobs 6612a991 / e8c10606); the update-50 tree (c91a9496 / eab9d10e) is replaced"
 et_planter,model,assets/models/et_planter.glb,Higgsfield nano_banana_pro -> image_to_3d (textured) 2026-09-27,"update 55: the sandstone flower trough of floor -1 (jobs c35d55fb / b32b6f8f)"
-et_miner,model,assets/models/et_miner.glb,Higgsfield nano_banana_pro -> image_to_3d (textured) 2026-09-27,"update 55: the Eternial miner with his pickaxe (jobs 4111aabe / 48c1a2d7)"
+et_miner,model,assets/models/et_miner.glb,Higgsfield nano_banana_pro -> image_to_3d (textured + rig + Heavy_Hammer_Swing) 2026-10-01,"update 61: the Eternial miner re-rigged with the library hammer swing (image 831d9871, 3d 7bb84559); update 55 image jobs 4111aabe / 48c1a2d7"
 et_doctor,model,assets/models/et_doctor.glb,Higgsfield nano_banana_pro -> image_to_3d (textured) 2026-09-27,"update 55: Nefertem the healer in white (jobs c34ab9d2 / 69ef2c2f)"
 et_hospbed,model,assets/models/et_hospbed.glb,Higgsfield nano_banana_pro -> image_to_3d (textured) 2026-09-27,"update 55: the hospital bed (jobs 7940dfea / 6cbc3722)"
 t_minerock,texture,assets/tex/t_minerock_basecolor.webp,Higgsfield nano_banana_pro 2026-09-27,"update 55: the mine's craggy rock with emerald flecks (job 5131b61b)"
