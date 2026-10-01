@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=66";
-import { STR } from "../strings.js?v=66";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=66";
+import { CFG } from "./config.js?v=67";
+import { STR } from "../strings.js?v=67";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=67";
 
 // ============================================================================
 // update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat
@@ -137,7 +137,7 @@ export function lowerInteract(city, consider, p) {
   const near = (pa, pb, d) => { const [x, z] = cityWorld(pa, pb); return Math.hypot(p.pos.x - x, p.pos.z - z) < d; };
   if (city.jettyUp && !g.ride && near(city.jettyUp.a, city.jettyUp.b, 6.5) && Math.abs(p.pos.y - C.levels.lower) < 3) { const [x, z] = cityWorld(city.jettyUp.a, city.jettyUp.b); consider(x, z, p.pos.y, `${S.boatDown} [${STR.interact}]`, () => startRide(city, 1)); }
   if (city.lowerJetty && !g.ride && near(city.lowerJetty.a, city.lowerJetty.b, 6.5) && Math.abs(p.pos.y - L.y.walk) < 3) { const [x, z] = cityWorld(city.lowerJetty.a, city.lowerJetty.b); consider(x, z, p.pos.y, `${S.boatUp} [${STR.interact}]`, () => startRide(city, -1)); }
-  if (city.lowerHouse && near(city.lowerHouse.rm.doorA, city.lowerHouse.rm.doorB, 3.2) && Math.abs(p.pos.y - L.y.park) < 3) { const [x, z] = cityWorld(city.lowerHouse.rm.doorA, city.lowerHouse.rm.doorB); if (city.houseOwned) consider(x, z, p.pos.y, `${city.houseDoorOpen ? S.houseClose : S.houseOpen} [${STR.interact}]`, () => city.houseToggleDoor()); else consider(x, z, p.pos.y, `${S.enterHome} [${STR.interact}]`, () => { g.ui.toast(S.notYourHome); g.audio.sDeny(); }); }   // update 63: yours once bought
+  if (city.lowerHouse && near(city.lowerHouse.rm.doorA, city.lowerHouse.rm.doorB, 4.0) && Math.abs(p.pos.y - L.y.park) < 3) { const [x, z] = cityWorld(...city.lowerHouse.rm.P(-2.9, 0)); if (city.houseOwned) consider(x, z, p.pos.y, `${city.houseDoorOpen ? S.houseClose : S.houseOpen} [${STR.interact}]`, () => city.houseToggleDoor()); else consider(x, z, p.pos.y, `${S.enterHome} [${STR.interact}]`, () => { g.ui.toast(S.notYourHome); g.audio.sDeny(); }); }   // update 63: yours once bought; update 67: the prompt point sits at the door's FRONT (u -2.9) - the door's collider stops you 3.1 m from the door itself, past the 2.6 m prompt reach, so the prompt never showed in play
   // update 63: your bed and your chest once the house is bought; the hospital's beds when you are badly hurt; the cell's cot and the
   // jailer at the bars while you sit; the emerald veins with a pickaxe in hand
   if (city.lowerHouse && city.houseOwned && Math.abs(p.pos.y - L.y.park) < 3) {

@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=66";
-import { STR } from "../strings.js?v=66";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=66";
+import { CFG } from "./config.js?v=67";
+import { STR } from "../strings.js?v=67";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=67";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 65: the hadrosaur comes rigged
 
 // ============================================================================
