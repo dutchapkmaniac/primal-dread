@@ -1,23 +1,24 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=72";
-import { STR } from "../strings.js?v=72";
+import { CFG, ASSET_V } from "./config.js?v=73";
+import { STR } from "../strings.js?v=73";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=72";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=72";
-import { Forest } from "./forest.js?v=72";   // update 69
-import { ClipAnimator } from "./skeletal.js?v=72";
-import { AudioMan } from "./audio.js?v=72";
-import { UI } from "./ui.js?v=72";
-import { World } from "./world.js?v=72";
-import { Player } from "./player.js?v=72";
-import { Creature, ItemDrop } from "./entities.js?v=72";
-import { GameMap } from "./map.js?v=72";
-import { FarmGame } from "./farmgame.js?v=72";
-import { ElisiaSystem } from "./elisia.js?v=72";   // update 35
-import { DesertSystem } from "./desert.js?v=72";
-import { PortalSystem } from "./portals.js?v=72";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=72";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=73";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=73";
+import { Forest } from "./forest.js?v=73";   // update 69
+import { Potions } from "./potions.js?v=73";   // update 73
+import { ClipAnimator } from "./skeletal.js?v=73";
+import { AudioMan } from "./audio.js?v=73";
+import { UI } from "./ui.js?v=73";
+import { World } from "./world.js?v=73";
+import { Player } from "./player.js?v=73";
+import { Creature, ItemDrop } from "./entities.js?v=73";
+import { GameMap } from "./map.js?v=73";
+import { FarmGame } from "./farmgame.js?v=73";
+import { ElisiaSystem } from "./elisia.js?v=73";   // update 35
+import { DesertSystem } from "./desert.js?v=73";
+import { PortalSystem } from "./portals.js?v=73";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=73";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -96,7 +97,7 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
   "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician",
   "et_fountain", "et_bigtree", "et_boat", "et_prisoner", "et_minecart", "et_emerald",
-  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
+  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_herbstall", "et_barrel", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
@@ -374,7 +375,8 @@ class Game {
     };
 
     this.world = new World(this.scene, this.assets, this.rng);
-    this.forest = new Forest(this);   // update 69: hills are the world's; the rest of the forest's new life lives here
+    this.forest = new Forest(this);
+    this.potions = new Potions(this);   // update 73: herblore and potions (after the forest and the desert exist)   // update 69: hills are the world's; the rest of the forest's new life lives here
     this.world.city = this.city;            // update 39: the city's floors, walls and mountain join the world's ground
     this.portals.build();                   // update 37: the portals stand once the ground exists
     this.world.fogMult = presetFx.fog;      // preset draw distance, from boot
@@ -394,6 +396,7 @@ class Game {
     this.player = new Player(this.camera, ctx);
     ctx.player = this.player;
     this.ctx = ctx;
+    ctx.potionDamage = (a, src, from) => this.potions ? this.potions.potionDamage(a, src, from) : a;   // update 73: dodges and thick skin
     this.city.build();   // update 39: the city needs the creature context for its chained beast
     this.initLightPool();   // update 41: after everything with a lamp exists
 
@@ -640,10 +643,11 @@ class Game {
         ? `${useKey} shoot — ${name}`
         : `${name}: you must LEARN to use it first`;
       if (slot.id === "arrow" || slot.id === "silver_arrow") return `hold ${useKey} — load into your crossbow`;
-      if (slot.id === "pestle") return this.learned.has("pestle")
-        ? `${useKey} crush a silver dagger into silver dust`
-        : `${name}: you must LEARN to use it first`;
+      if (slot.id === "pestle") return `${useKey} crush mushrooms, shells and horns - or a silver dagger`;   // update 73: no scroll for the herbs
       if (slot.id.startsWith("scroll_")) return `${useKey} read — learn this skill`;
+      if (slot.id === "vial_water") return `${useKey} mix a potion — ${name}`;   // update 73
+      if (slot.id === "vial") return `${name}: ${STR.brew.vialHint}`;
+      if (slot.id.startsWith("potion_")) return `${useKey} drink — ${name}`;
       if (slot.id === "death_compass") return `${name}: hold it and follow the needle`;
       if (slot.id === "feather") return `${name}: fletching for arrows`;
       if (slot.id === "silver_dust") return `${name}: the heart of a silver arrow`;
@@ -1140,6 +1144,7 @@ class Game {
       if (this.drunkT <= 0) { this.ui.setDrunk(0); this.ui.toast(STR.drunkEnd); }
     }
     if (this.forest) this.forest.update(dt);   // update 69
+    if (this.potions) this.potions.update(dt);   // update 73
     this.updateExpansion(dt);
     for (const c of this.creatures) c.update(dt, this);
     for (const w of this.wolves) w.update(dt, this);
@@ -1196,7 +1201,7 @@ class Game {
     // NIGHT VISION: goggles in hand turn the dark into green daylight —
     // the world lights up, the fog pulls back, the screen washes green
     const sel = this.player.inv.selected();
-    const nvg = !!(sel && sel.id === "goggles" && k > 0.2);
+    const nvg = !!(((sel && sel.id === "goggles") || (this.potions && this.potions.fx.nightvision > 0)) && k > 0.2);   // update 73: the night vision potion
     // the dungeon keeps its OWN hour: crystal dusk — darker than day,
     // never as black as the night outside
     const inDun = this.world.inDungeon(this.player.pos.x, this.player.pos.z);
@@ -2658,6 +2663,7 @@ class Game {
       if (bt) consider(bt[0], bt[1], p.pos.y, `${STR.climbTree} [${STR.interact}]`, () => this.climbTree(bt[0], bt[1]));
     }
     if (this.forest) this.forest.interact(consider, p);   // update 69: pick-ups, the witch, her book and bed
+    if (this.potions) this.potions.interact(consider, p);   // update 73: aloe vera
     this.ui.prompt(this.cooking ? STR.cooking : best ? best.label : this.compassLine());
     // touch devices mirror the prompt as a circular ONE-word button
     // (OPEN / SLEEP / COOK / TALK...) — visible only while in reach
@@ -2747,6 +2753,7 @@ class Game {
         gained.push([id2, n2]);
       }
     }
+    if (this.potions) this.potions.chestLoot(gained, c);   // update 73: herbs, vials and the common potions
     const names = [];
     for (const [id, n] of gained) {
       if (this.player.inv.add(id, n)) names.push(STR.items[id].name + (n > 1 ? ` ×${n}` : ""));

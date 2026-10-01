@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=72";
-import { STR } from "../strings.js?v=72";
-import { Creature } from "./entities.js?v=72";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=72";
+import { CFG } from "./config.js?v=73";
+import { STR } from "../strings.js?v=73";
+import { Creature } from "./entities.js?v=73";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=73";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 58: the miner comes rigged and animated
-import { iconUrl } from "./items.js?v=72";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=72";
+import { iconUrl } from "./items.js?v=73";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=73";
 const MINER_FWD = 1;   // update 60: the miner rig's forward axis (+1 = the model faces +z, as the props do)
-import { buildCity } from "./eternius_build.js?v=72";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=72";   // update 50
-import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=72";   // update 63: the hadrosaurus line
+import { buildCity } from "./eternius_build.js?v=73";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=73";   // update 50
+import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=73";   // update 63: the hadrosaurus line
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -244,6 +244,7 @@ export class EterniusCity {
   }
   // a place to fill the bottle: the cavern river's bank, the castle lake's shore
   waterSource(x, z, y) {
+    for (const st of this.stalls) if (st.barrelX !== undefined && Math.hypot(x - st.barrelX, z - st.barrelZ) < 2.6 && Math.abs(y - st.y) < 3) return { x: st.barrelX, z: st.barrelZ, y: st.y + 0.8, name: "barrel" };   // update 73: the herb stall's barrel
     const C = E(), L = C.levels, P = this.polar(x, z), { a, b, r, th } = P;
     const RT = C.riverTh;
     if (th > RT.th0 && th < RT.th1 && Math.abs(y - L.lower) < 2.5 && ((r > C.riverR0 - 3 && r < C.riverR0) || (r > C.riverR1 && r < C.riverR1 + 3))) {
@@ -1061,7 +1062,7 @@ export class EterniusCity {
     if (!sellable.length) rows.push(`<div class="shopNote dim">${st.rare ? S.nothingRare : S.nothingToSell}</div>`);
     else {
       rows.push(`<div class="shopGrid">`);
-      for (const id of sellable) rows.push(`<button class="shopCard sell" data-sell="${id}">${icon(id)}<span class="nm">${esc(name(id))} <span class="cnt">×${p.inv.count(id)}</span></span><span class="pr">${st.buys[id]} ${S.coinsShort}</span></button>`);
+      for (const id of sellable) rows.push(`<button class="shopCard sell" data-sell="${id}">${icon(id)}<span class="nm">${esc(name(id))} <span class="cnt">×${p.inv.count(id)}</span></span><span class="pr">${st.buys[id]} ${S.coinsShort}${st.lots && st.lots[id] ? " / " + st.lots[id] : ""}</span></button>`);
       rows.push(`</div>`);
     }
     const s = g.ui.screen(`
@@ -1088,8 +1089,9 @@ export class EterniusCity {
     s.querySelectorAll("[data-sell]").forEach((b) => b.addEventListener("click", () => {
       const id = b.dataset.sell, val = st.buys[id];
       if (st.rare && b.dataset.armed !== "1") { b.dataset.armed = "1"; b.querySelector(".pr").textContent = S.sellSure.replace("%n", val); b.classList.add("armed"); setTimeout(() => { if (document.body.contains(b)) { b.dataset.armed = "0"; b.classList.remove("armed"); b.querySelector(".pr").textContent = `${val} ${S.coinsShort}`; } }, 3500); return; }
-      if (p.inv.count(id) < 1) return;
-      p.inv.remove(id, 1);
+      const lot = (st.lots && st.lots[id]) || 1;   // update 73: vials go five at a time
+      if (p.inv.count(id) < lot) { g.ui.toast(S.needLot.replace("%n", lot)); g.audio.sDeny(); return; }
+      p.inv.remove(id, lot);
       this.coins += val; g.ui.coins(this.coins); g.ui.renderHotbar(p.inv); g.audio.sPickup();
       g.ui.toast(S.sold.replace("%i", name(id)).replace("%n", val));
       refresh();

@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=72";
-import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=72";
+import { CFG } from "./config.js?v=73";
+import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=73";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";   // update 41
-import { buildLower } from "./eternius_lower.js?v=72";   // update 50: floor -1
+import { buildLower } from "./eternius_lower.js?v=73";   // update 50: floor -1
 
 // ============================================================================
 // update 40: everything that is BUILT in Eternius City — the mountain, the castle,
@@ -1295,6 +1295,18 @@ function buildStall(city, st, grp, box, sand, gold, goldPlain, goldBright, gem, 
   // local helpers: (u toward the altar is -radial, v along the counter)
   const P = (u, v) => [a - u * cos - v * sin, b - u * sin + v * cos];
   const bx = (wd, h, d, u, yy, v, m) => { const [pa, pb] = P(u, v); const mm = new THREE.Mesh(new THREE.BoxGeometry(wd, h, d), m); mm.position.set(pb, yy, pa); mm.rotation.y = ry; mm.castShadow = true; grp.add(mm); return mm; };
+  if (st.model) {   // update 73: a Higgsfield stall (the herb stall) stands in for the built counter; its barrel is a water source
+    const [ma, mb] = P(0, 0), [mx, mz] = cityWorld(ma, mb), asset = A.glb[st.model];
+    if (asset) { const m = asset.model.clone(); m.position.set(mx, y, mz); m.rotation.y = C.grpYaw + ry + (st.modelYaw || 0) * D2R; scene.add(m); } else bx(4.0, 1.1, 1.3, 0, y + 0.55, 0, sand(2, 1));
+    const [ba, bb] = P(0.6, 3.1), [bwx, bwz] = cityWorld(ba, bb), bar = A.glb[st.barrel];
+    if (bar) { const m = bar.model.clone(); m.position.set(bwx, y, bwz); m.rotation.y = C.grpYaw + ry; scene.add(m); } else bx(0.8, 1.0, 0.8, 0.6, y + 0.5, 3.1, dark);
+    obst(ba, bb, 0.7);
+    bx(8.5, 0.05, 7.5, -1.2, y + 0.03, 0, city.mats.carpetM(2, 2));
+    obst(a, b, 2.4);
+    const [ka, kb] = P(-1.7, 0), [kx, kz] = cityWorld(ka, kb), [fa, fb] = P(2.3, 0), [fx, fz] = cityWorld(fa, fb), [wx, wz] = cityWorld(a, b);
+    city.stalls.push({ ...st, x: wx, z: wz, y, keeperX: kx, keeperZ: kz, frontX: fx, frontZ: fz, barrelX: bwx, barrelZ: bwz });
+    return;
+  }
   // the counter, gold-topped, on a woven rug; a back wall of shelves; four posts and a cloth awning with hanging lanterns
   bx(6.0, 1.1, 1.3, 0, y + 0.55, 0, sand(2, 1)); bx(6.3, 0.14, 1.6, 0, y + 1.17, 0, gold);
   bx(8.5, 0.05, 7.5, -1.2, y + 0.03, 0, city.mats.carpetM(2, 2));

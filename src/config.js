@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=72";
+export const ASSET_V = "?v=73";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -63,6 +63,17 @@ export const CFG = {
   poison: { dur: 180, every: 3 },   // one point of health every three seconds for three minutes, never below one
   witchHut: { x: 378, z: -450, yaw: 20, r: 16, size: 5.6, wallH: 2.7, roofH: 2.6, table: [-1.2, -0.3], tableH: 0.95, bed: [1.5, -1.3], cauldron: [1.4, 1.2], witch: [1.0, -0.2, 270], vials: 10,
     wants: ["mushroom", "rosemary", "beetle_shell", "knife", "energy_drink", "egg", "flower"] },   // Monday..Sunday by day number (day 1 = Monday); Sunday: even day white flower, odd day yellow
+  // update 73: herblore - aloe on the sand, what the pestle crushes, what the chests add, and the potions' numbers
+  herbs: {
+    aloe: { count: 5, spacing: 60, w: 1.15, h: 1.05, max: 5, moreChance: 0.5 },   // two leaves sure, then a coin toss up to five; the plant grows back next day
+    blades: ["knife", "trex_dagger", "imp_dagger", "silver_dagger", "et_dagger", "et_sword"],
+    crush: [["mushroom", "crushed_mushroom", 1], ["beetle_shell", "crushed_shell", 1], ["goat_horn", "crushed_horn", 1]],
+    chest: { rosemaryPotion: 0.1, belladonnaPotion: 0.05, rosemaryPotions: ["potion_starvation", "potion_healing", "potion_energy", "potion_antidote"], belladonnaPotions: ["potion_predator", "potion_dread", "potion_thickskin", "potion_silence"],
+      rosemary: 0.1, belladonna: 0.05, aloe: 1 / 30, valerian: 1 / 64, vials: 0.25, vialsN: 5 },
+  },
+  potionFx: { food: 20, heal: 20, energy: 40, staminaEnergy: 20, predator: 180, silence: 180, invis: 180, dread: 120, thickskin: 240, stamina: 120, regen: 240, regenEvery: 2, immune: 300, immortal: 300, immortalSkin: 300, nightvision: 300,
+    sightMult: 0.6, noiseMult: 0.6, thickMult: 0.75, dinoSources: ["trex", "alio", "croc", "trike", "spino", "mother"], notDino: ["pig", "chicken", "goat", "cow", "werewolf", "elisia", "bat", "beetle", "meganeura"],
+    printEvery: 0.5, printStep: 0.9, printsPer: 40, printR: 120, printLife: 20, printSize: [0.45, 1.3], maxPrints: 2000 },
   potions: [   // every one: a vial of water + these, crushed with the pestle and mortar (update 2 makes them)
     { id: "potion_starvation", needs: [["rosemary", 1], ["bat_wing", 1]] }, { id: "potion_healing", needs: [["rosemary", 1], ["crushed_mushroom", 2]] },
     { id: "potion_energy", needs: [["rosemary", 1], ["energy_drink", 1]] }, { id: "potion_antidote", needs: [["rosemary", 1], ["crushed_shell", 1]] },
@@ -610,7 +621,7 @@ export const CFG = {
     et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55
     et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57
     et_pickaxe: 0.24,
-    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -749,10 +760,15 @@ export const CFG = {
         sells: ["raw_fish", "cooked_fish", "bait", "fishing_rod"], buys: { raw_fish: 1, cooked_fish: 2 } },
       { id: "wood", name: "Hori's timber", kind: "male", r: 44, th: 86, color: 0x5a3a1a, wares: 0x8a6a3a, blurb: "woodBlurb", lines: "woodLines",
         sells: ["branch", "axe", "bowl", "knife"], buys: { branch: 1, axe: 10, bowl: 1, knife: 3 } },
+      // update 73: the herb stall at -118 deg (118 is the hadrosaur's market stop) - a Higgsfield stall with a water barrel; vials without end, one pestle a day, three herbs with a daily count; vials sell five at a time
+      { id: "herb", name: "Meresankh's herbs", kind: "female", r: 44, th: -118, model: "et_herbstall", modelYaw: 0, barrel: "et_barrel", limits: { pestle: 1, rosemary: 10, belladonna: 5, aloe_vera: 10 }, color: 0x3a6a3a, wares: 0x6a8a4a, blurb: "herbBlurb", lines: "herbLines",
+        sells: ["vial", "pestle", "rosemary", "belladonna", "aloe_vera"], lots: { vial: 5, vial_water: 5 },
+        buys: { pestle: 8, vial: 4, vial_water: 4, rosemary: 4, belladonna: 8, aloe_vera: 20, valerian: 30, emberleaf: 45, voidbloom: 60 } },
     ],
     prices: { raw_fish: 2, bait: 3, branch: 2, emerald: 60, pickaxe: 30, et_pickaxe: 500, apple: 1, egg: 1, blueberries: 2, cooked_pork: 3, cooked_chicken: 3, cooked_fish: 3, chocolate: 4, energy_drink: 3, fishing_rod: 12, fill_water: 2,
       knife: 8, hammer: 10, axe: 25, rope: 4, torch: 3, tinderbox: 5, bandage: 4, needle: 3, thread: 2, arrow: 6, bowl: 3,
-      et_dagger: 150, et_sword: 500, et_spear: 350 },   // update 40: the weapons take work to earn
+      et_dagger: 150, et_sword: 500, et_spear: 350,
+      vial: 1, pestle: 25, rosemary: 5, belladonna: 10, aloe_vera: 25 },   // update 73: the herb stall   // update 40: the weapons take work to earn
     bundles: { arrow: 5, bait: 5 },
     tasks: [
       { need: [["apple", 5]], reward: 15 }, { need: [["cookedMeat", 3]], reward: 18 }, { need: [["branch", 8]], reward: 10 },

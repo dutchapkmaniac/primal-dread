@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=72";
-import { STR } from "../strings.js?v=72";
-import { Inventory } from "./items.js?v=72";
+import { CFG } from "./config.js?v=73";
+import { STR } from "../strings.js?v=73";
+import { Inventory } from "./items.js?v=73";
 
 export class Player {
   constructor(camera, ctx) {
@@ -12,6 +12,7 @@ export class Player {
     this.vel = new THREE.Vector3();
     this.yaw = 0; this.pitch = 0; // facing the safe-room doorway
     this.hp = P.hp; this.en = P.en; this.hu = P.hu;
+    this.sightMult = 1; this.noiseMult = 1;   // update 73: the scent and silence potions
     this.th = 100; this.thirstZero = false;   // update 36: thirst — only the desert touches it
     this.sneak = false; this.sprinting = false;
     this.onGround = true;
@@ -146,14 +147,16 @@ export class Player {
   noiseRadius() {
     const P = CFG.player;
     const moving = this.vel.lengthSq() > 0.4;
-    if (!moving) return P.noiseR.sneak;
-    if (this.sprinting) return P.noiseR.sprint;
-    if (this.sneak) return P.noiseR.sneak;
-    return P.noiseR.walk;
+    const m = this.noiseMult || 1;   // update 73: the potion of silence
+    if (!moving) return P.noiseR.sneak * m;
+    if (this.sprinting) return P.noiseR.sprint * m;
+    if (this.sneak) return P.noiseR.sneak * m;
+    return P.noiseR.walk * m;
   }
 
   damage(amount, source, fromPos) {
     if (this.dead) return;
+    if (this.ctx.potionDamage) { amount = this.ctx.potionDamage(amount, source, fromPos); if (amount <= 0) return; }   // update 73: a dodge, or thick skin
     this.hp = Math.max(0, this.hp - amount);
     this.ctx.audio.sHurt();
     this.ctx.ui.hurtFlash();
@@ -236,7 +239,7 @@ export class Player {
 
     // energy — running drunk burns it TWICE as fast
     const moving = Math.hypot(this.vel.x, this.vel.z) > 0.5;
-    if (this.sprinting && moving) this.en = Math.max(0, this.en - P.sprintDrain * (drunk ? CFG.wine.drainMult : 1) * (game.strideOn ? CFG.eternius.stride.drain : 1) * dt);   // update 49: the sorcerer's Long Stride inside Eternius
+    if (this.sprinting && moving) this.en = Math.max(0, this.en - P.sprintDrain * (drunk ? CFG.wine.drainMult : 1) * (game.strideOn ? CFG.eternius.stride.drain : 1) * (game.potions && game.potions.fx.stamina > 0 ? 0.5 : 1) * dt);   // update 73: the stamina potion halves it too   // update 49: the sorcerer's Long Stride inside Eternius
     else if (this.sneak) this.en = Math.min(100, this.en + P.regenSneak * dt);
     else if (moving) this.en = Math.min(100, this.en + P.regenMove * dt);
     else this.en = Math.min(100, this.en + P.regenIdle * dt);
@@ -418,7 +421,10 @@ export class Player {
     if (id === "knife") return;
     // update 27: scrolls teach, the pestle crushes, the compass whispers
     if (id.startsWith("scroll_")) { game.useScroll(id); return; }
-    if (id === "pestle") { game.usePestle(); return; }
+    if (id === "vial_water") { game.potions.brew(); return; }   // update 73: the vial is where the potion is mixed
+    if (id === "vial") { game.ui.toast(STR.brew.vialHint); game.audio.sDeny(); return; }
+    if (id.startsWith("potion_")) { game.potions.drink(id); return; }
+    if (id === "pestle") { game.potions.crush(); return; }   // update 73: herbs, shells and horns; the silver dagger inside
     if (id === "death_compass") {
       game.ui.toast(game.lastDeathSpot ? `${STR.compassPoints}…` : STR.compassIdle);
       return;

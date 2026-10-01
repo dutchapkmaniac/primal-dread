@@ -21,6 +21,7 @@ canvas{display:block}
 .bar i{position:absolute;inset:0 auto 0 0;border-radius:7px;transition:width .25s}
 #hp i{background:linear-gradient(180deg,#d4573b,#8c2f1c)}
 #hp.poison i{background:linear-gradient(180deg,#4f9a3c,#1f5a1c)}
+#fx{display:flex;flex-wrap:wrap;gap:5px;max-width:210px;margin-top:4px}#fx:empty{display:none}.fxi{display:inline-flex;align-items:center;gap:3px;background:rgba(0,0,0,.45);border-radius:9px;padding:1px 6px 1px 2px;font:700 10px 'Segoe UI',sans-serif;color:#e8ceac}.fxi img{width:18px;height:18px}
 #en i{background:linear-gradient(180deg,#a4c455,#5f7a2c)}#en.stride i{background:linear-gradient(180deg,#4fd8c8,#2a8a80)}#en.stride svg{fill:#4fd8c8}
 #hu i{background:linear-gradient(180deg,#e0a748,#9a6a24)}
 #th i{background:linear-gradient(180deg,#5aa8d8,#2a5f8a)}
@@ -184,11 +185,12 @@ body.touch #bars{left:70px}
     <div class="bar" id="en"><svg viewBox="0 0 24 24" fill="#a4c455"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg><span class="tr"><i></i><b></b></span></div>
     <div class="bar" id="hu"><svg viewBox="0 0 24 24" fill="#e0a748"><path d="M15.5 3c2.5 0 5.5 2 5.5 5.5 0 4-4.5 5-6.4 4.7L8 19.8c-.9.9-2.4.9-3.3 0l-.5-.5c-.9-.9-.9-2.4 0-3.3l6.6-6.6C10.5 7.5 11.5 3 15.5 3z"/></svg><span class="tr"><i></i><b></b></span></div>
     <div class="bar" id="th"><svg viewBox="0 0 24 24" fill="#5aa8d8"><path d="M12 2.5s-6.5 7.4-6.5 12A6.5 6.5 0 0 0 18.5 14.5c0-4.6-6.5-12-6.5-12z"/></svg><span class="tr"><i></i><b></b></span></div>
+    <div id="fx"></div>
   </div>
   <div id="clock" class="glass"><div class="day"></div><div class="tod"></div></div>
   <div id="drunk" class="glass"></div>
   <div id="helper" class="glass"></div>
-  <div id="miniWrap"><img id="compass" src="./assets/ui_compass.png?v=72" alt="compass"><canvas id="minimap" width="158" height="158"></canvas></div>
+  <div id="miniWrap"><img id="compass" src="./assets/ui_compass.png?v=73" alt="compass"><canvas id="minimap" width="158" height="158"></canvas></div>
   <div id="goal" class="glass"></div>
   <div id="hunt"><div class="nm"></div><div class="tr"><i></i></div></div>
   <div id="hunt2"><div class="nm"></div><div class="tr"><i></i></div></div>
@@ -223,8 +225,8 @@ addEventListener("error", (e) => window.__errs.push((e.message || "?") + " @ " +
 addEventListener("unhandledrejection", (e) => window.__errs.push("rejection: " + String((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
 </script>
 <script type="importmap">
-{"imports":{"three":"./vendor/three.module.js?v=72","three/addons/loaders/GLTFLoader.js":"./vendor/GLTFLoader.js?v=72","three/addons/utils/BufferGeometryUtils.js":"./vendor/BufferGeometryUtils.js?v=72","three/addons/utils/SkeletonUtils.js":"./vendor/SkeletonUtils.js?v=72"}}
+{"imports":{"three":"./vendor/three.module.js?v=73","three/addons/loaders/GLTFLoader.js":"./vendor/GLTFLoader.js?v=73","three/addons/utils/BufferGeometryUtils.js":"./vendor/BufferGeometryUtils.js?v=73","three/addons/utils/SkeletonUtils.js":"./vendor/SkeletonUtils.js?v=73"}}
 </script>
-<script type="module" src="./src/main.js?v=72"></script>
+<script type="module" src="./src/main.js?v=73"></script>
 </body>
 </html>

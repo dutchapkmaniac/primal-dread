@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=72";
-import { inFarm, inPasture } from "./farm.js?v=72";
-import { STR } from "../strings.js?v=72";
-import { icons } from "./items.js?v=72";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=72";
+import { CFG } from "./config.js?v=73";
+import { inFarm, inPasture } from "./farm.js?v=73";
+import { STR } from "../strings.js?v=73";
+import { icons } from "./items.js?v=73";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=73";
 
 // Creatures. Rigged GLBs (T-Rex, werewolf, chicken) play real walk/run clips;
 // the pig gets a procedural quadruped gait. The T-Rex cannot be killed.
@@ -720,7 +720,7 @@ export class Creature {
         this.lostT = d > C.loseDist ? (this.lostT || 0) + dt : 0;
         lost = this.lostT > C.loseTime;
       } else {
-        const seen = d < C.sightR * 1.4 && this.canSee(game, p);
+        const seen = d < C.sightR * 1.4 * game.player.sightMult && this.canSee(game, p);   // update 73: the scent potion
         this.lostT = seen ? 0 : (this.lostT || 0) + dt;
         lost = this.lostT > C.loseTime;
       }
@@ -774,7 +774,7 @@ export class Creature {
         }
         if (d < 60) game.ui.toast(STR.alioHeard);
       }
-    } else if (d < C.sightR && this.canSee(game, p)) {
+    } else if (d < C.sightR * game.player.sightMult && this.canSee(game, p)) {
       alert = true;
       if (d < 60) game.ui.toast(STR.alioSeen);
     }
@@ -879,7 +879,7 @@ export class Creature {
     const chainOK = !this.chain || Math.hypot(p.pos.x - this.chain.x, p.pos.z - this.chain.z) < this.chain.r + 1.5;
     if (this.chain && !chainOK && this.state === "chase") { this.state = "wander"; this.target = null; }
     const detected = chainOK && !playerSafe && !campShield
-      && ((d < noiseR && (losClear || d < noiseR * 0.5)) || (d < this.cfg.sightR * escortMult && losClear));
+      && ((d < noiseR && (losClear || d < noiseR * 0.5)) || (d < this.cfg.sightR * escortMult * game.player.sightMult && losClear));
 
     if (this.state === "chase") {
       // player on the first floor: NEVER push through the wall — go to a
@@ -1050,7 +1050,7 @@ export class Creature {
     const escortMult = game.escorting ? CFG.escortSightMult : 1;
     const noiseR = p.noiseRadius() * S.noiseMult * escortMult;
     const detected = !playerSafe
-      && ((d < noiseR && (losClear || d < noiseR * 0.5)) || (d < S.sightR * escortMult && losClear) || this.alerted);
+      && ((d < noiseR && (losClear || d < noiseR * 0.5)) || (d < S.sightR * escortMult * game.player.sightMult && losClear) || this.alerted);
     if (this.state === "chase") {
       this.alerted = false;
       if (playerSafe) {
@@ -1327,13 +1327,13 @@ export class Creature {
       this.yaw += dy * Math.min(1, dt / Math.max(0.2, CFG.trike.turnTime - this.stateT));
       this.speed = 0.3;
       if (this.stateT > CFG.trike.turnTime) {
-        if (d < T.sightR + 8 && !playerSafe) this.startCharge(game);
+        if (d < (T.sightR + 8) * game.player.sightMult && !playerSafe) this.startCharge(game);
         else this.state = "wander";
       }
       return;
     }
     // grazing — until it SEES you (a player indoors is simply ignored)
-    if (d < T.sightR && !playerSafe) { this.startCharge(game); return; }
+    if (d < T.sightR * game.player.sightMult && !playerSafe) { this.startCharge(game); return; }
     // a grazer whose wander target lies BEHIND a dead tree walks against the
     // trunk forever — which reads as "stuck before it ever chased me".
     // Two seconds without progress = pick a fresh target.

@@ -16,12 +16,12 @@
 // and the map painting. The two Alioramus live in entities.js and only ask
 // this module where the desert is.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=72";
-import { cityFlatten, cityLakeDip } from "./eternius.js?v=72";   // update 39
-import { STR } from "../strings.js?v=72";
+import { CFG } from "./config.js?v=73";
+import { cityFlatten, cityLakeDip } from "./eternius.js?v=73";   // update 39
+import { STR } from "../strings.js?v=73";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { ClipAnimator } from "./skeletal.js?v=72";
+import { ClipAnimator } from "./skeletal.js?v=73";
 
 const D = () => CFG.desert;
 
@@ -520,7 +520,8 @@ export class DesertSystem {
   }
   fill() {
     const g = this.g;
-    if (!g.player.inv.has("water_bottle")) { g.ui.toast(STR.noBottle); g.audio.sDeny(); return false; }
+    const nv = g.potions ? g.potions.fillVials() : 0;   // update 73: every empty vial first
+    if (!g.player.inv.has("water_bottle")) { if (nv > 0) return true; g.ui.toast(STR.noBottle); g.audio.sDeny(); return false; }
     this.bottle.water = D().thirst.bottleTime;
     g.audio.sDrink();
     g.ui.toast(STR.bottleFilled);
@@ -566,9 +567,9 @@ export class DesertSystem {
   interact(consider, p) {
     const g = this.g, des = this.d;
     if (!des) return;
-    if (p.inv.has("water_bottle")) {
+    if (p.inv.has("water_bottle") || p.inv.has("vial")) {   // update 73: empty vials fill here too
       const src = this.waterSource(p.pos.x, p.pos.z);
-      if (src) consider(src.x, src.z, src.y ?? p.pos.y, `${STR.fillBottle} [${STR.interact}]`, () => this.fill());
+      if (src) consider(src.x, src.z, src.y ?? p.pos.y, `${p.inv.has("vial") ? STR.brew.fillAll : STR.fillBottle} [${STR.interact}]`, () => this.fill());
     }
     if (des.nomadPos && Math.hypot(des.nomadPos.x - p.pos.x, des.nomadPos.z - p.pos.z) < 4) {
       consider(des.nomadPos.x, des.nomadPos.z, p.pos.y, `${STR.talkToIdris} [${STR.interact}]`, () => this.openIdris());
