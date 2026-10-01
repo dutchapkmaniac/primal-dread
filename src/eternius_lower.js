@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=67";
+import { CFG } from "./config.js?v=68";
 const VEIN_BURY = { et_vein1: 0.5, et_vein3: 0.3, et_vein2: 0.8 };   // update 60: how much of each vein model's height sits inside the rock (its grey base); vein1 = the double crystal, vein3 = a single spike with a tall base, vein2 = a slab with crystals along its edges (not used on the walls - its grey face shows whichever way it is turned)
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=67";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=68";
 
 // ============================================================================
 // update 50: FLOOR -1 — the park under the city, 200 m down. The river leaves the ground floor through the
@@ -297,7 +297,7 @@ export function buildLower(city, grp) {
     for (let t = LW.west.th0 + 6; t < LW.west.th1 - 5; t += step) if (clear(t, [[LW.west.th0 - 1, LW.west.th0 + 4], [LW.west.th1 - 4, LW.west.th1 + 1]])) city.facade(t, Y.walk, R, YR);
     for (let t = LW.east.th0 + 6; t < LW.east.th1 - 5; t += step) if (clear(t, [[J.th0 - dJ, J.th1 + dJ], [LW.mineTh - dM, LW.mineTh + dM], [LW.storeTh - dS, LW.storeTh + dS], [LW.stairETh - 9, LW.stairETh + 9]])) city.facade(t, Y.low, R, YR);
     for (let t = LW.east.th1 + 5; t < LW.west.th0 - 4; t += stepT) if (clear(t, [[LW.houseTh - dR, LW.houseTh + dR]])) city.facade(t, Y.park, TR, YR);
-    city.lowerHouseFront = city.facade(LW.houseTh, Y.park, TR, YR, { brown: true, noWall: true });   // update 55: the house for sale — the same front as every home, its door brown
+    city.lowerHouseFront = city.facade(LW.houseTh, Y.park, TR, YR, { brown: true, noWall: true, doorway: true });   // update 55: the house for sale — the same front as every home, its door brown
     for (let t = LW.west.th1 + 5; t < LW.east.th0 + 360 - 4; t += stepT) { const tt = t > 180 ? t - 360 : t; if (clear(tt, [[LW.hospitalTh - 9, LW.hospitalTh + 9]])) city.facade(tt, Y.park, TR, YR); }
   }
   // ---------------- the rooms carved into the walls: the hospital, the house for sale, the mining store, the jail ----------------
@@ -359,6 +359,18 @@ export function buildLower(city, grp) {
         const L = Math.sqrt(L2), ds = (R2 + (w.t || 0.4) / 2) / L, s0 = tt - ds, s1 = tt + ds, keep = { ...w };
         if (s0 > 0.02) add.push({ ...keep, a1: w.a0 + ex * s0, b1: w.b0 + ez * s0 }); if (s1 < 0.98) add.push({ ...keep, a0: w.a0 + ex * s1, b0: w.b0 + ez * s1 }); w.off = true; w.cut = true; }
       for (const w of add) city.walls.push(w); }
+    // update 68: the passage between the front (0.15 m before TR) and the room (1.5 m behind it): a floor slab, two side walls
+    // and a ceiling, door-wide, so there is no strip of nothing under the threshold and no rock beside the door; the room's
+    // floor lookup reaches 2.3 m out past its threshold (rm.front), which closes the half-metre band where the game found no
+    // floor -1 floor at all and fell back to the ground floor's height (the 'teleport')
+    { const hy0 = city.wallY0, hy1 = city.wallY1; city.wallY0 = Y.park - 1.5; city.wallY1 = Y.park + RM.h + 1.5; const dw = 1.2, dh = 4.1;   // the front's opening is 2.4 wide: the passage walls sit flush with its edges
+      const [fa, fb] = rm.P(-1.0, 0); box(dw * 2 + 1.2, 0.3, 2.6, fb, Y.park - 0.15, fa, sand(3, 3), rm.ry);
+      box(dw * 2 + 1.2, 0.4, 2.2, fb, Y.park + dh + 0.2, fa, sand(3, 3), rm.ry);
+      for (const s2 of [-1, 1]) { const [wa, wb] = rm.P(-0.95, s2 * (dw + 0.3)); box(0.6, dh + 0.4, 2.1, wb, Y.park + (dh + 0.4) / 2, wa, sand(2, 2), rm.ry); const [q0a, q0b] = rm.P(-2.0, s2 * dw), [q1a, q1b] = rm.P(0.2, s2 * dw); wallSeg(q0a, q0b, q1a, q1b, 0.4); }
+      // the room has no front wall of its own (open: true): two pieces beside the passage close the void between the passage walls and the room's side walls
+      for (const s2 of [-1, 1]) { const [pa, pb] = rm.P(-0.2, s2 * (dw + 0.3 + (RM.hw + 0.5 - dw - 0.3) / 2)); box(RM.hw + 0.5 - dw - 0.3, RM.h, 0.6, pb, Y.park + RM.h / 2, pa, sand(2, 2), rm.ry); }
+      rm.front = 2.3; city.wallY0 = hy0; city.wallY1 = hy1; }
+
 
     for (const sd of [-1, 1]) { const [q0a, q0b] = rm.P(-2.4, sd * (RM.doorHw + 0.4)), [q1a, q1b] = rm.P(-2.4, sd * (RM.hw + 0.5)); wallSeg(q0a, q0b, q1a, q1b, 0.4); }   // the front either side of the door
     for (const sd of [-1, 1]) { const wd2 = RM.hw + 1.2 - 3.5; const [fa2, fb2] = rm.P(-1.3, sd * (3.5 + wd2 / 2)); box(wd2 + 0.3, RM.h + 1.6, 1.6, fb2, Y.park + (RM.h + 1.6) / 2 - 0.2, fa2, rock(2, 2), rm.ry); }   // update 57: the slits beside the front are rock now - the house looks like every other home

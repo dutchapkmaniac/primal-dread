@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=67";
+export const ASSET_V = "?v=68";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 

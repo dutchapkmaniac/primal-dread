@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=67";
-import { STR } from "../strings.js?v=67";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=67";
+import { CFG } from "./config.js?v=68";
+import { STR } from "../strings.js?v=68";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=68";
 
 // ============================================================================
 // update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat
@@ -14,7 +14,7 @@ const inEa = (th) => th > LW().east.th0 && th < LW().east.th1;
 
 // the room (hospital, house, store, a cell) that holds (a, b), within margin m
 export function lowerRoom(city, a, b, m = 1, y) {   // update 54: at the room's own height only (the walkway runs over the hospital)
-  for (const rm of city.lowerRooms || []) { if (y !== undefined && (y < rm.y - 2 || y > rm.y + rm.h + 2)) continue; const u = rm.u(a, b), v = rm.v(a, b); if (u > -m && u < rm.depth + m && Math.abs(v) < rm.hw + m) return rm; }
+  for (const rm of city.lowerRooms || []) { if (y !== undefined && (y < rm.y - 2 || y > rm.y + rm.h + 2)) continue; const u = rm.u(a, b), v = rm.v(a, b); if (u > -(m + (rm.front || 0)) && u < rm.depth + m && Math.abs(v) < rm.hw + m) return rm; }   // update 68: rm.front - a room whose floor reaches out past its threshold (the house's passage)
   return null;
 }
 function mineDist(city, a, b) {

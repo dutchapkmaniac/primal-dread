@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=67";
-import { STR } from "../strings.js?v=67";
-import { Creature } from "./entities.js?v=67";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=67";
+import { CFG } from "./config.js?v=68";
+import { STR } from "../strings.js?v=68";
+import { Creature } from "./entities.js?v=68";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=68";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 58: the miner comes rigged and animated
-import { iconUrl } from "./items.js?v=67";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=67";
+import { iconUrl } from "./items.js?v=68";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=68";
 const MINER_FWD = 1;   // update 60: the miner rig's forward axis (+1 = the model faces +z, as the props do)
-import { buildCity } from "./eternius_build.js?v=67";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=67";   // update 50
-import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=67";   // update 63: the hadrosaurus line
+import { buildCity } from "./eternius_build.js?v=68";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=68";   // update 50
+import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=68";   // update 63: the hadrosaurus line
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================

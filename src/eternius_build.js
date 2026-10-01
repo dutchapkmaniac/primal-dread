@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=67";
-import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=67";
+import { CFG } from "./config.js?v=68";
+import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=68";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";   // update 41
-import { buildLower } from "./eternius_lower.js?v=67";   // update 50: floor -1
+import { buildLower } from "./eternius_lower.js?v=68";   // update 50: floor -1
 
 // ============================================================================
 // update 40: everything that is BUILT in Eternius City — the mountain, the castle,
@@ -1231,8 +1231,10 @@ function buildHomes(city, grp, box, cyl, sand, rock, gold, goldPlain, goldBright
     const gg = new THREE.Group(); gg.position.set(cb, y, ca); gg.rotation.y = ry; grp.add(gg);
     const add = (geo, m, x, yy, z) => { const mm = new THREE.Mesh(geo, m); mm.position.set(x, yy, z); mm.castShadow = true; gg.add(mm); return mm; };
     // a sandstone front standing a little proud of the rock, a doorway, two windows, a balcony with a gold rail, a lantern
-    add(new THREE.BoxGeometry(7.6, C.facadeH, 0.9), sand(2, 2), 0, C.facadeH / 2, 0);
-    add(new THREE.BoxGeometry(2.4, 4.0, 0.3), sand(1, 2), 0, 2.0, 0.1);   // update 43: a sand backing, not a black one
+    // update 68: opts.doorway (the house you can buy) - the front is three pieces round a real opening, 2.4 wide and 4.1 high,
+    // and there is no sand backing behind the door: you look and walk through into the passage behind
+    if (opts.doorway) { for (const s of [-1, 1]) add(new THREE.BoxGeometry(2.6, C.facadeH, 0.9), sand(2, 2), s * 2.5, C.facadeH / 2, 0); add(new THREE.BoxGeometry(2.4, C.facadeH - 4.1, 0.9), sand(2, 2), 0, (C.facadeH + 4.1) / 2, 0); }
+    else { add(new THREE.BoxGeometry(7.6, C.facadeH, 0.9), sand(2, 2), 0, C.facadeH / 2, 0); add(new THREE.BoxGeometry(2.4, 4.0, 0.3), sand(1, 2), 0, 2.0, 0.1); }   // update 43: a sand backing, not a black one
     // update 42: a green wooden door with a golden knob (Higgsfield: et_door) fills the doorway of every house you cannot enter
     if (A.glb.et_door) { const d = city.warmProp(A.glb.et_door.model.clone(), 0.34); if (opts.brown) { d.traverse((o) => { if (o.isMesh && o.material) { const mm = o.material.clone(); if (mm.map && mm.map.image && !city.brownDoorTex) { try { const im = mm.map.image, cv = document.createElement("canvas"); cv.width = im.width; cv.height = im.height; const cx = cv.getContext("2d"); cx.drawImage(im, 0, 0); const id = cx.getImageData(0, 0, cv.width, cv.height), dd = id.data; for (let i = 0; i < dd.length; i += 4) { const r = dd[i], g = dd[i + 1], b = dd[i + 2]; if (g > r * 1.08 && g > b * 1.08) { const lum = (r * 0.3 + g * 0.59 + b * 0.11); dd[i] = Math.min(255, lum * 1.45); dd[i + 1] = Math.min(255, lum * 0.92); dd[i + 2] = Math.min(255, lum * 0.5); } } cx.putImageData(id, 0, 0); const t = new THREE.CanvasTexture(cv); t.colorSpace = mm.map.colorSpace; t.flipY = mm.map.flipY; t.wrapS = mm.map.wrapS; t.wrapT = mm.map.wrapT; city.brownDoorTex = t; } catch (e) {} } if (city.brownDoorTex) mm.map = city.brownDoorTex; else mm.color = new THREE.Color(0x9a6a3a); mm.emissive = new THREE.Color(0x3a2410); mm.emissiveIntensity = 0.45; o.material = mm; } }); const knob = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), goldPlain); knob.position.set(0.72, 2.0, 0.42); gg.add(knob); } const bb = new THREE.Box3().setFromObject(d), sz = new THREE.Vector3(); bb.getSize(sz); const dg = new THREE.Group(); dg.add(d); dg.scale.set(2.3 / sz.x, 3.9 / sz.y, 1); dg.position.set(0, 0.03, 0.62); dg.rotation.y = Math.PI; gg.add(dg); }   // the knob side out, self-lit
     add(new THREE.BoxGeometry(0.35, 4.2, 0.5), goldPlain, -1.35, 2.1, 0.5); add(new THREE.BoxGeometry(0.35, 4.2, 0.5), goldPlain, 1.35, 2.1, 0.5);
