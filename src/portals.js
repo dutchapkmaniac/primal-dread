@@ -13,8 +13,8 @@
 // and the day's chests reset. An awake portal carries you to any named place
 // you have discovered, and to any portal you have found. One-way.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=69";
-import { STR } from "../strings.js?v=69";
+import { CFG } from "./config.js?v=70";
+import { STR } from "../strings.js?v=70";
 
 const P = () => CFG.portals;
 export const PORTAL_IDS = ["red", "green", "yellow", "blue", "white"];
@@ -359,7 +359,7 @@ export class PortalSystem {
       const y = w.groundHeight(x, z, 40);
       if (w.desert.inRiver(x, z) || w.desert.inOasisWater(x, z) || w.lakePenetration(x, z) > -1) continue;
       const c = w.collide(x, z, 0.45, y);
-      if (Math.hypot(c.x - x, c.z - z) < 0.02) return { x, z, y, yaw: Math.atan2(L.x - x, L.z - z) };
+      if (Math.hypot(c.x - x, c.z - z) < 0.02) return { x, z, y, yaw: Math.atan2(x - L.x, z - L.z) };   // update 70: forward is (-sin, -cos) — this yaw FACES the place (it faced away)
     }
     return { x: L.x, z: L.z, y: w.groundHeight(L.x, L.z, 40), yaw: 0 };
   }

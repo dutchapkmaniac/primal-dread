@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=69";
+export const ASSET_V = "?v=70";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -779,11 +779,12 @@ export const CFG = {
     basement: { x0: -11.5, x1: 11.5, z0: -6.6, z1: 6.6, y: -4.4, stairs: { x0: -11.3, x1: -4.4, z0: -6.4, z1: -4.5 },
       portal: [3.0, 0.5], portalYaw: -Math.PI / 2 },
     // fixed landing spots for places whose marker is not a place to stand (the rest are searched)
-    arrivals: { temple: [0, -12], hut: [-22, -116] },
+    arrivals: { temple: [0, -12], hut: [-22, -116], witch: [379.7, -445.3] },   // update 70: you arrive before the witch's door
   },
 
   locations: [
     { id: "temple", x: 0, z: 0, r: 26 },
+    { id: "witch", x: 378, z: -450, r: 14 },   // update 70: the witch's hut (found by standing at it, teleportable like the rest)
     { id: "hut", x: -22, z: -128, r: 16 },
     { id: "lighthouse", x: 143, z: 78, r: 18 },
     { id: "lake", x: 195, z: 42, r: 50 },

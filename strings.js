@@ -424,6 +424,7 @@ export const STR = {
   // ---- update 8 ----
   locations: {
     temple: "Old Temple",
+    witch: "Witch's Hut",   // update 70
     hut: "Bill's Hut",
     lighthouse: "Lighthouse",
     lake: "The Lake",

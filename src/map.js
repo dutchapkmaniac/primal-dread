@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=69";
-import { STR } from "../strings.js?v=69";
+import { CFG, ASSET_V } from "./config.js?v=70";
+import { STR } from "../strings.js?v=70";
 
 // Top-down expedition map: the full parchment map (pause menu) and the small
 // living minimap in the HUD corner. Terrain is always drawn; NAMED landmarks
@@ -166,6 +166,12 @@ export class GameMap {
         c.fillStyle = "#8d8a80"; c.fillRect(tx(RV.x + ox) - w2 / 2, ty(RV.z + oz) - h2 / 2, w2, h2);
         c.strokeStyle = "#4a473f"; c.strokeRect(tx(RV.x + ox) - w2 / 2, ty(RV.z + oz) - h2 / 2, w2, h2);
       }
+    }
+    if (disc.has("witch")) {   // update 70: a little crooked house with a chimney
+      const WH = CFG.witchHut, wx = tx(WH.x), wz = ty(WH.z);
+      c.fillStyle = "#6a4a30"; c.fillRect(wx - 5, wz - 2, 10, 7); c.strokeStyle = "#2c1c10"; c.lineWidth = 1; c.strokeRect(wx - 5, wz - 2, 10, 7);
+      c.beginPath(); c.moveTo(wx - 7, wz - 2); c.lineTo(wx, wz - 9); c.lineTo(wx + 7, wz - 2); c.closePath(); c.fillStyle = "#4a4440"; c.fill(); c.stroke();
+      c.fillStyle = "#2c1c10"; c.fillRect(wx + 2, wz - 8, 2, 4);
     }
     if (disc.has("camping")) {
       const CP = CFG.camp;

@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=69";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=70";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=69";
-import { Desert } from "./desert.js?v=69";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=69";
+import { CFG } from "./config.js?v=70";
+import { Desert } from "./desert.js?v=70";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=70";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,7 +11,7 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=69";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=69";   // update 69: the forest's mild hills
+import { makeHills } from "./forest.js?v=70";   // update 69: the forest's mild hills
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;
@@ -102,6 +102,7 @@ export class World {
     if (this.inJabbHut(x, z)) return true;   // the dwarf's walls hold
     if (inFarm(x, z)) return true;           // update 29: the whole farm compound
     if (this.desert.inTentZone(x, z)) return true;   // update 36: Idris's tent
+    if (CFG.witchHut && Math.hypot(x - CFG.witchHut.x, z - CFG.witchHut.z) < CFG.witchHut.size / 2 + 3.2) return true;   // update 70: the witch's hut and its doorstep
     if (this.city && this.city.isSafe(x, z, y)) return true;   // update 39: the city's walls (not the chained beast's reach)
     return this.onHut(x, z, y);
   }
@@ -191,9 +192,11 @@ export class World {
     }
     // update 39: Eternius City — its floors override everything (the cavern under the mountain, the courtyard, the bridge)
     if (this.city) { const cy = this.city.floorH(x, z, y); if (cy !== null && cy !== undefined) return cy; }
-    const cands = [this.mountainH(x, z)];
-    if (this.hill) cands.push(this.hill.h(x, z));   // update 69
-    if (this.city) cands.push(this.city.mountainH(x, z));   // update 39: the city's mountain
+    // update 70: the mountain's 0 outside its foot is not a floor (it kept every dip of the hills at sea level: you walked on air
+    // over a hollow); the hill's own height, up or down, is the forest's ground
+    const mh = this.mountainH(x, z), hh = this.hill ? this.hill.h(x, z) : 0, cands = mh !== 0 ? [mh] : [];
+    if (this.hill) cands.push(hh);   // update 69
+    if (this.city) { const cm = this.city.mountainH(x, z); if (cm !== 0) cands.push(cm); }   // update 39: the city's mountain (update 70: its 0 outside is no floor either)
     this.desert.groundCand(x, z, cands);   // update 36: dunes, the oasis, the bridge decks
     // the treetop perch (update 27): while climbing, the crown holds you
     if (this.climbSpot && Math.abs(x - this.climbSpot.x) < 1.3
@@ -250,6 +253,7 @@ export class World {
       // the roof is not walkable — floors stop at the first floor
     }
     let best = this.desert.baseH(x, z);   // update 39: the sand is GROUND — never a ceiling you walk under
+    if (this.hill && hh < best && this.hill.maskAt(x, z) > 0.001) best = hh;   // update 70: a hollow of the hills is lower ground, not a hole
     for (const c of cands) if (c <= y + 0.7 && c > best) best = c;
     return best;
   }

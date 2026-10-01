@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=69";
-import { STR } from "../strings.js?v=69";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=69";
+import { CFG } from "./config.js?v=70";
+import { STR } from "../strings.js?v=70";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=70";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { Creature } from "./entities.js?v=69";
-import { iconUrl } from "./items.js?v=69";
+import { Creature } from "./entities.js?v=70";
+import { iconUrl } from "./items.js?v=70";
 
 // ============================================================================
 // update 69 (prompt37, update 1): the forest dressed up. Mild hills (makeHills, used by World.groundHeight and the forest
@@ -87,10 +87,24 @@ export class Forest {
   trunkNear(x, z, r) { for (const t of this.trunks) { const dx = x - t.x, dz = z - t.z; if (dx * dx + dz * dz > (t.L / 2 + 3) * (t.L / 2 + 3)) continue; const s = Math.max(-t.L / 2, Math.min(t.L / 2, dx * t.ux + dz * t.uz)); if (Math.hypot(dx - t.ux * s, dz - t.uz * s) < r) return true; } return false; }
 
   // ---------------- things you pick ----------------
+  // flowers and herbs are crossed painted planes; mushrooms are real: a cap (half sphere, orange with cream dots painted on a
+  // canvas), a cream stem and a gill disc, one to four per spot, each one its own instance so a pick takes one at a time
+  mushroomGeos() {
+    const cap = new THREE.SphereGeometry(0.19, 14, 9, 0, Math.PI * 2, 0, Math.PI * 0.5); cap.scale(1, 0.72, 1); cap.translate(0, 0.27, 0);
+    const gill = new THREE.CircleGeometry(0.185, 14); gill.rotateX(Math.PI / 2); gill.translate(0, 0.27, 0);
+    const stem = new THREE.CylinderGeometry(0.055, 0.075, 0.3, 10); stem.translate(0, 0.15, 0);
+    const cv = document.createElement("canvas"); cv.width = cv.height = 256; const g = cv.getContext("2d");
+    const grad = g.createRadialGradient(128, 128, 20, 128, 128, 150); grad.addColorStop(0, "#d4602a"); grad.addColorStop(0.7, "#b8431c"); grad.addColorStop(1, "#7a2a12"); g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
+    let seed = 31; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    for (let i = 0; i < 46; i++) { const r = 5 + rnd() * 11; g.beginPath(); g.ellipse(rnd() * 256, rnd() * 256, r, r * (0.7 + rnd() * 0.3), rnd() * 3, 0, Math.PI * 2); g.fillStyle = `rgba(245,232,200,${0.75 + rnd() * 0.25})`; g.fill(); }
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    const capM = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55 }), stemM = new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.9 }), gillM = new THREE.MeshStandardMaterial({ color: 0xd8c8a4, roughness: 1, side: THREE.DoubleSide });
+    return { cap, gill, stem, capM, stemM, gillM };
+  }
   buildPickups() {
     const w = this.world, F = CFG.forest.pickups, rng = this.rng, S = CFG.world.square - 40;
-    const kinds = [["mushroom", "spr_mushroom", F.mushrooms, 0.55, 0.55], ["yellow_flower", "spr_yellow_flower", F.yellow, 0.7, 0.62], ["white_flower", "spr_white_flower", F.white, 0.7, 0.62], ["rosemary", "spr_rosemary", F.rosemary, 1.05, 1.0], ["belladonna", "spr_belladonna", F.belladonna, 1.0, 1.15]];
-    const dummy = new THREE.Object3D();
+    const kinds = [["mushroom", null, F.mushrooms, 0, 0], ["yellow_flower", "spr_yellow_flower", F.yellow, 0.7, 0.62], ["white_flower", "spr_white_flower", F.white, 0.7, 0.62], ["rosemary", "spr_rosemary", F.rosemary, 1.05, 1.0], ["belladonna", "spr_belladonna", F.belladonna, 1.0, 1.15]];
+    const dummy = new THREE.Object3D(); this.pickDummy = dummy;
     for (const [kind, sprite, count, wd, ht] of kinds) {
       const spots = []; let guard = 0;
       while (spots.length < count && guard++ < 60000) {
@@ -102,20 +116,32 @@ export class Forest {
         const n = kind === "mushroom" ? 1 + Math.floor(rng() * 4) : kind.endsWith("flower") ? 1 + Math.floor(rng() * 2) : 1 + (rng() < 0.5 ? 1 + (rng() < 0.5 ? 1 : 0) : 0);
         spots.push({ kind, x, z, y, n, max: n, yaw: rng() * Math.PI, sc: 0.85 + rng() * 0.3 });
       }
-      const geoA = new THREE.PlaneGeometry(wd, ht), geoB = new THREE.PlaneGeometry(wd, ht); geoA.translate(0, ht / 2, 0); geoB.translate(0, ht / 2, 0); geoB.rotateY(Math.PI / 2);
-      const mat = this.mats[sprite];
-      for (const [geo, tag] of [[geoA, "a"], [geoB, "b"]]) {
-        const inst = new THREE.InstancedMesh(geo, mat, Math.max(1, spots.length));
-        spots.forEach((s, i) => { dummy.position.set(s.x, s.y, s.z); dummy.rotation.set(0, s.yaw, 0); dummy.scale.setScalar(s.sc); dummy.updateMatrix(); inst.setMatrixAt(i, dummy.matrix); s["inst" + tag] = inst; s.idx = i; });
-        inst.count = spots.length; inst.instanceMatrix.needsUpdate = true; inst.castShadow = false; if (inst.computeBoundingSphere) inst.computeBoundingSphere(); this.scene.add(inst);
+      if (kind === "mushroom") {
+        const G = this.mushroomGeos(); const total = spots.reduce((a, s) => a + s.max, 0);
+        const capI = new THREE.InstancedMesh(G.cap, G.capM, Math.max(1, total)), gillI = new THREE.InstancedMesh(G.gill, G.gillM, Math.max(1, total)), stemI = new THREE.InstancedMesh(G.stem, G.stemM, Math.max(1, total));
+        let k = 0;
+        for (const sp of spots) { sp.shrooms = []; for (let i = 0; i < sp.max; i++) { const a = rng() * Math.PI * 2, r = i === 0 ? 0 : 0.18 + rng() * 0.3, sc = 0.7 + rng() * 0.7, tilt = (rng() - 0.5) * 0.25; const m = { x: sp.x + Math.cos(a) * r, z: sp.z + Math.sin(a) * r, y: w.groundHeight(sp.x + Math.cos(a) * r, sp.z + Math.sin(a) * r, 0), sc, yaw: rng() * 6.28, tilt, idx: k++ }; sp.shrooms.push(m); dummy.position.set(m.x, m.y - 0.02, m.z); dummy.rotation.set(tilt, m.yaw, 0); dummy.scale.setScalar(sc); dummy.updateMatrix(); for (const inst of [capI, gillI, stemI]) inst.setMatrixAt(m.idx, dummy.matrix); } }
+        for (const inst of [capI, gillI, stemI]) { inst.count = total; inst.instanceMatrix.needsUpdate = true; inst.castShadow = true; if (inst.computeBoundingSphere) inst.computeBoundingSphere(); this.scene.add(inst); }
+        this.mushroomInst = [capI, gillI, stemI];
+      } else {
+        const geoA = new THREE.PlaneGeometry(wd, ht), geoB = new THREE.PlaneGeometry(wd, ht); geoA.translate(0, ht / 2, 0); geoB.translate(0, ht / 2, 0); geoB.rotateY(Math.PI / 2);
+        const mat = this.mats[sprite];
+        for (const [geo, tag] of [[geoA, "a"], [geoB, "b"]]) {
+          const inst = new THREE.InstancedMesh(geo, mat, Math.max(1, spots.length));
+          spots.forEach((sp, i) => { dummy.position.set(sp.x, sp.y, sp.z); dummy.rotation.set(0, sp.yaw, 0); dummy.scale.setScalar(sp.sc); dummy.updateMatrix(); inst.setMatrixAt(i, dummy.matrix); sp["inst" + tag] = inst; sp.idx = i; });
+          inst.count = spots.length; inst.instanceMatrix.needsUpdate = true; inst.castShadow = false; if (inst.computeBoundingSphere) inst.computeBoundingSphere(); this.scene.add(inst);
+        }
       }
       this.pickups.push(...spots);
     }
-    this.pickDummy = dummy;
   }
-  setPickVisible(s, on) { const d = this.pickDummy; d.position.set(s.x, s.y, s.z); d.rotation.set(0, s.yaw, 0); d.scale.setScalar(on ? s.sc : 0.0001); d.updateMatrix(); for (const inst of [s.insta, s.instb]) { inst.setMatrixAt(s.idx, d.matrix); inst.instanceMatrix.needsUpdate = true; } }
-  respawnPickups() { for (const s of this.pickups) { if (s.n <= 0) { s.n = s.max; this.setPickVisible(s, true); } } }
-
+  // a spot with `n` left shows: a mushroom spot its first n mushrooms, a plant its billboard while n > 0
+  setPickVisible(s, on) {
+    const d = this.pickDummy;
+    if (s.kind === "mushroom") { s.shrooms.forEach((m, i) => { const show = on && i < s.n; d.position.set(m.x, m.y - 0.02, m.z); d.rotation.set(m.tilt, m.yaw, 0); d.scale.setScalar(show ? m.sc : 0.0001); d.updateMatrix(); for (const inst of this.mushroomInst) { inst.setMatrixAt(m.idx, d.matrix); inst.instanceMatrix.needsUpdate = true; } }); return; }
+    d.position.set(s.x, s.y, s.z); d.rotation.set(0, s.yaw, 0); d.scale.setScalar(on ? s.sc : 0.0001); d.updateMatrix(); for (const inst of [s.insta, s.instb]) { inst.setMatrixAt(s.idx, d.matrix); inst.instanceMatrix.needsUpdate = true; }
+  }
+  respawnPickups() { for (const s of this.pickups) { if (s.n < s.max) { s.n = s.max; this.setPickVisible(s, true); } } }
   // ---------------- the night's bats (looks only) ----------------
   batBody(size) {
     const g = new THREE.Group(), m = this.mats.spr_bat;
@@ -187,18 +213,22 @@ export class Forest {
   }
   openBook() {
     const g = this.g, S = STR.forest, P = STR.potions;
-    const icon = (id) => { const u = iconUrl(id); return u ? `<img src="${u}" alt="" style="width:34px;height:34px;vertical-align:middle">` : `<span class="noicon" style="display:inline-block;width:34px;height:34px"></span>`; };
+    const icon = (id, px) => { const u = iconUrl(id); return u ? `<img src="${u}" alt="" style="width:${px}px;height:${px}px;vertical-align:middle">` : `<span style="display:inline-block;width:${px}px;height:${px}px"></span>`; };
     const nm = (id) => STR.items[id] ? STR.items[id].name : id;
-    const rows = CFG.potions.map((pt) => `<div class="bookRow" style="display:flex;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.12)">
-        <div style="flex:0 0 60px;text-align:center">${icon(pt.id)}</div>
-        <div style="flex:1;text-align:left"><b>${nm(pt.id)}</b><div style="font-size:12px;opacity:.85">${P[pt.id] ? P[pt.id].effect : ""}</div>
-          <div style="font-size:12px;margin-top:3px">${S.bookNeeds} ${icon("vial_water")} ${nm("vial_water")} + ${pt.needs.map(([id, n]) => `${icon(id)} ${n > 1 ? n + "× " : ""}${nm(id)}`).join(" + ")}</div></div>
-      </div>`).join("");
+    const row = (pt) => `<div style="display:flex;gap:7px;align-items:flex-start;padding:4px 0;border-bottom:1px solid rgba(60,40,20,.18)">
+        <div style="flex:0 0 40px;text-align:center;padding-top:2px">${icon(pt.id, 36)}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;color:#2a1a0c">${nm(pt.id)}</div>
+          <div style="font-size:10.5px;color:#4a3826;line-height:1.25">${P[pt.id] ? P[pt.id].effect : ""}</div>
+          <div style="font-size:10.5px;color:#2a1a0c;margin-top:2px;line-height:1.5">${icon("vial_water", 18)} ${nm("vial_water")} + ${pt.needs.map(([id, n]) => `${icon(id, 18)} ${n > 1 ? n + "\u00d7 " : ""}${nm(id)}`).join(" + ")}</div></div>
+      </div>`;
+    const half = Math.ceil(CFG.potions.length / 2), left = CFG.potions.slice(0, half).map(row).join(""), right = CFG.potions.slice(half).map(row).join("");
+    const page = (inner, side) => `<div style="flex:1 1 0;min-width:0;background:linear-gradient(${side === "l" ? "90deg" : "270deg"},#e9d9b4,#f4e8c8 18%,#f6ecd0);padding:14px 16px 12px;color:#2a1a0c;${side === "l" ? "border-radius:8px 2px 2px 8px;box-shadow:inset -14px 0 18px -14px rgba(60,40,10,.45)" : "border-radius:2px 8px 8px 2px;box-shadow:inset 14px 0 18px -14px rgba(60,40,10,.45)"}">${inner}</div>`;
     g.menuOpen = true;
-    const s = g.ui.screen(`<h1 style="font-size:24px;margin-bottom:2px">${S.bookTitle}</h1>
-      <div style="font-size:13px;opacity:.85;margin-bottom:6px">${S.bookIntro}</div>
-      <div class="shopWrap" style="max-height:62vh;overflow:auto;width:min(92vw,620px)">${rows}</div>
-      <button id="pnlClose" style="margin-top:8px">${STR.close}</button>`);
+    const s = g.ui.screen(`<div style="width:min(96vw,1040px)">
+      <h1 style="font-size:22px;margin:0 0 2px;color:#f0e6cc">${S.bookTitle}</h1>
+      <div style="font-size:12px;opacity:.85;margin-bottom:6px;color:#f0e6cc">${S.bookIntro}</div>
+      <div style="display:flex;gap:0;background:#3a2a16;padding:8px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.6)">${page(left, "l")}<div style="flex:0 0 6px;background:linear-gradient(90deg,#2a1a0c,#5a4020,#2a1a0c)"></div>${page(right, "r")}</div>
+      <button id="pnlClose" style="margin-top:8px">${STR.close}</button></div>`);
     s.querySelector("#pnlClose").addEventListener("click", () => { g.ui.closeScreen(); g.resume(); });
   }
 
@@ -216,7 +246,7 @@ export class Forest {
       const name = STR.items[s.kind] ? STR.items[s.kind].name : s.kind;
       consider(s.x, s.z, s.y, `${STR.pickUp} ${name} [${STR.interact}]`, () => {
         if (!p.inv.add(s.kind, 1)) return g.ui.toast(STR.inventoryFull);
-        s.n -= 1; if (s.n <= 0) this.setPickVisible(s, false);
+        s.n -= 1; this.setPickVisible(s, s.n > 0);   // update 70: a mushroom spot loses one mushroom at a time
         g.audio.sPickup(); g.ui.renderHotbar(p.inv);
       });
     }
