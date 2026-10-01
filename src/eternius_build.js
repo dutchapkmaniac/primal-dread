@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=61";
-import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=61";
+import { CFG } from "./config.js?v=62";
+import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=62";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";   // update 41
-import { buildLower } from "./eternius_lower.js?v=61";   // update 50: floor -1
+import { buildLower } from "./eternius_lower.js?v=62";   // update 50: floor -1
 
 // ============================================================================
 // update 40: everything that is BUILT in Eternius City — the mountain, the castle,
@@ -538,7 +538,9 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     {
       const r0 = C.lower.glassR0, r1 = C.lower.glassR1;
       sector(0, r0, -180, 180, L.plaza, sand(4, 4), 48);
-      const gm = w.mat("t_glassgreen", 8, 2, 0x2a7a4a); gm.transparent = true; gm.opacity = 0.32; gm.emissive = new THREE.Color(0x1c6a3a); gm.emissiveIntensity = 0.22;   // update 60: the glow of update 55 again - that was the second layer of light over the altar; the park below still reads through it   // update 55: nearly clear — you look down the shaft gm.metalness = 0.2; gm.roughness = 0.2; gm.side = THREE.DoubleSide; gm.depthWrite = false;
+      // update 55: nearly clear - you look down the shaft (0.32 / 0.22); update 59 dimmed it, update 60 put it back. update 62: the
+      // metalness, roughness, DoubleSide and depthWrite=false that a mid-line comment had swallowed since update 55 are code again
+      const gm = w.mat("t_glassgreen", 8, 2, 0x2a7a4a); gm.transparent = true; gm.opacity = 0.32; gm.emissive = new THREE.Color(0x1c6a3a); gm.emissiveIntensity = 0.22; gm.metalness = 0.2; gm.roughness = 0.2; gm.side = THREE.DoubleSide; gm.depthWrite = false;
       const glass = sector(r0, r1, -180, 180, L.plaza + 0.02, gm, 96); city.keepExtra.push(glass); city.glassRing = glass;
       cyl(r0, 0, 360, L.plaza - 0.25, L.plaza + 0.12, gold, false, 64); cyl(r1, 0, 360, L.plaza - 0.25, L.plaza + 0.12, gold, true, 64);
       sector(r0 - 0.35, r0 + 0.05, -180, 180, L.plaza + 0.12, goldPlain, 64); sector(r1 - 0.05, r1 + 0.35, -180, 180, L.plaza + 0.12, goldPlain, 64);
@@ -862,10 +864,12 @@ function buildCavern(city, grp, box, sector, cyl, sand, rock, gold, goldPlain, g
     cyl(R - 0.3, -180, 180, C.wallTop - 0.9, C.wallTop + 1.1, rock(24, 1), true, 168);   // update 46: the seam between the wall's rings and the dome's rim let sky through — a band of rock over it
     // the beam of light: a soft column plus three faint rays; the pool of light on the dais
     const beamM = new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.09, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(C.shaftR * 0.95, C.altar.r * 0.9, C.cavernH - L.plaza + 4, 40, 1, true), beamM);   // update 55: narrows to the dais, clear of the glass beam.position.y = (C.cavernH + L.plaza) / 2 + 2; grp.add(beam); city.beam = beam;
+    // update 62: the wide cone of update 54 again - it flares out over the whole glass ring (the second layer of light the user
+    // missed; update 55 had narrowed it to the dais). The three rays inside it are unchanged
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(C.shaftR * 0.95, C.shaftR * 1.35, C.cavernH - L.plaza + 4, 40, 1, true), beamM); beam.position.y = (C.cavernH + L.plaza) / 2 + 2; grp.add(beam); city.beam = beam;
     city.rays = [];
     for (let k = 0; k < 3; k++) { const ray = new THREE.Mesh(new THREE.CylinderGeometry(C.shaftR * 0.35, C.shaftR * 0.8, C.cavernH - L.plaza + 4, 12, 1, true), beamM.clone()); ray.material.opacity = 0.05; ray.position.set(Math.sin(k * 2.1) * 4, (C.cavernH + L.plaza) / 2 + 2, Math.cos(k * 2.1) * 4); ray.rotation.z = 0.03 * (k - 1); grp.add(ray); city.rays.push(ray); }
-    const pool = new THREE.Mesh(new THREE.CircleGeometry(C.altar.r * 0.98, 40), new THREE.MeshBasicMaterial({ color: 0xffe3a0, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }));   // update 55: the dais only (it lay over the glass ring like a sand disc)
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(C.shaftR * 1.5, 40), new THREE.MeshBasicMaterial({ color: 0xffe3a0, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }));   // update 62: the pool of light over the whole ring again, as in update 54 (update 55 had cut it to the dais)
     pool.rotation.x = -Math.PI / 2; pool.position.y = L.dais + 0.03; grp.add(pool); city.pool = pool;
   }
   // ---- update 42: the ALTAR after the concept picture — a faceted dark-stone drum banded with glowing gold inlay and a sun
