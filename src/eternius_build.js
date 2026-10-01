@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=71";
-import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=71";
+import { CFG } from "./config.js?v=72";
+import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=72";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";   // update 41
-import { buildLower } from "./eternius_lower.js?v=71";   // update 50: floor -1
+import { buildLower } from "./eternius_lower.js?v=72";   // update 50: floor -1
 
 // ============================================================================
 // update 40: everything that is BUILT in Eternius City — the mountain, the castle,

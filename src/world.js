@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=71";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=72";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=71";
-import { Desert } from "./desert.js?v=71";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=71";
+import { CFG } from "./config.js?v=72";
+import { Desert } from "./desert.js?v=72";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=72";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,7 +11,7 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=71";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=71";   // update 69: the forest's mild hills
+import { makeHills } from "./forest.js?v=72";   // update 69: the forest's mild hills
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;
@@ -306,6 +306,7 @@ export class World {
       // ShapeGeometry's UVs are metres: one tile per 5.7 m, as the old 280-over-1600 plane had
       const ground = new THREE.Mesh(new THREE.ShapeGeometry(shape, 1), mat("t_grass", 0.175, 0.175, 0x4a5540));
       this.grassMat = ground.material;   // update 71: the hill ground wears the same grass (metre UVs, the same repeat)
+      this.groundMesh = ground;   // update 72: buildHillGround cuts this plane away under the hills
       ground.rotation.x = -Math.PI / 2;
       this.scene.add(ground);
     }
@@ -2524,16 +2525,17 @@ export class World {
     const rects = this.floorRects;
     const inRect = (x, z) => { for (const [x0, z0, x1, z1] of rects) if (x >= x0 && x <= x1 && z >= z0 && z <= z1) return true; return false; };
     let cells = 0, meshes = 0;
+    const NC = n1 - n0, covered = new Uint8Array(NC * NC);   // update 72: 255 where the hill mesh covers a cell
     for (let cz = n0; cz < n1; cz += CH) for (let cx = n0; cx < n1; cx += CH) {
       const nx = Math.min(CH, n1 - cx), nz = Math.min(CH, n1 - cz), W1 = nx + 1;
       const pos = new Float32Array(W1 * (nz + 1) * 3), uv = new Float32Array(W1 * (nz + 1) * 2);
-      for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) { const k = j * W1 + i, x = (cx + i) * G, z = (cz + j) * G; pos[k * 3] = x; pos[k * 3 + 1] = hill.at(cx + i, cz + j) + 0.012; pos[k * 3 + 2] = z; uv[k * 2] = x; uv[k * 2 + 1] = -z; }
+      for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) { const k = j * W1 + i, x = (cx + i) * G, z = (cz + j) * G; pos[k * 3] = x; pos[k * 3 + 1] = hill.at(cx + i, cz + j); pos[k * 3 + 2] = z; uv[k * 2] = x; uv[k * 2 + 1] = -z; }
       const lists = { floor: [], grass: [] };
       for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
         const ix = cx + i, iz = cz + j, floor = inRect((ix + 0.5) * G, (iz + 0.5) * G);
         if (!floor && hill.at(ix, iz) === 0 && hill.at(ix + 1, iz) === 0 && hill.at(ix, iz + 1) === 0 && hill.at(ix + 1, iz + 1) === 0) continue;
         const a = j * W1 + i, b = (j + 1) * W1 + i, c = (j + 1) * W1 + i + 1, d = j * W1 + i + 1;
-        (floor ? lists.floor : lists.grass).push(a, b, d, b, c, d); cells++;
+        (floor ? lists.floor : lists.grass).push(a, b, d, b, c, d); cells++; covered[(iz - n0) * NC + (ix - n0)] = 255;
       }
       for (const name of ["floor", "grass"]) {
         const list = lists[name]; if (!list.length) continue;
@@ -2541,7 +2543,25 @@ export class World {
         const mesh = new THREE.Mesh(geo, name === "floor" ? ffMat : this.grassMat); mesh.receiveShadow = true; this.scene.add(mesh); meshes++;
       }
     }
+    // update 72: the flat grass plane at y=0 showed THROUGH every hollow (its hill mesh lies below zero there), so every pig,
+    // chest and trunk in a dip sat 'inside the floor' and you walked under it. The plane keeps its holes and its reach beyond
+    // the square, but its material now discards every fragment that lies in a cell the hill mesh covers - exactly those cells,
+    // so there is no seam (the hill mesh meets it at zero on the edge nodes) and no second surface underneath.
+    const base = this.groundMesh;
+    if (base) {
+      const tex = new THREE.DataTexture(covered, NC, NC, THREE.RedFormat, THREE.UnsignedByteType);
+      tex.minFilter = tex.magFilter = THREE.NearestFilter; tex.needsUpdate = true;
+      const m = base.material.clone();
+      m.onBeforeCompile = (sh) => {
+        sh.uniforms.uHillCells = { value: tex }; sh.uniforms.uHillOrigin = { value: new THREE.Vector2(n0 * G, n0 * G) }; sh.uniforms.uHillSpan = { value: NC * G };
+        sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vHillPos;").replace("#include <worldpos_vertex>", "#include <worldpos_vertex>\nvHillPos = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+        sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vHillPos; uniform sampler2D uHillCells; uniform vec2 uHillOrigin; uniform float uHillSpan;").replace("#include <clipping_planes_fragment>", "#include <clipping_planes_fragment>\nif (texture2D(uHillCells, (vHillPos.xz - uHillOrigin) / uHillSpan).r > 0.5) discard;");
+      };
+      m.customProgramCacheKey = () => "hillcut";
+      base.material = m; m.needsUpdate = true;
+    }
     this.hillGround = { cells, meshes };
+    this.hillCovered = { data: covered, n0, NC, G };
   }
   buildHut() {
     const [hx, hz] = CFG.world.hutPos;
