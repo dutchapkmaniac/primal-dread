@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=70";
+export const ASSET_V = "?v=71";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -45,7 +45,7 @@ export const CFG = {
   },
   snakeChance: 0.1,            // a chest may hide a snake: ~10% hp bite
   // ---- update 69 (prompt37, update 1): the forest dressed up ----
-  forestHills: { amp: 1.0, wave1: 70, wave2: 32, edge: 18, pathClear: 7, templeFlatR: 96, templeBlendR: 160 },   // mild: a metre at most, flat at the temple, on the paths and in every landmark
+  forestHills: { amp: 1.0, wave1: 70, wave2: 32, edge: 18, pathClear: 7, pathBlend: 15, grid: 5, templeFlatR: 96, templeBlendR: 160 },   // mild: a metre at most, flat at the temple, on the paths and in every landmark
   forest: {
     trunks: { count: 40, len: [5.5, 9], minR: 110, collideH: 0.7, slowFor: 2, slowMult: 0.4 },   // you jump them; a T-Rex crossing one runs at 40% for two seconds
     pickups: { mushrooms: 120, yellow: 60, white: 60, rosemary: 50, belladonna: 25, minR: 70 },  // spots; all back at morning

@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=70";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=71";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=70";
-import { Desert } from "./desert.js?v=70";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=70";
+import { CFG } from "./config.js?v=71";
+import { Desert } from "./desert.js?v=71";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=71";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,7 +11,7 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=70";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=70";   // update 69: the forest's mild hills
+import { makeHills } from "./forest.js?v=71";   // update 69: the forest's mild hills
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;
@@ -26,6 +26,7 @@ export class World {
     this.windows = [];    // {x,z,nx,nz,y} — holes the T-Rex can reach (floors 1-2)
     this.chests = [];
     this.hill = makeHills(this);   // update 69: the forest's hills (mild, masked to zero at the temple, paths and every landmark)
+    this.floorRects = [];   // update 71: the forest-floor patches are rectangles the hill ground is painted brown in, not meshes of their own
     this.apples = [];
     this.beds = [];
     this.twigs = [];      // {x,z,rearm} — crack loudly when stepped on
@@ -253,7 +254,7 @@ export class World {
       // the roof is not walkable — floors stop at the first floor
     }
     let best = this.desert.baseH(x, z);   // update 39: the sand is GROUND — never a ceiling you walk under
-    if (this.hill && hh < best && this.hill.maskAt(x, z) > 0.001) best = hh;   // update 70: a hollow of the hills is lower ground, not a hole
+    if (this.hill && hh < best) best = hh;   // update 70: a hollow of the hills is lower ground, not a hole
     for (const c of cands) if (c <= y + 0.7 && c > best) best = c;
     return best;
   }
@@ -304,6 +305,7 @@ export class World {
       { const ET = CFG.eternius, mh = new THREE.Path(), rr = ET.mountainR - 1; for (let i = 0; i < 48; i++) { const t = (i / 48) * Math.PI * 2, x = ET.cx + Math.cos(t) * rr, y = -ET.cz + Math.sin(t) * rr; i ? mh.lineTo(x, y) : mh.moveTo(x, y); } mh.closePath(); shape.holes.push(mh); }
       // ShapeGeometry's UVs are metres: one tile per 5.7 m, as the old 280-over-1600 plane had
       const ground = new THREE.Mesh(new THREE.ShapeGeometry(shape, 1), mat("t_grass", 0.175, 0.175, 0x4a5540));
+      this.grassMat = ground.material;   // update 71: the hill ground wears the same grass (metre UVs, the same repeat)
       ground.rotation.x = -Math.PI / 2;
       this.scene.add(ground);
     }
@@ -365,12 +367,10 @@ export class World {
     for (let a = -970; a <= 970; a += 194) {
       for (const [px, pz] of [[a, -970], [a, 970], [-970, a], [970, a]]) {
         if (this.desert.inDesert(px, pz)) continue;
-        const p = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), ffMat);
-        p.rotation.x = -Math.PI / 2;
-        p.position.set(px, 0.01, pz);
-        this.scene.add(p);
+        this.floorTile(px, pz, 200, ffMat);   // update 71: these were flat planes - trees floated and sank on them
       }
     }
+    this.buildHillGround(mat("t_forestfloor", 1 / 7, 1 / 7, 0x3a4232));   // update 71: the one ground of the forest
     // update 37: the new band's 30 apple trees and 40 chests — seeded once, clear of everything
     this.ring8Apples = []; this.ring8Chests = [];
     {
@@ -2514,10 +2514,34 @@ export class World {
   // Tree hut — bigger, sealed (gables closed), one window, an openable door,
   // dinner table with two chairs. Bed / kitchen / Bill untouched by request.
   // update 69: a forest-floor tile that follows the hills (36 x 36 quads, vertices lifted by the hill height)
-  floorTile(px, pz, size, m) {
-    const geo = new THREE.PlaneGeometry(size, size, 36, 36), pos = geo.attributes.position;
-    for (let i = 0; i < pos.count; i++) pos.setZ(i, (this.hill ? this.hill.h(px + pos.getX(i), pz - pos.getY(i)) : 0) + 0.01);
-    geo.computeVertexNormals(); const p = new THREE.Mesh(geo, m); p.rotation.x = -Math.PI / 2; p.position.set(px, 0, pz); p.receiveShadow = true; this.scene.add(p); return p;
+  // update 71: a forest-floor patch is a rectangle; buildHillGround paints the hill ground brown inside it
+  floorTile(px, pz, size, m) { this.floorRects.push([px - size / 2, pz - size / 2, px + size / 2, pz + size / 2]); }
+  // update 71: the forest's ground is ONE heightfield (hill.at on a G m grid). Every cell inside a floor rectangle, and every
+  // cell outside one that carries any hill, becomes real mesh at the hill's height (brown floor / grass) with the same triangle
+  // split hill.h interpolates on - what you see is exactly what you stand on. Flat grass cells keep the flat grass plane below.
+  buildHillGround(ffMat) {
+    const hill = this.hill, G = hill.G, CH = 48, S = CFG.world.square, n0 = Math.floor(-S / G) - 1, n1 = Math.ceil(S / G) + 1;
+    const rects = this.floorRects;
+    const inRect = (x, z) => { for (const [x0, z0, x1, z1] of rects) if (x >= x0 && x <= x1 && z >= z0 && z <= z1) return true; return false; };
+    let cells = 0, meshes = 0;
+    for (let cz = n0; cz < n1; cz += CH) for (let cx = n0; cx < n1; cx += CH) {
+      const nx = Math.min(CH, n1 - cx), nz = Math.min(CH, n1 - cz), W1 = nx + 1;
+      const pos = new Float32Array(W1 * (nz + 1) * 3), uv = new Float32Array(W1 * (nz + 1) * 2);
+      for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) { const k = j * W1 + i, x = (cx + i) * G, z = (cz + j) * G; pos[k * 3] = x; pos[k * 3 + 1] = hill.at(cx + i, cz + j) + 0.012; pos[k * 3 + 2] = z; uv[k * 2] = x; uv[k * 2 + 1] = -z; }
+      const lists = { floor: [], grass: [] };
+      for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+        const ix = cx + i, iz = cz + j, floor = inRect((ix + 0.5) * G, (iz + 0.5) * G);
+        if (!floor && hill.at(ix, iz) === 0 && hill.at(ix + 1, iz) === 0 && hill.at(ix, iz + 1) === 0 && hill.at(ix + 1, iz + 1) === 0) continue;
+        const a = j * W1 + i, b = (j + 1) * W1 + i, c = (j + 1) * W1 + i + 1, d = j * W1 + i + 1;
+        (floor ? lists.floor : lists.grass).push(a, b, d, b, c, d); cells++;
+      }
+      for (const name of ["floor", "grass"]) {
+        const list = lists[name]; if (!list.length) continue;
+        const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2)); geo.setIndex(list); geo.computeVertexNormals(); geo.computeBoundingSphere();
+        const mesh = new THREE.Mesh(geo, name === "floor" ? ffMat : this.grassMat); mesh.receiveShadow = true; this.scene.add(mesh); meshes++;
+      }
+    }
+    this.hillGround = { cells, meshes };
   }
   buildHut() {
     const [hx, hz] = CFG.world.hutPos;

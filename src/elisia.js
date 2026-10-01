@@ -14,10 +14,10 @@
 // the dark form; this module holds everything that is hers alone: the daily
 // placement, her state machine, the mist, the kiss cinematic and the fireballs.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=70";
-import { STR } from "../strings.js?v=70";
-import { Creature } from "./entities.js?v=70";
-import { ClipAnimator } from "./skeletal.js?v=70";
+import { CFG } from "./config.js?v=71";
+import { STR } from "../strings.js?v=71";
+import { Creature } from "./entities.js?v=71";
+import { ClipAnimator } from "./skeletal.js?v=71";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const E = () => CFG.elisia;

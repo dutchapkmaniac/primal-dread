@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=70";
-import { STR } from "../strings.js?v=70";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=70";
+import { CFG } from "./config.js?v=71";
+import { STR } from "../strings.js?v=71";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=71";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { Creature } from "./entities.js?v=70";
-import { iconUrl } from "./items.js?v=70";
+import { Creature } from "./entities.js?v=71";
+import { iconUrl } from "./items.js?v=71";
 
 // ============================================================================
 // update 69 (prompt37, update 1): the forest dressed up. Mild hills (makeHills, used by World.groundHeight and the forest
@@ -19,28 +19,47 @@ const smooth = (t) => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 *
 const D2R = Math.PI / 180;
 
 // ---------------------------------------------------------------------------- the hills
-// a value noise on two wavelengths, masked to zero at the temple's clearing, on the paths, in every landmark, the lake, the
-// desert and the mountain (sampled nine times round the point so the edge is a slope, not a step); cached on an 8 m grid
+// update 71: the hills are ONE heightfield. A value noise on two wavelengths is sampled once per G metres (lazily, cached),
+// masked to zero at the temple's clearing, on the paths and in every landmark; between the samples h() interpolates on the
+// two triangles of a cell - the SAME split the ground meshes are built on (World.buildHillGround) - so the ground you walk
+// on, the feet of the trees and the grass you look at are a single surface. (Before, the walk height was raw noise with an
+// 8 m stepped mask, the inner tiles were coarser PlaneGeometries of it and the grass plane and outer tiles were flat: trees
+// floated over hollows, sank into rises, and you waded through ground the mesh drew higher than you stood.)
 export function makeHills(world) {
-  const H = CFG.forestHills;
+  const H = CFG.forestHills, G = H.grid || 5;
   const hash = (ix, iz) => { let h = (Math.imul(ix, 374761393) + Math.imul(iz, 668265263) + 1013904223) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967295; };
   const vn = (x, z, w) => { const gx = x / w, gz = z / w, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz, sx = fx * fx * (3 - 2 * fx), sz = fz * fz * (3 - 2 * fz); const a = hash(ix, iz), b = hash(ix + 1, iz), c = hash(ix, iz + 1), d = hash(ix + 1, iz + 1); return (a + (b - a) * sx) * (1 - sz) + (c + (d - c) * sx) * sz; };
-  const cache = new Map();
-  const maskAt = (x, z) => {
-    const kx = Math.round(x / 8), kz = Math.round(z / 8), key = kx * 200003 + kz;
-    let m = cache.get(key); if (m !== undefined) return m;
+  // the forest-edge mask: nine samples round an 8 m cell, then blended between cells (no steps)
+  const cellMask = new Map();
+  const cellM = (kx, kz) => {
+    const key = kx * 200003 + kz; let m = cellMask.get(key); if (m !== undefined) return m;
     const cx = kx * 8, cz = kz * 8; let out = 0;
-    for (let i = 0; i < 9; i++) { const sx = i === 0 ? cx : cx + Math.cos(i * Math.PI / 4) * H.edge, sz = i === 0 ? cz : cz + Math.sin(i * Math.PI / 4) * H.edge; if (!world.inForest(sx, sz) || world.distToPath(sx, sz) < H.pathClear) out++; }
-    m = 1 - out / 9;
-    const r = Math.hypot(cx, cz); m *= smooth((r - H.templeFlatR) / (H.templeBlendR - H.templeFlatR));
-    cache.set(key, m); return m;
+    for (let i = 0; i < 9; i++) { const sx = i === 0 ? cx : cx + Math.cos(i * Math.PI / 4) * H.edge, sz = i === 0 ? cz : cz + Math.sin(i * Math.PI / 4) * H.edge; if (!world.inForest(sx, sz)) out++; }
+    m = 1 - out / 9; cellMask.set(key, m); return m;
   };
+  const maskAt = (x, z) => {
+    const gx = x / 8, gz = z / 8, kx = Math.floor(gx), kz = Math.floor(gz), fx = gx - kx, fz = gz - kz;
+    let m = (cellM(kx, kz) * (1 - fx) + cellM(kx + 1, kz) * fx) * (1 - fz) + (cellM(kx, kz + 1) * (1 - fx) + cellM(kx + 1, kz + 1) * fx) * fz;
+    m *= smooth((world.distToPath(x, z) - H.pathClear) / H.pathBlend);   // flat on the path, rising over pathBlend metres beside it
+    const r = Math.hypot(x, z); m *= smooth((r - H.templeFlatR) / (H.templeBlendR - H.templeFlatR));
+    return m;
+  };
+  // one height per grid node (ix, iz) = (ix*G, iz*G)
+  const samples = new Map();
+  const at = (ix, iz) => {
+    const key = ix * 200003 + iz; let v = samples.get(key); if (v !== undefined) return v;
+    const x = ix * G, z = iz * G, m = maskAt(x, z);
+    if (m <= 0.001) v = 0;
+    else { const n = (vn(x, z, H.wave1) - 0.5) * 1.3 + (vn(x + 1000, z - 1000, H.wave2) - 0.5) * 0.6; v = Math.max(-H.amp, Math.min(H.amp, n * H.amp * 1.7)) * m; }
+    samples.set(key, v); return v;
+  };
+  // the cell (ix, iz) is two triangles: (x,z)-(x,z+G)-(x+G,z) and (x,z+G)-(x+G,z+G)-(x+G,z); fx+fz<=1 is the first
   const h = (x, z) => {
-    const m = maskAt(x, z); if (m <= 0.001) return 0;
-    const n = (vn(x, z, H.wave1) - 0.5) * 1.3 + (vn(x + 1000, z - 1000, H.wave2) - 0.5) * 0.6;
-    return Math.max(-H.amp, Math.min(H.amp, n * H.amp * 1.7)) * m;
+    const gx = x / G, gz = z / G, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
+    const h00 = at(ix, iz), h10 = at(ix + 1, iz), h01 = at(ix, iz + 1), h11 = at(ix + 1, iz + 1);
+    return fx + fz <= 1 ? h00 + (h10 - h00) * fx + (h01 - h00) * fz : h11 + (h01 - h11) * (1 - fx) + (h10 - h11) * (1 - fz);
   };
-  return { h, maskAt };
+  return { h, maskAt, at, G };
 }
 
 // ---------------------------------------------------------------------------- painted planes
