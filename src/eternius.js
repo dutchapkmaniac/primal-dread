@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=65";
-import { STR } from "../strings.js?v=65";
-import { Creature } from "./entities.js?v=65";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=65";
+import { CFG } from "./config.js?v=66";
+import { STR } from "../strings.js?v=66";
+import { Creature } from "./entities.js?v=66";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=66";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 58: the miner comes rigged and animated
-import { iconUrl } from "./items.js?v=65";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=65";
+import { iconUrl } from "./items.js?v=66";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=66";
 const MINER_FWD = 1;   // update 60: the miner rig's forward axis (+1 = the model faces +z, as the props do)
-import { buildCity } from "./eternius_build.js?v=65";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=65";   // update 50
-import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=65";   // update 63: the hadrosaurus line
+import { buildCity } from "./eternius_build.js?v=66";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=66";   // update 50
+import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=66";   // update 63: the hadrosaurus line
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -982,6 +982,8 @@ export class EterniusCity {
     M.t += dt; M.swingT += dt; if (M.swingT > 0.7) { M.swingT = 0; g.audio.sHit && g.audio.sHit(); }
     if (M.t < M.need) return;
     M.t = 0;
+    // update 66: a plain pick has a one-in-five chance the stone bites back - ten percent of your health and no emerald
+    if (M.pick === "pickaxe" && Math.random() < C.mining.plainHurt) { p.damage(C.mining.hurtHp, "mine", null); g.ui.toast(S.mineHurt); g.audio.sDeny(); return; }
     if (!p.inv.add("emerald", 1)) { g.ui.toast(STR.inventoryFull); g.audio.sDeny(); this.mining = null; return; }
     g.ui.renderHotbar(p.inv); g.ui.toast(S.mineGot); g.audio.sPickup();
     M.v.left -= 1;

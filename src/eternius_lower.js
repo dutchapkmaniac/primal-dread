@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=65";
+import { CFG } from "./config.js?v=66";
 const VEIN_BURY = { et_vein1: 0.5, et_vein3: 0.3, et_vein2: 0.8 };   // update 60: how much of each vein model's height sits inside the rock (its grey base); vein1 = the double crystal, vein3 = a single spike with a tall base, vein2 = a slab with crystals along its edges (not used on the walls - its grey face shows whichever way it is turned)
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=65";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=66";
 
 // ============================================================================
 // update 50: FLOOR -1 — the park under the city, 200 m down. The river leaves the ground floor through the
@@ -351,6 +351,15 @@ export function buildLower(city, grp) {
     const [x, z] = cityWorld(rm.doorA, rm.doorB);
     // the door: brown wood, gold knob, a bar across it (it opens once bought — eternius.js)
     city.lowerHouse = { rm, door: city.lowerHouseFront || null, x, z, seg: wallSeg(...rm.P(-2.4, -RM.doorHw - 0.4), ...rm.P(-2.4, RM.doorHw + 0.4), 0.35), chest: { a: sa, b: sb }, bed: { a: ba, b: bb } };
+    // update 66: the neighbouring home's facade wall ran straight across this doorway (the facade row steps 13 degrees and the
+    // house sits between two of them), so the bought house could never be entered. Every wall within 2 m of the door point
+    // except the door's own toggling segment is cut open there
+    { const H = city.lowerHouse, [da, db] = [rm.doorA, rm.doorB], R2 = 2.0, add = [];
+      for (const w of city.walls) { if (w === H.seg) continue; const ex = w.a1 - w.a0, ez = w.b1 - w.b0, L2 = ex * ex + ez * ez; if (L2 < 1e-6) continue; const tt = Math.max(0, Math.min(1, ((da - w.a0) * ex + (db - w.b0) * ez) / L2)); const qa = w.a0 + ex * tt, qb = w.b0 + ez * tt; if (Math.hypot(qa - da, qb - db) > R2 + (w.t || 0.4) / 2) continue;
+        const L = Math.sqrt(L2), ds = (R2 + (w.t || 0.4) / 2) / L, s0 = tt - ds, s1 = tt + ds, keep = { ...w };
+        if (s0 > 0.02) add.push({ ...keep, a1: w.a0 + ex * s0, b1: w.b0 + ez * s0 }); if (s1 < 0.98) add.push({ ...keep, a0: w.a0 + ex * s1, b0: w.b0 + ez * s1 }); w.off = true; w.cut = true; }
+      for (const w of add) city.walls.push(w); }
+
     for (const sd of [-1, 1]) { const [q0a, q0b] = rm.P(-2.4, sd * (RM.doorHw + 0.4)), [q1a, q1b] = rm.P(-2.4, sd * (RM.hw + 0.5)); wallSeg(q0a, q0b, q1a, q1b, 0.4); }   // the front either side of the door
     for (const sd of [-1, 1]) { const wd2 = RM.hw + 1.2 - 3.5; const [fa2, fb2] = rm.P(-1.3, sd * (3.5 + wd2 / 2)); box(wd2 + 0.3, RM.h + 1.6, 1.6, fb2, Y.park + (RM.h + 1.6) / 2 - 0.2, fa2, rock(2, 2), rm.ry); }   // update 57: the slits beside the front are rock now - the house looks like every other home
   }

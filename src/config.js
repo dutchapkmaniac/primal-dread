@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=65";
+export const ASSET_V = "?v=66";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -697,8 +697,8 @@ export const CFG = {
     // update 63: stealing and the cells, the mine store, mining, the house for sale, the hadrosaurus line
     theft: { seen0: 0.3, seenStep: 0.1, seenMax: 0.9, forget: 240, chaseR: 60, bailSteal: 25, bailGuard: 50, jailHp: 10, nightIn: 180, hpAfter: 70 },   // update 64: seventy percent of your blood back in the cell, however you got there
     mineStall: { id: "mine", name: "Bakenre, mine store", sells: ["emerald", "pickaxe", "et_pickaxe"], limits: { emerald: 2 }, buys: {}, blurb: "mineBlurb" },
-    mining: { tPlain: 6, tEternal: 2, perVein: 3, regrow: 300, plainUses: 15 },
-    house: { price: 2500 },
+    mining: { tPlain: 6, tEternal: 2, perVein: 3, regrow: 300, plainUses: 15, plainHurt: 0.2, hurtHp: 10 },   // update 66: a plain pick has a 20% chance a stone bites back for 10% of your health instead of an emerald
+    house: { price: 3500 },   // update 66: dearer
     // update 64: the castle stop stands in the courtyard by the palms, on the right
     dino: { ride: 2, ticket: 10, walk: 2.2, walkFor: 2.8, fade: 0.8, arrive: 0.6, saddle: 2.55, stops: [{ id: "castle", a: 214, b: 36, face: 0 }, { id: "throne", r: 105, th: 170, y: 8, face: 80 }, { id: "market", r: 44, th: 120, y: -4, face: 30, tickets: true }, { id: "park", r: 38, th: -130, y: -204, face: -40 }] },
     stride: { price: 35, drain: 0.5, r: 48, th: 150 },   // update 49: the sorcerer's Long Stride — run energy drains at `drain` inside the mountain, hallway and castle; he stands at (r, theta) on the plaza
@@ -720,7 +720,7 @@ export const CFG = {
       { id: "wood", name: "Hori's timber", kind: "male", r: 44, th: 86, color: 0x5a3a1a, wares: 0x8a6a3a, blurb: "woodBlurb", lines: "woodLines",
         sells: ["branch", "axe", "bowl", "knife"], buys: { branch: 1, axe: 10, bowl: 1, knife: 3 } },
     ],
-    prices: { raw_fish: 2, bait: 3, branch: 2, emerald: 60, pickaxe: 30, et_pickaxe: 250, apple: 1, egg: 1, blueberries: 2, cooked_pork: 3, cooked_chicken: 3, cooked_fish: 3, chocolate: 4, energy_drink: 3, fishing_rod: 12, fill_water: 2,
+    prices: { raw_fish: 2, bait: 3, branch: 2, emerald: 60, pickaxe: 30, et_pickaxe: 500, apple: 1, egg: 1, blueberries: 2, cooked_pork: 3, cooked_chicken: 3, cooked_fish: 3, chocolate: 4, energy_drink: 3, fishing_rod: 12, fill_water: 2,
       knife: 8, hammer: 10, axe: 25, rope: 4, torch: 3, tinderbox: 5, bandage: 4, needle: 3, thread: 2, arrow: 6, bowl: 3,
       et_dagger: 150, et_sword: 500, et_spear: 350 },   // update 40: the weapons take work to earn
     bundles: { arrow: 5, bait: 5 },

@@ -444,6 +444,7 @@ export const STR = {
     dinoLeave: "You climb into the saddle. She sets off for %s...", dinoRiding: "The hadrosaurus carries you across the city...", dinoArrive: "The keeper helps you down at %s.", dinoStopKnown: "You know the stop at %s now.",
     dinoStop: { castle: "the castle", throne: "the throne room", market: "the market", park: "the deep park" },
     goldenApple: "A golden apple! Sethra pays a hundred coins for it.",   // update 64
+    mineHurt: "The stone splinters and bites your hand. No emerald this time.",   // update 66
     parkLines: ["Two hundred metres of rock over our heads, and still the apples grow. The glass does that. Old craft.", "Mind the golden ones when they fall. The rarities stall pays a hundred for a golden apple, and everyone knows it.", "The fountain is sweet water. Drink. The river down here is the same river as up there — it just took the long way."],
     mageName: "Khemenu the sorcerer",
     mageLines: ["Well now. A human, under the mountain! I have counted three of you in four hundred years, and none stayed long enough to learn my name. I am Khemenu, sorcerer of the deep city. Welcome, welcome.",
