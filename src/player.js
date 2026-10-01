@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=68";
-import { STR } from "../strings.js?v=68";
-import { Inventory } from "./items.js?v=68";
+import { CFG } from "./config.js?v=69";
+import { STR } from "../strings.js?v=69";
+import { Inventory } from "./items.js?v=69";
 
 export class Player {
   constructor(camera, ctx) {
@@ -370,6 +370,8 @@ export class Player {
       c.hit(K.dmg, game, weapon);
       return;
     }
+    // update 69: a swing in the air with a Meganeura in front of you is a threat - it comes for you
+    for (const c of game.creatures) { if (c.type !== "meganeura" || c.dead || c.hostile) continue; const dx = c.pos.x - this.pos.x, dz = c.pos.z - this.pos.z, d = Math.hypot(dx, dz); if (d < 4.5 && (dx * fx + dz * fz) / (d || 1) > 0.6 && game.forest) game.forest.provoke(c); }
     // update 42: an Eternial in the way — a guard strikes back (twice, and it is a fight); nobody here is a tree
     if (game.city && game.city.hitNpc(this, K, weapon, fx, fz)) return;
     // no creature hit — a knife blow against a tree yields a branch
@@ -396,6 +398,7 @@ export class Player {
       if (t.tag) continue;   // update 42: lampposts, statues and people are colliders, not firewood
       this.chopT = game.time;
       game.audio.sHit();
+      if (game.forest) game.forest.chopBats(t);   // update 69: at night the crown may hold bats
       if (game.rng() < CFG.branchChance) {
         // the axe BITES: three branches per strike where a knife shaves one
         const n = weapon === "axe" ? CFG.axeBranches : 1;

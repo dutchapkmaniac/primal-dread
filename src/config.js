@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=68";
+export const ASSET_V = "?v=69";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -44,6 +44,35 @@ export const CFG = {
     ],
   },
   snakeChance: 0.1,            // a chest may hide a snake: ~10% hp bite
+  // ---- update 69 (prompt37, update 1): the forest dressed up ----
+  forestHills: { amp: 1.0, wave1: 70, wave2: 32, edge: 18, pathClear: 7, templeFlatR: 96, templeBlendR: 160 },   // mild: a metre at most, flat at the temple, on the paths and in every landmark
+  forest: {
+    trunks: { count: 40, len: [5.5, 9], minR: 110, collideH: 0.7, slowFor: 2, slowMult: 0.4 },   // you jump them; a T-Rex crossing one runs at 40% for two seconds
+    pickups: { mushrooms: 120, yellow: 60, white: 60, rosemary: 50, belladonna: 25, minR: 70 },  // spots; all back at morning
+    meganeura: { every: 45, chance: 0.34 },   // while you run through the forest: every 45 s a one-in-three chance one bursts from a tree
+    bats: { flocks: 2, perFlock: 5, chopChance: 0.55 },
+    hits: {   // blows to kill, per weapon in hand
+      meganeura: { knife: 4, machete: 3, hammer: 3, axe: 2, fists: 8, silver_dagger: 2, trex_dagger: 2, imp_dagger: 1, et_dagger: 2, et_sword: 1, et_spear: 1, default: 2 },
+      bat: { knife: 2, axe: 1, fists: 4, default: 1 },
+      beetle: { default: 1 },
+    },
+  },
+  meganeura: { height: 0.7, speed: 3.2, chaseSpeed: 5.5, hp: 100, bite: [10, 15], biteEvery: 1.6, reach: 1.7, poisonChance: 0.25, poisonSacChance: 0.25, touchR: 0.95, orbitR: 4, stay: 90, giveUpR: 45, drops: [["raw_meganeura", 1]] },
+  bat: { height: 0.3, speed: 4, chaseSpeed: 6.5, hp: 50, bite: 4, biteEvery: 2, reach: 1.4, giveUpR: 60, drops: [["bat_wing", 1]] },
+  beetle: { height: 0.22, speed: 1.3, chaseSpeed: 1.3, hp: 1, bite: 5, biteEvery: 3, reach: 1.1, giveUpR: 25, drops: [["beetle_shell", 1]] },
+  poison: { dur: 180, every: 3 },   // one point of health every three seconds for three minutes, never below one
+  witchHut: { x: 378, z: -450, yaw: 20, r: 16, size: 5.6, wallH: 2.7, roofH: 2.6, table: [-1.2, -0.3], tableH: 0.95, bed: [1.5, -1.3], cauldron: [1.4, 1.2], witch: [1.0, -0.2, 270], vials: 10,
+    wants: ["mushroom", "rosemary", "beetle_shell", "knife", "energy_drink", "egg", "flower"] },   // Monday..Sunday by day number (day 1 = Monday); Sunday: even day white flower, odd day yellow
+  potions: [   // every one: a vial of water + these, crushed with the pestle and mortar (update 2 makes them)
+    { id: "potion_starvation", needs: [["rosemary", 1], ["bat_wing", 1]] }, { id: "potion_healing", needs: [["rosemary", 1], ["crushed_mushroom", 2]] },
+    { id: "potion_energy", needs: [["rosemary", 1], ["energy_drink", 1]] }, { id: "potion_antidote", needs: [["rosemary", 1], ["crushed_shell", 1]] },
+    { id: "potion_predator", needs: [["belladonna", 1], ["yellow_flower", 1]] }, { id: "potion_dread", needs: [["belladonna", 1], ["crushed_horn", 1]] },
+    { id: "potion_thickskin", needs: [["belladonna", 1], ["crushed_mushroom", 3]] }, { id: "potion_silence", needs: [["belladonna", 1], ["white_flower", 1]] },
+    { id: "potion_stamina", needs: [["aloe_vera", 1], ["energy_drink", 1]] }, { id: "potion_regen", needs: [["aloe_vera", 1], ["crushed_mushroom", 4]] },
+    { id: "potion_superantidote", needs: [["aloe_vera", 1], ["crushed_shell", 2]] }, { id: "potion_immortal", needs: [["emberleaf", 1], ["wolf_tooth", 1]] },
+    { id: "potion_nightvision", needs: [["emberleaf", 1], ["werewolf_eye", 1]] }, { id: "potion_invis", needs: [["voidbloom", 1], ["potion_predator", 1], ["potion_silence", 1]] },
+  ],
+
   snakeDmg: 10,
 
   // ---- the new area (everything beyond the old 150m boundary) ----
@@ -312,7 +341,8 @@ export const CFG = {
 
   food: {
     apple:         { hu: 10, special: "appleEnergy" },
-    green_apple:   { hu: 10, special: "appleEnergy" },   // update 65: the deep trees' apple - its own item, the same meal for now
+    green_apple:   { hu: 10, special: "appleEnergy" },
+    cooked_meganeura: { hu: 15 },   // update 69   // update 65: the deep trees' apple - its own item, the same meal for now
     cooked_pork:   { hu: 10 },
     cooked_chicken:{ hu: 10 },
     cooked_eggs:   { hu: 10, en: 5 },
@@ -331,7 +361,7 @@ export const CFG = {
   superEnergyDrink: 40,   // the blue can — rarer, twice the kick
   axeBranches: 3,         // an axe strips three branches where a knife takes one
   cookTime: 2.5,
-  cookMap: { raw_pork: "cooked_pork", raw_chicken: "cooked_chicken", egg: "cooked_eggs", raw_wolf: "cooked_wolf", raw_fish: "cooked_fish", raw_trex: "cooked_trex", raw_goat: "cooked_goat",
+  cookMap: { raw_meganeura: "cooked_meganeura", raw_pork: "cooked_pork", raw_chicken: "cooked_chicken", egg: "cooked_eggs", raw_wolf: "cooked_wolf", raw_fish: "cooked_fish", raw_trex: "cooked_trex", raw_goat: "cooked_goat",
     bowl_milk: "bowl_yogurt",            // update 29: milk sets into yogurt (needs a lemon + the scroll, see cookExtra)
     raw_beef: "cooked_beef" },           // update 30: a cow's meat comes raw
   // the campfire has no pan — meat only, no eggs
@@ -580,7 +610,7 @@ export const CFG = {
     et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55
     et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57
     et_pickaxe: 0.24,
-    et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z

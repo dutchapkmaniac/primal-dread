@@ -1,22 +1,23 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=68";
-import { STR } from "../strings.js?v=68";
+import { CFG, ASSET_V } from "./config.js?v=69";
+import { STR } from "../strings.js?v=69";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=68";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=68";
-import { ClipAnimator } from "./skeletal.js?v=68";
-import { AudioMan } from "./audio.js?v=68";
-import { UI } from "./ui.js?v=68";
-import { World } from "./world.js?v=68";
-import { Player } from "./player.js?v=68";
-import { Creature, ItemDrop } from "./entities.js?v=68";
-import { GameMap } from "./map.js?v=68";
-import { FarmGame } from "./farmgame.js?v=68";
-import { ElisiaSystem } from "./elisia.js?v=68";   // update 35
-import { DesertSystem } from "./desert.js?v=68";
-import { PortalSystem } from "./portals.js?v=68";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=68";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=69";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=69";
+import { Forest } from "./forest.js?v=69";   // update 69
+import { ClipAnimator } from "./skeletal.js?v=69";
+import { AudioMan } from "./audio.js?v=69";
+import { UI } from "./ui.js?v=69";
+import { World } from "./world.js?v=69";
+import { Player } from "./player.js?v=69";
+import { Creature, ItemDrop } from "./entities.js?v=69";
+import { GameMap } from "./map.js?v=69";
+import { FarmGame } from "./farmgame.js?v=69";
+import { ElisiaSystem } from "./elisia.js?v=69";   // update 35
+import { DesertSystem } from "./desert.js?v=69";
+import { PortalSystem } from "./portals.js?v=69";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=69";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -95,7 +96,7 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
   "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician",
   "et_fountain", "et_bigtree", "et_boat", "et_prisoner", "et_minecart", "et_emerald",
-  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
+  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
@@ -373,6 +374,7 @@ class Game {
     };
 
     this.world = new World(this.scene, this.assets, this.rng);
+    this.forest = new Forest(this);   // update 69: hills are the world's; the rest of the forest's new life lives here
     this.world.city = this.city;            // update 39: the city's floors, walls and mountain join the world's ground
     this.portals.build();                   // update 37: the portals stand once the ground exists
     this.world.fogMult = presetFx.fog;      // preset draw distance, from boot
@@ -1137,6 +1139,7 @@ class Game {
       this.ui.setDrunk(this.drunkT);
       if (this.drunkT <= 0) { this.ui.setDrunk(0); this.ui.toast(STR.drunkEnd); }
     }
+    if (this.forest) this.forest.update(dt);   // update 69
     this.updateExpansion(dt);
     for (const c of this.creatures) c.update(dt, this);
     for (const w of this.wolves) w.update(dt, this);
@@ -2654,6 +2657,7 @@ class Game {
       }
       if (bt) consider(bt[0], bt[1], p.pos.y, `${STR.climbTree} [${STR.interact}]`, () => this.climbTree(bt[0], bt[1]));
     }
+    if (this.forest) this.forest.interact(consider, p);   // update 69: pick-ups, the witch, her book and bed
     this.ui.prompt(this.cooking ? STR.cooking : best ? best.label : this.compassLine());
     // touch devices mirror the prompt as a circular ONE-word button
     // (OPEN / SLEEP / COOK / TALK...) — visible only while in reach
@@ -2686,9 +2690,9 @@ class Game {
     c.opened = true;
     this.audio.sChest();
     // ~10% of chests hide a snake: a bite, and it keeps the chest for the day
+    // update 69: the snake is a beetle now - it climbs out, bites 5 at once and every three seconds until you kill it (one blow), and leaves its shell
     if (c.snake) {
-      this.ui.toast(STR.snakeBite);
-      this.player.damage(CFG.snakeDmg, "snake");
+      if (this.forest) this.forest.beetleFromChest(c); else { this.ui.toast(STR.snakeBite); this.player.damage(CFG.snakeDmg, "snake"); }
       this.portals.snakeBite();   // update 37: the green portal's day starts over
       return;
     }

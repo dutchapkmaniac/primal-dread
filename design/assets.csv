@@ -250,3 +250,6 @@ et_hadro,model,assets/models/et_hadro.glb,Higgsfield nano_banana_pro -> image_to
 et_fishcrate,model,assets/models/et_fishcrate.glb,Higgsfield nano_banana_pro -> image_to_3d (textured) 2026-10-01,"update 64: the fishing stall's crate of fish under a net (image 8a58699d, 3d aaeaff4f)"
 et_woodpile,model,assets/models/et_woodpile.glb,Higgsfield nano_banana_pro -> image_to_3d (textured) 2026-10-01,"update 64: the timber stall's log pile with an axe in a stump (image 65f1b27f, 3d 3af7698d)"
 ui_greenapple,icon,assets/ui_greenapple.png,Higgsfield nano_banana_pro 2026-10-01,"update 65: the green apple item icon (image 2a23b001)"
+et_witch,model,assets/models/et_witch.glb,Higgsfield nano_banana_pro -> image_to_3d (textured + rig) 2026-10-01,"update 69: Morwen the witch of the wood (image c4609202, 3d 97c3f843)"
+ui_forest_set,icon,assets/ui_*.png,Higgsfield nano_banana_pro 2026-10-01,"update 69: 19 item icons (mushroom, flowers, six herbs, beetle shell + crushed, bat wing, crushed mushroom + horn, Meganeura meat raw + cooked, poison sac, werewolf eye, empty vial) + one red vial recoloured into water and 13 potions"
+spr_forest_set,texture,assets/tex/spr_*.png,Higgsfield nano_banana_pro 2026-10-01,"update 69: painted billboard sprites: mushroom, yellow and white flowers, rosemary, belladonna; top-view bat, beetle, Meganeura"

@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=68";
-import { inFarm, inPasture } from "./farm.js?v=68";
-import { STR } from "../strings.js?v=68";
-import { icons } from "./items.js?v=68";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=68";
+import { CFG } from "./config.js?v=69";
+import { inFarm, inPasture } from "./farm.js?v=69";
+import { STR } from "../strings.js?v=69";
+import { icons } from "./items.js?v=69";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=69";
 
 // Creatures. Rigged GLBs (T-Rex, werewolf, chicken) play real walk/run clips;
 // the pig gets a procedural quadruped gait. The T-Rex cannot be killed.
@@ -101,6 +101,7 @@ export class Creature {
     const targetYaw = Math.atan2(dx, dz);
     const dy = normalizeYaw(targetYaw - this.yaw);
     this.yaw += Math.max(-turnRate * dt, Math.min(turnRate * dt, dy));
+    if (this.slowT > 0) { this.slowT -= dt; speed *= CFG.forest.trunks.slowMult; }   // update 69: a fallen trunk underfoot
     const step = Math.min(speed * dt, d);
     let nx = this.pos.x + Math.sin(this.yaw) * step;
     let nz = this.pos.z + Math.cos(this.yaw) * step;
@@ -394,6 +395,7 @@ export class Creature {
   }
 
   hit(dmg, game, weapon) {
+    if (this.small && game.forest && game.forest.hitSmall(this, dmg, game, weapon)) return;   // update 69: the insects and bats take blows by the table
     if (this.type === "trike") {
       game.audio.sHit();
       game.ui.toast(STR.trikeImmune);
@@ -607,7 +609,7 @@ export class Creature {
       if (this.stateT < 0.6) this.group.rotation.z = (this.stateT / 0.6) * Math.PI / 2;
       else if (this.stateT > (this.corpseHold || 2) && this.group.visible) {   // update 38: corpseHold — she eats it first
         this.group.visible = false;
-        if (this.type === "elisia") this.gone = true;   // update 35: she is removed, not respawned
+        if (this.type === "elisia" || this.small) this.gone = true;   // update 35: she is removed, not respawned; update 69: so are the small things
       }
       this.respawnT -= dt;
       if (this.respawnT <= 0) {
@@ -629,6 +631,9 @@ export class Creature {
       case "cow": this.updateCow(dt, game); break;
       case "elisia": this.updateElisia(dt, game); break;   // update 35
       case "remotus": case "altai": this.updateAlio(dt, game); break;   // update 36
+      case "meganeura": this.updateMeganeura(dt, game); break;   // update 69 (forest.js)
+      case "bat": this.updateBat(dt, game); break;
+      case "beetle": this.updateBeetle(dt, game); break;
       default: this.updatePrey(dt, game); break;
     }
 
@@ -642,6 +647,7 @@ export class Creature {
     const groundY = this.ctx.world.groundHeight(this.pos.x, this.pos.z, this.group.position.y + 1.6);
     this.group.position.set(this.pos.x, groundY, this.pos.z);
     if (this.liftY) this.group.position.y += this.liftY;   // update 35: Elisia rising away
+    if (this.hover) this.group.position.y += this.hover;   // update 69: the flyers
     this.group.rotation.y = this.yaw + (CFG.modelYaw[this.type] || 0);
 
     // drive the animation layer

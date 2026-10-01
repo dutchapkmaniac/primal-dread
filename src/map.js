@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=68";
-import { STR } from "../strings.js?v=68";
+import { CFG, ASSET_V } from "./config.js?v=69";
+import { STR } from "../strings.js?v=69";
 
 // Top-down expedition map: the full parchment map (pause menu) and the small
 // living minimap in the HUD corner. Terrain is always drawn; NAMED landmarks

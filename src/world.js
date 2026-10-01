@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=68";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=69";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=68";
-import { Desert } from "./desert.js?v=68";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=68";
+import { CFG } from "./config.js?v=69";
+import { Desert } from "./desert.js?v=69";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=69";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,6 +11,7 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=68";
 
 const V = { x: 0, z: 0 };
 
+import { makeHills } from "./forest.js?v=69";   // update 69: the forest's mild hills
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;
@@ -24,6 +25,7 @@ export class World {
     this.treeGrid = new Map();
     this.windows = [];    // {x,z,nx,nz,y} — holes the T-Rex can reach (floors 1-2)
     this.chests = [];
+    this.hill = makeHills(this);   // update 69: the forest's hills (mild, masked to zero at the temple, paths and every landmark)
     this.apples = [];
     this.beds = [];
     this.twigs = [];      // {x,z,rearm} — crack loudly when stepped on
@@ -190,6 +192,7 @@ export class World {
     // update 39: Eternius City — its floors override everything (the cavern under the mountain, the courtyard, the bridge)
     if (this.city) { const cy = this.city.floorH(x, z, y); if (cy !== null && cy !== undefined) return cy; }
     const cands = [this.mountainH(x, z)];
+    if (this.hill) cands.push(this.hill.h(x, z));   // update 69
     if (this.city) cands.push(this.city.mountainH(x, z));   // update 39: the city's mountain
     this.desert.groundCand(x, z, cands);   // update 36: dunes, the oasis, the bridge decks
     // the treetop perch (update 27): while climbing, the crown holds you
@@ -317,10 +320,7 @@ export class World {
     for (const [px, pz] of [[-95, -95], [95, -95], [-105, 40], [105, 40],
       [-200, -160], [200, -160], [-200, 160], [230, 140], [0, -215], [0, 215],
       [-280, 80], [280, -80], [90, 280], [-90, -280], [-240, 240], [250, 220]]) {
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(150, 150), ffMat);
-      p.rotation.x = -Math.PI / 2;
-      p.position.set(px, 0.01, pz);
-      this.scene.add(p);
+      this.floorTile(px, pz, 150, ffMat);
     }
     // update 28: the EXPANDED outer ring walks on brown forest floor too —
     // patches all along the frontier band (the mountain corner keeps its rock)
@@ -330,10 +330,7 @@ export class World {
       [-448, 468], [-268, 468], [-88, 468], [92, 468], [272, 468],             // south edge
       [-468, -88], [-468, 92], [-468, 272], [-468, 452],                       // west edge
     ]) {
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(150, 150), ffMat);
-      p.rotation.x = -Math.PI / 2;
-      p.position.set(px, 0.01, pz);
-      this.scene.add(p);
+      this.floorTile(px, pz, 150, ffMat);
     }
     // update 29: ring6 walks on forest floor too — a second rank of patches
     // along the new frontier (the mountain corner keeps its rock)
@@ -343,30 +340,21 @@ export class World {
       [-448, 574], [-268, 574], [-88, 574], [92, 574], [272, 574], [-574, 574],             // south edge + SW corner
       [-574, -88], [-574, 92], [-574, 272], [-574, 452],                                    // west edge
     ]) {
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(150, 150), ffMat);
-      p.rotation.x = -Math.PI / 2;
-      p.position.set(px, 0.01, pz);
-      this.scene.add(p);
+      this.floorTile(px, pz, 150, ffMat);
     }
 
     // update 36: ring7 walks on forest floor too — a fourth rank along the new frontier
     for (let a = -700; a <= 700; a += 175) {
       for (const [px, pz] of [[a, -700], [a, 700], [-700, a], [700, a]]) {
         if (this.desert.inDesert(px, pz)) continue;   // the sand is its own ground
-        const p = new THREE.Mesh(new THREE.PlaneGeometry(180, 180), ffMat);
-        p.rotation.x = -Math.PI / 2;
-        p.position.set(px, 0.01, pz);
-        this.scene.add(p);
+        this.floorTile(px, pz, 180, ffMat);
       }
     }
     // update 37: ring8 — a fifth rank of forest floor along the newest frontier
     for (let a = -880; a <= 880; a += 176) {
       for (const [px, pz] of [[a, -880], [a, 880], [-880, a], [880, a]]) {
         if (this.desert.inDesert(px, pz)) continue;
-        const p = new THREE.Mesh(new THREE.PlaneGeometry(180, 180), ffMat);
-        p.rotation.x = -Math.PI / 2;
-        p.position.set(px, 0.01, pz);
-        this.scene.add(p);
+        this.floorTile(px, pz, 180, ffMat);
       }
     }
     // update 38: ring9 — a sixth rank of forest floor along the newest frontier
@@ -495,6 +483,7 @@ export class World {
     if (Math.hypot(x - N.x, z - N.z) < N.r + pad) return true;
     if (Math.abs(x - C.x) < C.w / 2 + pad && Math.abs(z - C.z) < C.d / 2 + pad) return true;
     if (Math.hypot(x - CFG.camp.x, z - CFG.camp.z) < CFG.camp.r + pad + 2) return true;
+    if (CFG.witchHut && Math.hypot(x - CFG.witchHut.x, z - CFG.witchHut.z) < CFG.witchHut.r + pad) return true;   // update 69: the witch's clearing
     if (Math.hypot(x - CFG.ruins.x, z - CFG.ruins.z) < 32 + pad) return true;
     // update 29: the farm compound — house, garden, field and pasture stay clear
     if (Math.abs(x - CFG.farm.x) < CFG.farm.hw + pad && Math.abs(z - CFG.farm.z) < CFG.farm.hd + pad) return true;
@@ -2520,6 +2509,12 @@ export class World {
 
   // Tree hut — bigger, sealed (gables closed), one window, an openable door,
   // dinner table with two chairs. Bed / kitchen / Bill untouched by request.
+  // update 69: a forest-floor tile that follows the hills (36 x 36 quads, vertices lifted by the hill height)
+  floorTile(px, pz, size, m) {
+    const geo = new THREE.PlaneGeometry(size, size, 36, 36), pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) pos.setZ(i, (this.hill ? this.hill.h(px + pos.getX(i), pz - pos.getY(i)) : 0) + 0.01);
+    geo.computeVertexNormals(); const p = new THREE.Mesh(geo, m); p.rotation.x = -Math.PI / 2; p.position.set(px, 0, pz); p.receiveShadow = true; this.scene.add(p); return p;
+  }
   buildHut() {
     const [hx, hz] = CFG.world.hutPos;
     const H = CFG.hut, W2 = H.w / 2, D2 = H.d / 2;
@@ -2798,6 +2793,7 @@ export class World {
 
   buildTrees() {
     const rng = this.rng;
+    const treeScale = () => { const u = rng(); return u < 0.14 ? 1.55 + rng() * 0.55 : u < 0.3 ? 0.55 + rng() * 0.22 : 0.85 + rng() * 0.55; };   // update 69: some giants, some saplings
     const positions = [];
     const [hx, hz] = CFG.world.hutPos;
     const W = CFG.world;
@@ -2845,7 +2841,7 @@ export class World {
       if (R2.chests.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 2.6)) continue;
       if (allApples.some(([ax, az]) => Math.hypot(x - ax, z - az) < 5)) continue;
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
-      positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
+      positions.push([x, z, treeScale(), rng() * Math.PI * 2]);
     }
 
     // the FRONTIER ring (update 10): pure wild forest, room for future content
@@ -2862,7 +2858,7 @@ export class World {
       if (CFG.extraChests.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 2.6)) continue;
       if (allApples.some(([ax, az]) => Math.hypot(x - ax, z - az) < 5)) continue;
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
-      positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
+      positions.push([x, z, treeScale(), rng() * Math.PI * 2]);
     }
 
     // update 23: the EXPANSION BAND — the square grew 10%, and the new ring
@@ -2879,7 +2875,7 @@ export class World {
       if (this.inMountain(x, z)) continue;
       if (this.inNewLandmark(x, z)) continue;   // update 30: the outer bands keep clear of landmarks too
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
-      positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
+      positions.push([x, z, treeScale(), rng() * Math.PI * 2]);
     }
 
     // update 27: the second expansion band, one ring further out
@@ -2894,7 +2890,7 @@ export class World {
       if (this.inMountain(x, z)) continue;
       if (this.inNewLandmark(x, z)) continue;   // update 30
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
-      positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
+      positions.push([x, z, treeScale(), rng() * Math.PI * 2]);
     }
     // update 29: the third expansion band — same recipe, one ring further out
     const R6 = CFG.ring6;
@@ -2908,7 +2904,7 @@ export class World {
       if (this.inMountain(x, z)) continue;
       if (this.inNewLandmark(x, z)) continue;   // update 30
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
-      positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
+      positions.push([x, z, treeScale(), rng() * Math.PI * 2]);
     }
 
     // update 36: the fourth expansion band — same recipe, one ring further out
@@ -2924,7 +2920,7 @@ export class World {
       if (this.inNewLandmark(x, z)) continue;
       if (this.desert.inDesert(x, z) || this.desert.riverDist(x, z) < 20) continue;
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
-      positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
+      positions.push([x, z, treeScale(), rng() * Math.PI * 2]);
     }
     // update 37: the fifth expansion band — ring8
     const R8 = CFG.ring8;
@@ -2941,7 +2937,7 @@ export class World {
       if (this.ring8Apples.some(([ax, az]) => Math.hypot(x - ax, z - az) < 5)) continue;
       if (this.ring8Chests.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 2.6)) continue;
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
-      positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
+      positions.push([x, z, treeScale(), rng() * Math.PI * 2]);
     }
     // update 38: the sixth expansion band — ring9
     const R9 = CFG.ring9;
@@ -2956,7 +2952,7 @@ export class World {
       if (this.inNewLandmark(x, z)) continue;
       if (this.desert.inDesert(x, z) || this.desert.riverDist(x, z) < 20) continue;
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
-      positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
+      positions.push([x, z, treeScale(), rng() * Math.PI * 2]);
     }
     // update 36: the desert and the river hold no forest — every earlier band is filtered too
     for (let i = positions.length - 1; i >= 0; i--) {
@@ -2978,7 +2974,7 @@ export class World {
       if (this.ring8Apples.some(([ax, az]) => Math.hypot(x - ax, z - az) < 5)) continue;   // update 37
       if (this.ring8Chests.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 2.6)) continue;
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
-      positions.push([x, z, 0.85 + rng() * 0.55, rng() * Math.PI * 2]);
+      positions.push([x, z, treeScale(), rng() * Math.PI * 2]);
       cornerN++;
     }
 
@@ -3047,7 +3043,7 @@ export class World {
           const inst = new THREE.InstancedMesh(src.geometry, src.material, arr.length);
           for (let i = 0; i < arr.length; i++) {
             const [x, z, s, rot] = arr[i];
-            dummy.position.set(x, 0, z);
+            dummy.position.set(x, this.hill ? this.hill.h(x, z) : 0, z);
             dummy.rotation.set(0, rot, 0);
             dummy.scale.setScalar(s);
             dummy.updateMatrix();
@@ -3067,7 +3063,7 @@ export class World {
       const canI = new THREE.InstancedMesh(canG, new THREE.MeshStandardMaterial({ color: 0x39432f, roughness: 1 }), positions.length);
       for (let i = 0; i < positions.length; i++) {
         const [x, z, s, rot] = positions[i];
-        dummy.position.set(x, 0, z); dummy.rotation.set(0, rot, 0); dummy.scale.setScalar(s);
+        dummy.position.set(x, this.hill ? this.hill.h(x, z) : 0, z); dummy.rotation.set(0, rot, 0); dummy.scale.setScalar(s);
         dummy.updateMatrix();
         trunkI.setMatrixAt(i, dummy.matrix); canI.setMatrixAt(i, dummy.matrix);
       }
@@ -3084,7 +3080,7 @@ export class World {
     for (const [ax, az] of [...CFG.world.appleTrees, ...CFG.appleTrees2, ...this.ring8Apples]) {   // update 37: +30
       if (am) {
         const t = am.model.clone();
-        t.position.set(ax, 0, az);
+        t.position.set(ax, this.hill ? this.hill.h(ax, az) : 0, az);
         this.scene.add(t);
       } else {
         const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2.6, 6),
@@ -3129,7 +3125,7 @@ export class World {
       if (x > -R.halfX - 0.8 && x < R.halfX + 0.8 && z > -R.halfZ - 0.8 && z < R.halfZ + 0.8) continue;
       if (Math.hypot(x - hx, z - hz) < 4) continue;
       if (r > 56 && rng() < 0.4) continue; // sparser under the canopy
-      dummy.position.set(x, 0, z);
+      dummy.position.set(x, this.hill ? this.hill.h(x, z) : 0, z);
       dummy.rotation.set(0, rng() * Math.PI, 0);
       const s = 0.7 + rng() * 0.8;
       dummy.scale.set(s, s * (0.8 + rng() * 0.55), s);
@@ -3169,7 +3165,7 @@ export class World {
       if (this.inNewLandmark(x, z, 2)) continue;              // forest + field edge only
       const dp = this.distToPath(x, z);
       if (dp > 12 && rng() < 0.55) continue;        // bias twigs toward the path
-      dummy.position.set(x, 0.05, z);
+      dummy.position.set(x, 0.05 + (this.hill ? this.hill.h(x, z) : 0), z);
       dummy.rotation.set(0, rng() * Math.PI, (rng() - 0.5) * 0.2);
       dummy.updateMatrix();
       inst.setMatrixAt(placed++, dummy.matrix);
@@ -3193,7 +3189,8 @@ export class World {
       [L.x + 2.2, L.z - 1.5, false, L.top + 0.14],   // the lighthouse chest
       ...(this.desert.chestSpots || []),             // update 36: rarer, on the dunes
     ];
-    for (const [x, z, knife, y = 0] of all) {
+    for (const [x, z, knife, y0 = 0] of all) {
+      const y = y0 || (this.hill ? this.hill.h(x, z) : 0);   // update 69: a forest chest sits on its hill
       let mesh;
       if (asset) mesh = asset.model.clone();
       else {
@@ -3222,7 +3219,7 @@ export class World {
         const d = 1.2 + this.rng() * 1.6;
         const x = ax + Math.cos(ang) * d, z = az + Math.sin(ang) * d;
         const m = new THREE.Mesh(appleGeo, appleMat);
-        m.position.set(x, 0.13, z);
+        m.position.set(x, 0.13 + (this.hill ? this.hill.h(x, z) : 0), z);
         this.scene.add(m);
         this.apples.push({ x, z, mesh: m, taken: false, tree: ti });
       }
