@@ -1,4 +1,4 @@
-import { CFG } from "./config.js?v=64";
+import { CFG } from "./config.js?v=65";
 
 // Generated clips (manifest ids) + procedural WebAudio synth for the small
 // feedback sounds. Mix per the audio reference: music quiet under sfx,

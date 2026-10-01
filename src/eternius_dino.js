@@ -1,7 +1,8 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=64";
-import { STR } from "../strings.js?v=64";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=64";
+import { CFG } from "./config.js?v=65";
+import { STR } from "../strings.js?v=65";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=65";
+import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 65: the hadrosaur comes rigged
 
 // ============================================================================
 // update 63: the hadrosaurus line — a trained duck-bill with a keeper at four stops (the castle's flank, the throne
@@ -12,6 +13,7 @@ import { E, D2R, cityWorld } from "./eternius_frame.js?v=64";
 // ============================================================================
 const LW = () => E().lower;
 
+const depth = (o) => { let d = 0; while (o.parent) { o = o.parent; d++; } return d; };
 export function buildDino(city) {
   const C = E(), D = C.dino, S = STR.et, g = city.g, scene = g.scene, A = g.assets;
   city.dinoStops = []; city.dinoVisited = city.dinoVisited || {};
@@ -19,13 +21,13 @@ export function buildDino(city) {
     const a = st.r !== undefined ? st.r * Math.cos(st.th * D2R) : st.a, b = st.r !== undefined ? st.r * Math.sin(st.th * D2R) : st.b;
     const [x, z] = cityWorld(a, b);
     let y = st.y;
-    if (y === undefined) {   // the castle's flank stands on the sand: find the ground under it
-      const rc = new THREE.Raycaster(new THREE.Vector3(x, 400, z), new THREE.Vector3(0, -1, 0), 0, 1000);
-      const hits = rc.intersectObjects(scene.children || [], true).filter((h) => h.object.visible && !(h.object.material && h.object.material.transparent));
-      y = hits.length ? hits[0].point.y : 0;
-    }
+    if (y === undefined) { let h = NaN; try { h = city.floorH(x, z, 30); } catch (e) { h = NaN; } y = Number.isFinite(h) ? h : C.levels.court; }   // update 65: the city's own floor height (the castle courtyard is at +2; a raycast found the sand under it)
     const face = st.face, fx = Math.cos(face * D2R), fb = Math.sin(face * D2R);   // the way the animal looks, in the city's (a, b) frame
-    const model = city.prims.prop("et_hadro", a, b, y, face, () => { const m = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.0, 8), new THREE.MeshStandardMaterial({ color: 0x6a7a3a })); const [mx, mz] = cityWorld(a, b); m.position.set(mx, y + 1.5, mz); scene.add(m); return m; }, 1);
+    // update 65: a rigged scan is cloned with its skeleton (a plain clone shares the bones); the tail bones are kept for the idle
+    let model = null; const asset = A.glb.et_hadro;
+    if (asset) { let skinned = false; asset.model.traverse((o) => { if (o.isSkinnedMesh) skinned = true; }); model = skinned ? skeletonClone(asset.model) : asset.model.clone(); model.position.set(x, y, z); model.rotation.y = C.grpYaw + face * D2R; scene.add(model);
+      const tail = []; model.traverse((o) => { if (o.isBone && /tail/i.test(o.name)) tail.push(o); }); tail.sort((p1, p2) => depth(p1) - depth(p2)); model.userData.tail = tail; model.userData.tailRest = tail.map((bn) => bn.quaternion.clone()); }
+    else { const m = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.0, 8), new THREE.MeshStandardMaterial({ color: 0x6a7a3a })); m.position.set(x, y + 1.5, z); scene.add(m); model = m; }
     if (model) { model.userData.home = { pos: model.position.clone(), rot: model.rotation.clone() }; if (y < -100) { city.lowerProps.push(model); model.visible = false; } }
     // the keeper, three metres to the animal's left, looking back along it
     const ka = a + 3.4 * Math.cos((face + 90) * D2R), kb = b + 3.4 * Math.sin((face + 90) * D2R);
@@ -102,7 +104,9 @@ export function dinoUpdate(city, dt, input) {
   // where you have been: stand within fourteen metres of a stop and it is yours to ride to
   if (city.dinoStops) for (const st of city.dinoStops) if (!city.dinoVisited[st.id] && Math.abs(p.pos.y - st.y) < 4 && Math.hypot(p.pos.x - st.x, p.pos.z - st.z) < 14) { city.dinoVisited[st.id] = true; g.ui.toast(S.dinoStopKnown.replace("%s", S.dinoStop[st.id])); }
   // update 64: alive while standing - the flanks swell with each breath, the weight shifts, the head drifts a little
-  if (city.dinoStops) { let i = 0; for (const st of city.dinoStops) { i++; const m = st.model, home = m && m.userData.home; if (!m || !home || (Rd && Rd.kind === "dino" && Rd.from === st)) continue; const t = city.t + i * 1.7; const br = Math.sin(t * 1.35); m.scale.set(1, 1 + 0.014 * br, 1 + 0.01 * br); m.position.y = home.pos.y + 0.02 * (br + 1); m.rotation.y = home.rot.y + 0.03 * Math.sin(t * 0.29) + 0.008 * Math.sin(t * 1.35); m.rotation.x = home.rot.x + 0.012 * Math.sin(t * 0.47); m.rotation.z = home.rot.z + 0.01 * Math.sin(t * 0.61); } }
+  // update 65: feet planted, nothing floats - a slow breath in the flanks and a gentle sway of the tail bones, that is all
+  if (city.dinoStops) { let i = 0; for (const st of city.dinoStops) { i++; const m = st.model, home = m && m.userData.home; if (!m || !home || (Rd && Rd.kind === "dino" && Rd.from === st)) continue; const t = city.t + i * 1.7; const br = 0.5 + 0.5 * Math.sin(t * 1.1); m.scale.set(1 + 0.006 * br, 1 + 0.012 * br, 1 + 0.012 * br); m.position.copy(home.pos); m.rotation.copy(home.rot);
+    const tail = m.userData.tail; if (tail && tail.length) { const rest = m.userData.tailRest, q = new THREE.Quaternion(), ax = new THREE.Vector3(0, 1, 0); for (let k = 0; k < tail.length; k++) { q.setFromAxisAngle(ax, 0.028 * Math.sin(t * 0.7 - k * 0.5)); tail[k].quaternion.copy(rest[k]).multiply(q); } } } }
   if (!Rd || Rd.kind !== "dino" || !input) return;   // the city's own update passes no input: the ride is driven from updateRide
   Rd.t += dt;
   const m = Rd.from.model, home = m && m.userData.home;

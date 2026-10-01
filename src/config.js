@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=64";
+export const ASSET_V = "?v=65";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -312,6 +312,7 @@ export const CFG = {
 
   food: {
     apple:         { hu: 10, special: "appleEnergy" },
+    green_apple:   { hu: 10, special: "appleEnergy" },   // update 65: the deep trees' apple - its own item, the same meal for now
     cooked_pork:   { hu: 10 },
     cooked_chicken:{ hu: 10 },
     cooked_eggs:   { hu: 10, en: 5 },
@@ -705,7 +706,7 @@ export const CFG = {
     stalls: [
       { id: "food", name: "Neferu's kitchen", kind: "female", r: 44, th: -50, limit: 5,   // update 42: five of each a day color: 0x2f7a3a, wares: 0xb0402a, blurb: "foodBlurb", lines: "foodLines",
         sells: ["apple", "egg", "blueberries", "cooked_pork", "cooked_chicken", "chocolate", "energy_drink", "fill_water"],   // update 63: the fish and the rod moved to the fishing stall
-        buys: { apple: 1, egg: 1, blueberries: 1, lemon: 1, raw_pork: 1, raw_chicken: 1, raw_fish: 1, raw_beef: 1, raw_goat: 1, raw_wolf: 1, cooked_pork: 2, cooked_chicken: 2, cooked_fish: 2, cooked_eggs: 2, cooked_beef: 3, cooked_goat: 3, cooked_wolf: 3, cooked_trex: 5, chocolate: 2, bowl_yogurt: 3, bowl_yogurt_blueberries: 5 } },
+        buys: { apple: 1, green_apple: 1, egg: 1, blueberries: 1, lemon: 1, raw_pork: 1, raw_chicken: 1, raw_fish: 1, raw_beef: 1, raw_goat: 1, raw_wolf: 1, cooked_pork: 2, cooked_chicken: 2, cooked_fish: 2, cooked_eggs: 2, cooked_beef: 3, cooked_goat: 3, cooked_wolf: 3, cooked_trex: 5, chocolate: 2, bowl_yogurt: 3, bowl_yogurt_blueberries: 5 } },
       { id: "tools", name: "Khamet's tools", kind: "male", r: 44, th: -18, color: 0x8a5a2a, wares: 0x555a60, blurb: "toolsBlurb", lines: "toolsLines",
         sells: ["hammer", "rope", "torch", "tinderbox", "bandage", "needle", "thread", "arrow"],   // update 63: the knife, the axe and the bowl moved to the resource stall   // update 40: no climbing anchor
         buys: { knife: 3, hammer: 4, axe: 10, rope: 1, torch: 1, tinderbox: 2, bandage: 1, needle: 1, thread: 1, arrow: 1, pestle: 4, spear: 6, bowl: 1, crossbow: 40 } },

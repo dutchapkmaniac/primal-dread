@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=64";
+import { CFG } from "./config.js?v=65";
 const VEIN_BURY = { et_vein1: 0.5, et_vein3: 0.3, et_vein2: 0.8 };   // update 60: how much of each vein model's height sits inside the rock (its grey base); vein1 = the double crystal, vein3 = a single spike with a tall base, vein2 = a slab with crystals along its edges (not used on the walls - its grey face shows whichever way it is turned)
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=64";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=65";
 
 // ============================================================================
 // update 50: FLOOR -1 — the park under the city, 200 m down. The river leaves the ground floor through the
@@ -276,7 +276,7 @@ export function buildLower(city, grp) {
       if (m && useApples) { m.updateMatrixWorld(true); let seed = (Math.round(t) * 7919 + Math.round(rr) * 31) | 0; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }; const goldK = -1; for (let k = 0; k < perTree; k++) { const P0 = crownPts[Math.floor(rnd() * crownPts.length)]; wp.set(P0[0], P0[1], P0[2]).applyMatrix4(m.matrixWorld); mtx.makeTranslation(wp.x, wp.y, wp.z); const isGold = rnd() < 0.01 || k === goldK; if (isGold && ki < goldI.count) goldI.setMatrixAt(ki++, mtx); else if (gi < green.count) green.setMatrixAt(gi++, mtx); city.lowerApples.push({ x: wp.x, y: wp.y, z: wp.z, gold: isGold }); } }
       // lantern light: three warm lights round the trunk where the lanterns hang (the pool of real lights follows you)
       for (let k = 0; k < 3; k++) { const ang = (k * 120 + t) * D2R; city.emit(grp, b + Math.sin(ang) * 4.5, Y.park + 10.5, a + Math.cos(ang) * 4.5, 0xffc35a, 2.6, 24, {}); }
-      obst(a, b, 5.6);   // update 55: the trunk's own girth - nobody stands inside it, and the way between two trees stays open
+      obst(a, b, 4.8);   // update 65: 4.8 - the roots arch wide and 5.6 felt like an unseen wall; the apples lie from 6.2 m out   // update 55: the trunk's own girth - nobody stands inside it, and the way between two trees stays open
       city.lowerTrees.push({ a, b, th: t, r: rr, model: m });
     }
     if (useApples) { green.count = gi; goldI.count = ki; green.instanceMatrix.needsUpdate = true; goldI.instanceMatrix.needsUpdate = true; for (const im2 of [green, goldI]) { if (im2.computeBoundingSphere) { im2.computeBoundingSphere(); im2.frustumCulled = true; } else im2.frustumCulled = false; scene.add(im2); city.lowerProps.push(im2); im2.visible = false; } city.lowerAppleMeshes = [green, goldI]; }
@@ -285,8 +285,8 @@ export function buildLower(city, grp) {
     { const gaGeo = new THREE.SphereGeometry(0.14, 7, 5); let sg = 9173; const rg = () => { sg = (sg * 1103515245 + 12345) & 0x7fffffff; return sg / 0x7fffffff; };
       city.groundApples = []; city.groundAppleMats = { green: appleM, gold: goldM };
       for (const [t, rr] of LW.trees) { const [ta, tb] = pt(rr, t); const slots = [];
-        for (let k = 0; k < 4; k++) { const ang = rg() * Math.PI * 2, rad = 3.6 + rg() * 3.0; const a = ta + Math.cos(ang) * rad, b = tb + Math.sin(ang) * rad, gold = rg() < 0.01; const m = new THREE.Mesh(gaGeo, gold ? goldM : appleM); m.position.set(b, Y.park + 0.42, a); m.rotation.set(rg() * 0.6, rg() * 6.28, 0); grp.add(m); city.keepExtra.push(m); city.lowerProps.push(m); m.visible = false; slots.push({ a, b, mesh: m, gold, taken: false }); }
-        city.groundApples.push({ slots, lastT: 0 }); } }
+        for (let k = 0; k < 4; k++) { const ang = rg() * Math.PI * 2, rad = 6.2 + rg() * 2.4; const a = ta + Math.cos(ang) * rad, b = tb + Math.sin(ang) * rad, gold = rg() < 0.01; const m = new THREE.Mesh(gaGeo, gold ? goldM : appleM); m.position.set(b, Y.park + 0.42, a); m.rotation.set(rg() * 0.6, rg() * 6.28, 0); grp.add(m); city.keepExtra.push(m); city.lowerProps.push(m); m.visible = false; slots.push({ a, b, mesh: m, gold, taken: false }); }
+        city.groundApples.push({ slots, lastT: 0, ta, tb }); } }
   }
 
   // ---------------- update 53: the homes - the same house fronts as upstairs along every wall of this floor ----------------

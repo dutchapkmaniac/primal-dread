@@ -211,6 +211,7 @@ export const STR = {
     bandage:      { name: "Bandage",       desc: "+10% health" },
     energy_drink: { name: "Energy drink",  desc: "+10% energy" },
     apple:        { name: "Apple",         desc: "+10% food, boosts low energy to 25%" },
+    green_apple:  { name: "Green apple",   desc: "From the deep trees. +10% food, boosts low energy to 25%" },   // update 65
     raw_pork:     { name: "Raw pork",      desc: "Cook it in a kitchen" },
     cooked_pork:  { name: "Cooked pork",   desc: "+10% food" },
     raw_chicken:  { name: "Raw chicken",   desc: "Cook it in a kitchen" },

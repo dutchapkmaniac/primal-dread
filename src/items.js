@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=64";
-import { STR } from "../strings.js?v=64";
+import { CFG, ASSET_V } from "./config.js?v=65";
+import { STR } from "../strings.js?v=65";
 
 // Icon sheet: 4x4 grid, 13 icons, generated on a blue key background.
 // Sliced + chroma-keyed at load time into per-item canvases.
@@ -92,7 +92,7 @@ export async function loadIcons() {
     ["fossil", "./assets/ui_fossil.png"], ["gold_statuette", "./assets/ui_statuette.png"], ["vault_key", "./assets/ui_vaultkey.png"],
     ["et_dagger", "./assets/ui_etdagger.png"], ["et_sword", "./assets/ui_etsword.png"], ["et_spear", "./assets/ui_etspear.png"],
     // update 63: the mine, the fishing stall, the deep trees
-    ["pickaxe", "./assets/ui_pickaxe.png"], ["et_pickaxe", "./assets/ui_etpickaxe.png"], ["emerald", "./assets/ui_emerald.png"], ["bait", "./assets/ui_bait.png"], ["golden_apple", "./assets/ui_goldenapple.png"],
+    ["pickaxe", "./assets/ui_pickaxe.png"], ["et_pickaxe", "./assets/ui_etpickaxe.png"], ["emerald", "./assets/ui_emerald.png"], ["bait", "./assets/ui_bait.png"], ["golden_apple", "./assets/ui_goldenapple.png"], ["green_apple", "./assets/ui_greenapple.png"],
   ].map(async ([id, url]) => {
     const im = await loadImage(url);
     if (!im) { icons[id] = fallbackIcon(id); return; }
@@ -155,7 +155,7 @@ function fallbackIcon(id) {
     scroll_spear: "#c9b98a", scroll_arrows: "#c9b98a", scroll_silver_arrows: "#c9ced4",
     scroll_pestle: "#c9b98a", scroll_climb: "#9ab06a", scroll_crossbow_use: "#c9a06a",
     cooked_beef: "#7a4a26", raw_beef: "#a8303a", blueberries: "#3a4a8c", lemon: "#d8c23a", bowl: "#a08a5c",
-    bowl_milk: "#e8e4d8", bowl_yogurt: "#ece6d4", bowl_yogurt_blueberries: "#8a7aa8", scroll_yogurt: "#e0d8b0", pickaxe: "#6a6a70", et_pickaxe: "#d9ad2e", emerald: "#2fd27a", bait: "#8a6a4a", golden_apple: "#e8b830",
+    bowl_milk: "#e8e4d8", bowl_yogurt: "#ece6d4", bowl_yogurt_blueberries: "#8a7aa8", scroll_yogurt: "#e0d8b0", pickaxe: "#6a6a70", et_pickaxe: "#d9ad2e", emerald: "#2fd27a", bait: "#8a6a4a", golden_apple: "#e8b830", green_apple: "#7cc43a",
     trex_dagger: "#e8dcc4", holy_water: "#f0e2b0", unholy_water: "#4a1018", unholy_tiara: "#3a3438",
     imp_tooth: "#3a3a3c", imp_dagger: "#2c2c30",
     fossil: "#b09a78", gold_statuette: "#e0b230", vault_key: "#d9ad2e", et_dagger: "#e0b230", et_sword: "#e0b230", et_spear: "#e0b230",   // update 39

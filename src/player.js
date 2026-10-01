@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=64";
-import { STR } from "../strings.js?v=64";
-import { Inventory } from "./items.js?v=64";
+import { CFG } from "./config.js?v=65";
+import { STR } from "../strings.js?v=65";
+import { Inventory } from "./items.js?v=65";
 
 export class Player {
   constructor(camera, ctx) {
@@ -474,7 +474,7 @@ export class Player {
       if (f.hp) this.heal(f.hp);
       if (f.special === "appleEnergy" && this.en < 25) this.en = 25;
       game.audio.sEat();
-      let msg = id === "apple" ? STR.ateApple : `${STR.items[id].name} — +${f.hu}%${f.hp ? `, +${f.hp}% health` : ""}`;
+      let msg = id === "apple" || id === "green_apple" ? STR.ateApple : `${STR.items[id].name} — +${f.hu}%${f.hp ? `, +${f.hp}% health` : ""}`;
       // update 29: a bowl dish hands the EMPTY bowl back — or drops it when the pack is full
       if (f.returns) {
         if (this.inv.add(f.returns, 1)) msg += ` — ${STR.bowlBack}`;
