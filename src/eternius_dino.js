@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=63";
-import { STR } from "../strings.js?v=63";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=63";
+import { CFG } from "./config.js?v=64";
+import { STR } from "../strings.js?v=64";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=64";
 
 // ============================================================================
 // update 63: the hadrosaurus line — a trained duck-bill with a keeper at four stops (the castle's flank, the throne
@@ -101,6 +101,8 @@ export function dinoUpdate(city, dt, input) {
   const g = city.g, Rd = g.ride, p = g.player, D = E().dino, S = STR.et;
   // where you have been: stand within fourteen metres of a stop and it is yours to ride to
   if (city.dinoStops) for (const st of city.dinoStops) if (!city.dinoVisited[st.id] && Math.abs(p.pos.y - st.y) < 4 && Math.hypot(p.pos.x - st.x, p.pos.z - st.z) < 14) { city.dinoVisited[st.id] = true; g.ui.toast(S.dinoStopKnown.replace("%s", S.dinoStop[st.id])); }
+  // update 64: alive while standing - the flanks swell with each breath, the weight shifts, the head drifts a little
+  if (city.dinoStops) { let i = 0; for (const st of city.dinoStops) { i++; const m = st.model, home = m && m.userData.home; if (!m || !home || (Rd && Rd.kind === "dino" && Rd.from === st)) continue; const t = city.t + i * 1.7; const br = Math.sin(t * 1.35); m.scale.set(1, 1 + 0.014 * br, 1 + 0.01 * br); m.position.y = home.pos.y + 0.02 * (br + 1); m.rotation.y = home.rot.y + 0.03 * Math.sin(t * 0.29) + 0.008 * Math.sin(t * 1.35); m.rotation.x = home.rot.x + 0.012 * Math.sin(t * 0.47); m.rotation.z = home.rot.z + 0.01 * Math.sin(t * 0.61); } }
   if (!Rd || Rd.kind !== "dino" || !input) return;   // the city's own update passes no input: the ride is driven from updateRide
   Rd.t += dt;
   const m = Rd.from.model, home = m && m.userData.home;

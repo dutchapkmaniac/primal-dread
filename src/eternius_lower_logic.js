@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=63";
-import { STR } from "../strings.js?v=63";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=63";
+import { CFG } from "./config.js?v=64";
+import { STR } from "../strings.js?v=64";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=64";
 
 // ============================================================================
 // update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat
@@ -150,6 +150,7 @@ export function lowerInteract(city, consider, p) {
     if (near(cell.bedA, cell.bedB, 3.0)) { const [x, z] = cityWorld(cell.bedA, cell.bedB); consider(x, z, p.pos.y, `${S.jailSleep} [${STR.interact}]`, () => { if (!g.isNight) return g.ui.toast(STR.sleepNotNight); g.sleep().then(() => city.releaseJail(true)); }); }
     const [qa, qb] = cell.rm.P(0.6, 0); if (near(qa, qb, 2.6)) { const [x, z] = cityWorld(qa, qb); consider(x, z, p.pos.y, `${S.callJailer.replace("%n", city.jail.bail)} [${STR.interact}]`, () => city.openJailer()); }
   }
+  if (city.groundApples && Math.abs(p.pos.y - L.y.park) < 3) for (const tr of city.groundApples) for (const sl of tr.slots) { if (sl.taken || !near(sl.a, sl.b, 2.6)) continue; const [x, z] = cityWorld(sl.a, sl.b); consider(x, z, p.pos.y, `${STR.pickApple} [${STR.interact}]`, () => { if (!p.inv.add(sl.gold ? "golden_apple" : "apple", 1)) return g.ui.toast(STR.inventoryFull); sl.taken = true; sl.mesh.scale.setScalar(0.001); if (!tr.lastT) tr.lastT = city.t; g.audio.sPickup(); g.ui.renderHotbar(p.inv); if (sl.gold) g.ui.toast(S.goldenApple); }); }   // update 64
   if (city.lowerVeins && Math.abs(p.pos.y - L.y.low) < 3) for (const v of city.lowerVeins) {
     if (!v.model || v.left <= 0 || !near(v.a, v.b, 3.6)) continue;
     const sel = p.inv.selected(), [x, z] = cityWorld(v.a, v.b), M = city.mining;
@@ -164,6 +165,7 @@ export function lowerUpdate(city, dt) {
   if (city.lowerFount && city.lowerFount.material.map) city.lowerFount.material.map.offset.set(t * 0.03, t * 0.02);
   if (city.rideWater && city.rideWater.material.map) city.rideWater.material.map.offset.set(-t * 0.25, 0);
   if (city.lowerBeam) city.lowerBeam.material.opacity = 0.011 + Math.sin(t * 0.5) * 0.004;   // update 59: barely there - a brighter beam read as a pale wall from the east stair
+  if (city.groundApples) for (const tr of city.groundApples) { if (!tr.slots.some((sl) => sl.taken)) continue; if (t - tr.lastT < 120) continue; const sl = tr.slots.find((x) => x.taken); sl.taken = false; sl.gold = Math.random() < 0.01; sl.mesh.material = sl.gold ? city.groundAppleMats.gold : city.groundAppleMats.green; sl.mesh.scale.setScalar(1); tr.lastT = t; }   // update 64: one apple back every two minutes under a tree that lost some
   if (city.gemPulse) { city.gemPulse.mat.emissiveIntensity = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(t * 2.1)); city.gemPulse.mesh.rotation.y += 0.004; }   // update 58: the shop's crystal breathes light
 }
 // ---------------- the boat ride ----------------

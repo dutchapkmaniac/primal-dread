@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=63";
-import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=63";
+import { CFG } from "./config.js?v=64";
+import { E, D2R, cityWorld, lakeNorm, lakeOutline } from "./eternius_frame.js?v=64";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";   // update 41
-import { buildLower } from "./eternius_lower.js?v=63";   // update 50: floor -1
+import { buildLower } from "./eternius_lower.js?v=64";   // update 50: floor -1
 
 // ============================================================================
 // update 40: everything that is BUILT in Eternius City — the mountain, the castle,
@@ -1327,6 +1327,18 @@ function buildStall(city, st, grp, box, sand, gold, goldPlain, goldBright, gem, 
     for (const [v, col] of [[-2.0, 0x2fdc5a], [-1.0, 0xd9412a], [1.0, 0x4a7ee6], [2.0, 0xe8e8ff]]) { const [pa, pb] = P(0, v); const gm = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.5, roughness: 0.2 })); gm.position.set(pb, y + 1.48, pa); grp.add(gm); bx(0.5, 0.1, 0.5, 0, y + 1.29, v, goldPlain); }
     put("trexskel", -2.35, 0, 2.75, Math.PI / 2, 0.12, 0xf0e6c8); put("wolfstatue", -2.3, -2.2, 2.75, 0, 0.35);   // update 42: no giant dagger on the counter
     const [ua, ub] = P(-2.3, 2.2); const urn = new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0.15, 0), new THREE.Vector2(0.35, 0.3), new THREE.Vector2(0.25, 0.8), new THREE.Vector2(0.3, 1.0)], 12), goldBright); urn.position.set(ub, y + 2.7, ua); grp.add(urn);
+  } else if (st.id === "fish") {   // update 64: Ipuy's catch - a Higgsfield crate of fish under a net on the counter, a smaller one on the shelf, a rod at the post
+    put("et_fishcrate", 0.2, -1.1, 1.24, Math.PI, 1.25) || bx(0.9, 0.5, 0.7, 0, y + 1.5, -1.1, dark);
+    put("et_fishcrate", -2.3, 1.5, 2.75, -Math.PI / 2, 0.7);
+    { const [ra, rb] = P(0.4, 2.3); const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 3.4, 6), dark); rod.position.set(rb, y + 2.3, ra); rod.rotation.z = 0.32; grp.add(rod); }
+    for (let k = 0; k < 3; k++) ball(-2.2, -2.1 + k * 0.6, 1.75, 0.14, 0x7a97a0);
+    put("barrel", -1.2, -2.8, 0, 0, 0.8);
+  } else if (st.id === "wood") {   // update 64: Hori's timber - a Higgsfield log pile with an axe in a stump beside the stall, the axe and branches on the counter, bowls and split wood on the shelf
+    put("et_woodpile", -1.4, 2.7, 0, Math.PI, 1.0) || bx(1.2, 1.0, 1.2, -1.4, y + 0.5, 2.7, dark);
+    put("axe3d", 0.2, -1.6, 1.3, Math.PI / 2, 1.1);
+    for (let k = 0; k < 4; k++) bx(0.14, 0.14, 0.8, 0, y + 1.32 + (k > 1 ? 0.14 : 0), -0.3 + (k % 2) * 0.17, dark);
+    for (let k = 0; k < 3; k++) bx(0.36, 0.1, 0.36, -2.2, y + 1.75 + k * 0.11, 1.5, dark);
+    for (let k = 0; k < 3; k++) bx(0.12, 0.12, 0.9, -2.2, y + 1.75, -2.0 + k * 0.45, dark);
   } else {
     put("anvil", -0.3, -3.2, 0, Math.PI / 2, 1.0); put("etsword3d", 0, -1.4, 1.42, 0, 0.9); put("etspear3d", 0, 1.4, 1.42, 0, 0.8);   // update 42: no dagger, the blades a little smaller
     for (let k = 0; k < 3; k++) bx(0.16, 0.16, 0.7, -2.2, y + 1.75, -1.4 + k * 1.4, gold);   // ingots

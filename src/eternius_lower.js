@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=63";
+import { CFG } from "./config.js?v=64";
 const VEIN_BURY = { et_vein1: 0.5, et_vein3: 0.3, et_vein2: 0.8 };   // update 60: how much of each vein model's height sits inside the rock (its grey base); vein1 = the double crystal, vein3 = a single spike with a tall base, vein2 = a slab with crystals along its edges (not used on the walls - its grey face shows whichever way it is turned)
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=63";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=64";
 
 // ============================================================================
 // update 50: FLOOR -1 — the park under the city, 200 m down. The river leaves the ground floor through the
@@ -257,7 +257,7 @@ export function buildLower(city, grp) {
         crownPts = pts; city.treeCrownPts = pts;
       }
     } catch (e) { console.warn("tree fix", e); } }
-    const appleGeo = new THREE.SphereGeometry(0.12, 10, 7); appleGeo.scale(1, 0.9, 1);
+    const appleGeo = new THREE.SphereGeometry(0.12, 6, 5); appleGeo.scale(1, 0.9, 1);   // update 64: half the triangles - ten thousand of these
     const appleM = new THREE.MeshStandardMaterial({ color: 0xa4e83c, roughness: 0.35, emissive: 0x3c7a12, emissiveIntensity: 0.45 });
     const goldM = new THREE.MeshStandardMaterial({ color: 0xffd24a, metalness: 0.85, roughness: 0.3, emissive: 0x9a6a10, emissiveIntensity: 0.6 });
     const perTree = 380, nT = LW.trees.length, useApples = !!(crownPts && crownPts.length > 50);   // update 59: apple-sized apples on the leaves' surface, one golden apple on every third tree
@@ -279,7 +279,14 @@ export function buildLower(city, grp) {
       obst(a, b, 5.6);   // update 55: the trunk's own girth - nobody stands inside it, and the way between two trees stays open
       city.lowerTrees.push({ a, b, th: t, r: rr, model: m });
     }
-    if (useApples) { green.count = gi; goldI.count = ki; green.instanceMatrix.needsUpdate = true; goldI.instanceMatrix.needsUpdate = true; for (const im2 of [green, goldI]) { im2.frustumCulled = false; scene.add(im2); city.lowerProps.push(im2); im2.visible = false; } city.lowerAppleMeshes = [green, goldI]; }
+    if (useApples) { green.count = gi; goldI.count = ki; green.instanceMatrix.needsUpdate = true; goldI.instanceMatrix.needsUpdate = true; for (const im2 of [green, goldI]) { if (im2.computeBoundingSphere) { im2.computeBoundingSphere(); im2.frustumCulled = true; } else im2.frustumCulled = false; scene.add(im2); city.lowerProps.push(im2); im2.visible = false; } city.lowerAppleMeshes = [green, goldI]; }
+    // update 64: apples lying on the soil round every trunk - four a tree, picked up like the forest's, one in a hundred golden
+    // at every spawn, one back every two minutes (eternius_lower_logic.js: lowerInteract picks, lowerUpdate respawns)
+    { const gaGeo = new THREE.SphereGeometry(0.14, 7, 5); let sg = 9173; const rg = () => { sg = (sg * 1103515245 + 12345) & 0x7fffffff; return sg / 0x7fffffff; };
+      city.groundApples = []; city.groundAppleMats = { green: appleM, gold: goldM };
+      for (const [t, rr] of LW.trees) { const [ta, tb] = pt(rr, t); const slots = [];
+        for (let k = 0; k < 4; k++) { const ang = rg() * Math.PI * 2, rad = 3.6 + rg() * 3.0; const a = ta + Math.cos(ang) * rad, b = tb + Math.sin(ang) * rad, gold = rg() < 0.01; const m = new THREE.Mesh(gaGeo, gold ? goldM : appleM); m.position.set(b, Y.park + 0.42, a); m.rotation.set(rg() * 0.6, rg() * 6.28, 0); grp.add(m); city.keepExtra.push(m); city.lowerProps.push(m); m.visible = false; slots.push({ a, b, mesh: m, gold, taken: false }); }
+        city.groundApples.push({ slots, lastT: 0 }); } }
   }
 
   // ---------------- update 53: the homes - the same house fronts as upstairs along every wall of this floor ----------------
@@ -352,7 +359,7 @@ export function buildLower(city, grp) {
   // brick wall that stood in the middle is gone and every corner in front of the counter is yours to walk
   {
     const rm = carve(LW.storeTh, R, Y.low, "store", 10, 5.5, 5.2, { doorHw: 2.2, doorH: 4.8 });
-    { const [ca, cb] = rm.P(6.6, 0); const cm = prop("et_counter", ca, cb, Y.low, LW.storeTh + 180, () => { box(7.0, 1.1, 1.3, cb, Y.low + 0.55, ca, sand(2, 1), rm.ry + Math.PI / 2); return box(7.3, 0.14, 1.6, cb, Y.low + 1.17, ca, gold, rm.ry + Math.PI / 2); }); if (cm && A.glb.et_counter) { cm.scale.x *= 2.2; for (const sd of [-1, 1]) { const [ea, eb] = rm.P(6.6, sd * (2.1 + (rm.hw - 2.1) / 2)); box(rm.hw - 2.1 + 0.2, 1.05, 1.1, eb, Y.low + 0.52, ea, sand(2, 1), rm.ry + Math.PI / 2); box(rm.hw - 2.1 + 0.3, 0.12, 1.3, eb, Y.low + 1.1, ea, gold, rm.ry + Math.PI / 2); } } wallSeg(...rm.P(6.6, -rm.hw), ...rm.P(6.6, rm.hw), 0.9); }   // the Higgsfield counter in the middle (stretched along the room), plain sandstone counter ends to the walls
+    { const [ca, cb] = rm.P(6.6, 0); const cm = prop("et_counter", ca, cb, Y.low, LW.storeTh + 180, () => { box(7.0, 1.1, 1.3, cb, Y.low + 0.55, ca, sand(2, 1), rm.ry + Math.PI / 2); return box(7.3, 0.14, 1.6, cb, Y.low + 1.17, ca, gold, rm.ry + Math.PI / 2); }); if (cm && A.glb.et_counter) { cm.scale.x *= 2.2; for (const sd of [-1, 1]) { const [ea, eb] = rm.P(6.6, sd * (2.1 + (rm.hw - 2.1) / 2)); box(rm.hw - 2.1 + 0.2, 1.05, 1.1, eb, Y.low + 0.52, ea, sand(2, 1), rm.ry + Math.PI / 2); box(rm.hw - 2.1 + 0.3, 0.12, 1.3, eb, Y.low + 1.1, ea, gold, rm.ry + Math.PI / 2); } } wallSeg(...rm.P(6.6, -rm.hw), ...rm.P(6.6, rm.hw), 0.5); rm.front = rm.P(5.7, 0); rm.frontW = cityWorld(...rm.front); }   // update 64: a thinner counter collider and the trade point at its front   // the Higgsfield counter in the middle (stretched along the room), plain sandstone counter ends to the walls
     { const [ra, rb] = rm.P(rm.depth - 0.5, 0); prop("et_pickrack", ra, rb, Y.low + 1.2, LW.storeTh + 180, () => box(4.0, 2.2, 0.3, rb, Y.low + 2.4, ra, w.mat("t_darkwood", 2, 1, 0x4a3320), rm.ry + Math.PI / 2)); }
     { const [sa2, sb2] = rm.P(2.6, -(rm.hw - 1.5)); prop("et_emstatue", sa2, sb2, Y.low, LW.storeTh + 180, () => { const g2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.5), gem); g2.position.set(sb2, Y.low + 1.4, sa2); grp.add(g2); return g2; }); obst(sa2, sb2, 0.8); }
     { const [ga, gb] = rm.P(2.6, rm.hw - 1.5); const gc = prop("et_gemcase", ga, gb, Y.low, LW.storeTh + 180, () => { const g2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.4), gem); g2.position.set(gb, Y.low + 1.2, ga); grp.add(g2); return g2; }); obst(ga, gb, 0.8);
@@ -444,7 +451,7 @@ export function buildLower(city, grp) {
       for (const id of ids) { const src = A.glb[id].model; let mesh = null; src.traverse((o) => { if (o.isMesh && !mesh) mesh = o; }); if (!mesh) continue; src.updateMatrixWorld(true); const geo = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld); const mat = mesh.material.clone(); mat.fog = false; if (mat.map) { mat.emissiveMap = mat.map; mat.emissive = new THREE.Color(0xffffff); mat.emissiveIntensity = 0.14; }
         const per = Math.round(460 / ids.length), inst = new THREE.InstancedMesh(geo, mat, per); let cnt = 0;
         for (let k2 = 0; k2 < per; k2++) { const d = 2.5 + rnd() * (M.len + 30), u = Math.min(1, d / pathLen), ang = 0.1 + rnd() * (Math.PI - 0.2); const p = path.getPointAt(u), t = path.getTangentAt(u), rt = new THREE.Vector3(t.z, 0, -t.x).normalize(); const px = -(hw + 0.5) * Math.cos(ang), py = -0.3 + (h + 0.3) * Math.pow(Math.sin(ang), 0.85); if (py < 0.6) continue; const pos = p.clone().addScaledVector(rt, px); pos.y += py; const axis = p.clone(); axis.y += h * 0.45; const inward = axis.sub(pos).normalize(); const sc = 0.55 + rnd() * 1.35; pos.addScaledVector(inward, -sc * 0.42); tmp.position.copy(pos); tmp.up.set(0, 1, 0); tmp.lookAt(pos.clone().add(inward)); tmp.rotateZ(rnd() * Math.PI * 2); tmp.rotateX((rnd() - 0.5) * 0.6); tmp.scale.setScalar(sc); tmp.updateMatrix(); inst.setMatrixAt(cnt++, tmp.matrix); }
-        inst.count = cnt; inst.instanceMatrix.needsUpdate = true; inst.frustumCulled = false; inst.castShadow = false; grp.add(inst); city.keepExtra.push(inst); city.lowerProps.push(inst); inst.visible = false; } }
+        inst.count = cnt; inst.instanceMatrix.needsUpdate = true; if (inst.computeBoundingSphere) { inst.computeBoundingSphere(); inst.frustumCulled = true; } else inst.frustumCulled = false; inst.castShadow = false; grp.add(inst); city.keepExtra.push(inst); city.lowerProps.push(inst); inst.visible = false; } }
     city.lowerMine = { path, len: M.len, hw, h, th: MT, total: pathLen, samples: path.getSpacedPoints(120) };
     // the mouth in the gallery wall: rock round the tunnel's own profile, a gold frame following it, timber posts, lampposts
     {

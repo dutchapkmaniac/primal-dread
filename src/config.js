@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=63";
+export const ASSET_V = "?v=64";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -579,7 +579,7 @@ export const CFG = {
     et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55
     et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57
     et_pickaxe: 0.24,
-    et_hadro: 4.6, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -694,11 +694,12 @@ export const CFG = {
     advisor: { a: -134, b: 8.5 },   // update 43: beside the dais, not in it
     innPrice: 5, fishTime: 4, vaultTasks: 3,
     // update 63: stealing and the cells, the mine store, mining, the house for sale, the hadrosaurus line
-    theft: { seen0: 0.3, seenStep: 0.1, seenMax: 0.9, forget: 240, chaseR: 60, bailSteal: 25, bailGuard: 50, jailHp: 10, nightIn: 180, hpAfter: 50 },
+    theft: { seen0: 0.3, seenStep: 0.1, seenMax: 0.9, forget: 240, chaseR: 60, bailSteal: 25, bailGuard: 50, jailHp: 10, nightIn: 180, hpAfter: 70 },   // update 64: seventy percent of your blood back in the cell, however you got there
     mineStall: { id: "mine", name: "Bakenre, mine store", sells: ["emerald", "pickaxe", "et_pickaxe"], limits: { emerald: 2 }, buys: {}, blurb: "mineBlurb" },
     mining: { tPlain: 6, tEternal: 2, perVein: 3, regrow: 300, plainUses: 15 },
     house: { price: 2500 },
-    dino: { ride: 2, ticket: 10, walk: 2.2, walkFor: 2.8, fade: 0.8, arrive: 0.6, saddle: 2.55, stops: [{ id: "castle", a: 228, b: -67, face: 180 }, { id: "throne", r: 105, th: 170, y: 8, face: 80 }, { id: "market", r: 44, th: 120, y: -4, face: 30, tickets: true }, { id: "park", r: 38, th: -130, y: -204, face: -40 }] },
+    // update 64: the castle stop stands in the courtyard by the palms, on the right
+    dino: { ride: 2, ticket: 10, walk: 2.2, walkFor: 2.8, fade: 0.8, arrive: 0.6, saddle: 2.55, stops: [{ id: "castle", a: 214, b: 36, face: 0 }, { id: "throne", r: 105, th: 170, y: 8, face: 80 }, { id: "market", r: 44, th: 120, y: -4, face: 30, tickets: true }, { id: "park", r: 38, th: -130, y: -204, face: -40 }] },
     stride: { price: 35, drain: 0.5, r: 48, th: 150 },   // update 49: the sorcerer's Long Stride — run energy drains at `drain` inside the mountain, hallway and castle; he stands at (r, theta) on the plaza
     guard: { hp: 450, dmg: 14, warnDmg: 10, speed: 3.4, hitEvery: 1.3, reach: 2.6, chaseR: 45, coins: [8, 15], respawn: 20, atkDur: 0.8, beastHits: 3 },   // update 44: ten Eternal-dagger blows, back on duty after 20 s, three strikes fell a desert hunter   // update 42: strike a guard once and he warns you, twice and it is a fight
     stalls: [

@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=63";
-import { STR } from "../strings.js?v=63";
-import { Creature } from "./entities.js?v=63";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=63";
+import { CFG } from "./config.js?v=64";
+import { STR } from "../strings.js?v=64";
+import { Creature } from "./entities.js?v=64";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=64";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 58: the miner comes rigged and animated
-import { iconUrl } from "./items.js?v=63";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=63";
+import { iconUrl } from "./items.js?v=64";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=64";
 const MINER_FWD = 1;   // update 60: the miner rig's forward axis (+1 = the model faces +z, as the props do)
-import { buildCity } from "./eternius_build.js?v=63";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=63";   // update 50
-import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=63";   // update 63: the hadrosaurus line
+import { buildCity } from "./eternius_build.js?v=64";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=64";   // update 50
+import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=64";   // update 63: the hadrosaurus line
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -802,7 +802,7 @@ export class EterniusCity {
       else if (n.role === "advisor") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openAdvisor(n));
       else if (n.role === "doctor") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openDoctor(n));   // update 63
       else if (n.role === "realtor") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.openRealtor(n));
-      else if (n.role === "minekeeper") consider(n.x, n.z, n.y, `${S.trade} ${n.name} [${STR.interact}]`, () => this.openStall(C.mineStall));
+      else if (n.role === "minekeeper") { const F = this.lowerStore && this.lowerStore.frontW; consider(F ? F[0] : n.x, F ? F[1] : n.z, n.y, `${S.trade} ${n.name} [${STR.interact}]`, () => this.openStall(C.mineStall)); }   // update 64: the prompt at the counter's front
       else if (n.role === "dinokeeper") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.talk(n));
       else if (n.role === "prisoner") consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.talkRandom(n));   // update 50: a different story every time
       else consider(n.x, n.z, n.y, `${S.talk} ${n.name} [${STR.interact}]`, () => this.talk(n));
@@ -900,11 +900,11 @@ export class EterniusCity {
   }
   jailPlayer(reason) {
     const g = this.g, C = E(), p = g.player, S = STR.et, cell = this.lowerCells && this.lowerCells[0]; if (!cell || this.jail) return;
-    for (const o of this.npcs) if (o.role === "guard") { o.war = false; o.hostile = false; o.calmT = 0; o.hits = 0; o.hp = C.guard.hp; }
+    for (const o of this.npcs) if (o.role === "guard" && (o.war || o.hostile)) { o.war = false; o.hostile = true; o.calmT = 0; o.hits = 0; o.hp = C.guard.hp; }   // update 64: hostile without war = he walks home and calms there (clearing both froze him mid-stride)
     if (this.theft) { for (const [id, k] of Object.entries(this.theft.items)) p.inv.remove(id, k); g.ui.renderHotbar(p.inv); }
     this.theft = null; this.theftStreak = 0; this.theftLastT = undefined; this.mining = null;
     this.jail = { reason, bail: reason === "guard" ? C.theft.bailGuard : C.theft.bailSteal, cell: 0 };
-    if (reason === "guard") p.hp = Math.max(p.hp, C.theft.hpAfter); else p.hp = Math.max(p.hp, 15);
+    p.hp = Math.max(p.hp, C.theft.hpAfter);   // update 64: seventy percent, whatever brought you here
     const [x, z] = cityWorld(cell.inA, cell.inB); p.pos.set(x, C.lower.y.low + 0.1, z); p.vel && p.vel.set(0, 0, 0);
     const [da, db] = cell.rm.P(-3, 0), [dx, dz] = cityWorld(da, db); p.yaw = Math.atan2(-(dx - x), -(dz - z));
     // night is never more than three minutes away once you sit
@@ -929,7 +929,7 @@ export class EterniusCity {
   updateCrime(dt) {
     const g = this.g, C = E(), S = STR.et;
     if (this.theftLastT !== undefined && g.time - this.theftLastT > C.theft.forget) {
-      if (this.theft) { for (const o of this.npcs) if (o.role === "guard" && o.war) { o.war = false; o.hostile = false; o.calmT = 0; o.hits = 0; } g.ui.toast(S.guardsForgot); }
+      if (this.theft) { for (const o of this.npcs) if (o.role === "guard" && o.war) { o.war = false; o.hostile = true; o.calmT = 0; o.hits = 0; } g.ui.toast(S.guardsForgot); }   // update 64: they walk home
       this.theft = null; this.theftStreak = 0; this.theftLastT = undefined;
     }
     for (const cell of this.lowerCells || []) {
