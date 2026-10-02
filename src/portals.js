@@ -13,8 +13,8 @@
 // and the day's chests reset. An awake portal carries you to any named place
 // you have discovered, and to any portal you have found. One-way.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=74";
-import { STR } from "../strings.js?v=74";
+import { CFG } from "./config.js?v=75";
+import { STR } from "../strings.js?v=75";
 
 const P = () => CFG.portals;
 export const PORTAL_IDS = ["red", "green", "yellow", "blue", "white"];

@@ -4,10 +4,10 @@
 // of more than one), every potion drunk like food, and the running effects: scent, silence, thick skin, regeneration, poison
 // immunity, immortality, night vision, the stamina stride and the Dread potion's footprints. Chests add herbs, vials and potions.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=74";
-import { STR } from "../strings.js?v=74";
-import { iconUrl } from "./items.js?v=74";
-import { cityFlatten } from "./eternius.js?v=74";
+import { CFG } from "./config.js?v=75";
+import { STR } from "../strings.js?v=75";
+import { iconUrl } from "./items.js?v=75";
+import { cityFlatten } from "./eternius.js?v=75";
 
 const FX = () => CFG.potionFx;
 const fmt = (t) => { t = Math.max(0, Math.ceil(t)); const m = Math.floor(t / 60), s = t % 60; return `${m}:${s < 10 ? "0" : ""}${s}`; };
@@ -133,6 +133,7 @@ export class Potions {
   drink(id) {
     const g = this.g, p = g.player, F = FX(), S = STR.brew, name = STR.items[id] ? STR.items[id].name : id;
     const fx = this.fx; let ok = true;
+    { const def = CFG.potions.find((q) => q.id === id); if (def && def.noDrink) { g.ui.toast(S.noDrink); g.audio.sDeny(); return; } }   // update 75
     switch (id) {
       case "potion_starvation": if (p.hu >= 100) { g.ui.toast(STR.fullHunger); ok = false; } else p.hu = Math.min(100, p.hu + F.food); break;
       case "potion_healing": if (p.hp >= 100) { g.ui.toast(STR.fullHealth); ok = false; } else p.heal(F.heal); break;
@@ -174,7 +175,7 @@ export class Potions {
     if (fx.regen > 0) { this.regenT -= dt; if (this.regenT <= 0) { this.regenT = F.regenEvery; if (p.hp < 100 && !p.dead) p.heal(1); } }
     p.sightMult = fx.predator > 0 ? F.sightMult : 1;
     p.noiseMult = fx.silence > 0 ? F.noiseMult : 1;
-    g.ui.strideBar(!!g.strideOn || fx.stamina > 0);
+    g.ui.strideBar(!!g.strideOn || fx.stamina > 0 || !!(g.hidden && g.hidden.strideOn()));
     this.updatePrints(dt);
     this.hudT -= dt; if (this.hudT <= 0) { this.hudT = 0.5; this.hud(); }
   }

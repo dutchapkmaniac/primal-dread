@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=74";
-import { inFarm, inPasture } from "./farm.js?v=74";
-import { STR } from "../strings.js?v=74";
-import { icons } from "./items.js?v=74";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=74";
+import { CFG } from "./config.js?v=75";
+import { inFarm, inPasture } from "./farm.js?v=75";
+import { STR } from "../strings.js?v=75";
+import { icons } from "./items.js?v=75";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=75";
 
 // Creatures. Rigged GLBs (T-Rex, werewolf, chicken) play real walk/run clips;
 // the pig gets a procedural quadruped gait. The T-Rex cannot be killed.
@@ -431,7 +431,7 @@ export class Creature {
     }
     // only SILVER wounds a werewolf — the dagger, or a silver arrow (u27)
     if (this.type === "werewolf" && weapon === "evil_dagger") { game.ui.toast(STR.volcano.evilStops); game.audio.sDeny(); return; }   // update 74: a force stops the arm
-    if (this.type === "werewolf" && weapon !== "silver_dagger" && weapon !== "silver_arrow") {
+    if (this.type === "werewolf" && weapon !== "silver_dagger" && weapon !== "silver_arrow" && weapon !== "monial_dagger") {   // update 75
       game.audio.sHit();
       game.ui.toast(STR.wolfImmune);
       this.state = "chase";
@@ -439,7 +439,7 @@ export class Creature {
     }
     // and even silver takes EXACTLY three blows — no more one-cut kills
     // (the dagger only — arrows carry their own damage)
-    if (this.type === "werewolf" && weapon === "silver_dagger") {
+    if (this.type === "werewolf" && (weapon === "silver_dagger" || weapon === "monial_dagger")) {
       dmg = Math.ceil(this.maxHp / 3);
       // update 27: the blessed metal STAGGERS it — a short shove back, just
       // enough room to line up the next cut

@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=74";
-import { STR } from "../strings.js?v=74";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=74";
+import { CFG } from "./config.js?v=75";
+import { STR } from "../strings.js?v=75";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=75";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { Creature } from "./entities.js?v=74";
-import { iconUrl } from "./items.js?v=74";
+import { Creature } from "./entities.js?v=75";
+import { iconUrl } from "./items.js?v=75";
 
 // ============================================================================
 // update 69 (prompt37, update 1): the forest dressed up. Mild hills (makeHills, used by World.groundHeight and the forest
@@ -226,7 +226,11 @@ export class Forest {
     const plain = g.player.inv.has("silver_dagger_plain");   // update 74: the dagger from Jabb's anvil
     if (plain && g.player.inv.has("holy_water")) btns.push(["witchHoly", STR.volcano.witchHoly]);
     if (plain && g.player.inv.has("unholy_water")) btns.push(["witchUnholy", STR.volcano.witchUnholy]);
+    if (g.player.inv.has("monial_staff_raw")) btns.push(["witchStaff", STR.hidden.enchantStaff]);   // update 75
+    if (g.player.inv.has("infial_belladonna")) btns.push(["witchConv", STR.hidden.convertBtn]);
     const s = g.npcPanel(S.witchName, lines, btns);
+    { const sb = s.querySelector("#witchStaff"); if (sb) sb.addEventListener("click", () => { const inv = g.player.inv; if (!inv.has("monial_staff_raw")) return; inv.removeOne("monial_staff_raw"); if (!inv.add("monial_staff", 1)) g.spawnDrop("monial_staff", 1, this.witchWorld.x, this.witchWorld.z, this.hutY + 0.3); g.audio.sPickup(); g.ui.renderHotbar(inv); g.ui.closeScreen(); g.resume(); g.ui.toast(STR.hidden.staffEnchanted); });
+      const cb = s.querySelector("#witchConv"); if (cb) cb.addEventListener("click", () => { if (g.hidden) g.hidden.convertInfial(); g.ui.closeScreen(); g.resume(); }); }   // update 75
     for (const [bid, water, out, msg] of [["witchHoly", "holy_water", "silver_dagger", STR.volcano.blessed], ["witchUnholy", "unholy_water", "evil_dagger", STR.volcano.tainted]]) {
       const eb = s.querySelector("#" + bid); if (!eb) continue;
       eb.addEventListener("click", () => { const inv = g.player.inv; if (!inv.has("silver_dagger_plain") || !inv.has(water)) return; inv.removeOne("silver_dagger_plain"); inv.removeOne(water); if (!inv.add(out, 1)) g.spawnDrop(out, 1, this.witchWorld.x, this.witchWorld.z, this.hutY + 0.3); g.audio.sPickup(); g.ui.renderHotbar(inv); g.ui.closeScreen(); g.resume(); g.ui.toast(msg); });

@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=74";
-import { STR } from "../strings.js?v=74";
-import { Inventory } from "./items.js?v=74";
+import { CFG } from "./config.js?v=75";
+import { STR } from "../strings.js?v=75";
+import { Inventory } from "./items.js?v=75";
 
 export class Player {
   constructor(camera, ctx) {
@@ -86,6 +86,7 @@ export class Player {
     this.machete3dVm = this.mountHeld("machete3d");
     this.axe3dVm = this.mountHeld("axe3d");
     this.dagger3dVm = this.mountHeld("dagger3d");   // the silver dagger's REAL design
+    this.monialDaggerVm = this.mountHeld("hf_dagger"); this.staffVm = this.mountHeld("hf_staff");   // update 75
     this.trexDagger3dVm = this.mountHeld("trexdagger3d");   // update 38: the generated tooth daggers
     this.impDagger3dVm = this.mountHeld("impdagger3d");
     this.etDagger3dVm = this.mountHeld("etdagger3d");   // update 39: the Eternial weapons
@@ -239,7 +240,7 @@ export class Player {
 
     // energy — running drunk burns it TWICE as fast
     const moving = Math.hypot(this.vel.x, this.vel.z) > 0.5;
-    if (this.sprinting && moving) this.en = Math.max(0, this.en - P.sprintDrain * (drunk ? CFG.wine.drainMult : 1) * (game.strideOn ? CFG.eternius.stride.drain : 1) * (game.potions && game.potions.fx.stamina > 0 ? 0.5 : 1) * dt);   // update 73: the stamina potion halves it too   // update 49: the sorcerer's Long Stride inside Eternius
+    if (this.sprinting && moving) this.en = Math.max(0, this.en - P.sprintDrain * (drunk ? CFG.wine.drainMult : 1) * (game.strideOn ? CFG.eternius.stride.drain : 1) * (game.potions && game.potions.fx.stamina > 0 ? 0.5 : 1) * (game.hidden && game.hidden.strideOn() ? 0.5 : 1) * dt);   // update 73: the stamina potion halves it too   // update 49: the sorcerer's Long Stride inside Eternius
     else if (this.sneak) this.en = Math.min(100, this.en + P.regenSneak * dt);
     else if (moving) this.en = Math.min(100, this.en + P.regenMove * dt);
     else this.en = Math.min(100, this.en + P.regenIdle * dt);
@@ -281,23 +282,25 @@ export class Player {
     // attack cooldown + viewmodel — each weapon shows its OWN design
     this.atkT -= dt;
     const sel = this.inv.selected();
-    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "silver_dagger_plain" || sel.id === "evil_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
+    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "silver_dagger_plain" || sel.id === "evil_dagger" || sel.id === "monial_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
     const showVm = game.carriedEgg ? null
       : weapon
         ? (weapon === "knife" && this.knife3dVm) || (weapon === "machete" && this.machete3dVm)
           || (weapon === "axe" && this.axe3dVm)
           || (weapon === "silver_dagger" && this.dagger3dVm) || (weapon === "evil_dagger" && this.dagger3dVm)   // update 74
+          || (weapon === "monial_dagger" && (this.monialDaggerVm || this.dagger3dVm))   // update 75
           || (weapon === "trex_dagger" && (this.trexDagger3dVm || this.trexDaggerVm))
           || (weapon === "imp_dagger" && (this.impDagger3dVm || this.trexDagger3dVm || this.trexDaggerVm))
           || (weapon === "et_dagger" && this.etDagger3dVm) || (weapon === "et_sword" && this.etSword3dVm) || this.knifeVm
         : sel && sel.id === "spear" ? this.spearVm
         : sel && sel.id === "et_spear" ? (this.etSpear3dVm || this.spearVm)
         : sel && sel.id === "crossbow" ? this.crossbowVm : null;
-    for (const vm of [this.knifeVm, this.knife3dVm, this.machete3dVm, this.axe3dVm, this.dagger3dVm, this.trexDaggerVm, this.trexDagger3dVm, this.impDagger3dVm, this.etDagger3dVm, this.etSword3dVm, this.etSpear3dVm, this.spearVm, this.crossbowVm]) {
+    for (const vm of [this.knifeVm, this.knife3dVm, this.machete3dVm, this.axe3dVm, this.dagger3dVm, this.trexDaggerVm, this.trexDagger3dVm, this.impDagger3dVm, this.etDagger3dVm, this.etSword3dVm, this.etSpear3dVm, this.spearVm, this.crossbowVm, this.monialDaggerVm]) {
       if (vm) vm.visible = vm === showVm;
     }
     if (this.eggVm) this.eggVm.visible = !!game.carriedEgg;
     if (this.torchVm) this.torchVm.visible = !!(sel && sel.id === "lit_torch") && !game.carriedEgg;
+    if (this.staffVm) this.staffVm.visible = !!(sel && sel.id === "monial_staff") && !game.carriedEgg;   // update 75: the staff in hand
     if (this.torchLight) this.torchLight.intensity = this.torchVm && this.torchVm.visible ? CFG.torch.intensity : 0;
     if (showVm) {
       const base = showVm.userData.base;
@@ -341,11 +344,12 @@ export class Player {
       game.throwSpear(this);
       return;
     }
-    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "silver_dagger_plain" || sel.id === "evil_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
+    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "silver_dagger_plain" || sel.id === "evil_dagger" || sel.id === "monial_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
     // an ITEM in hand gets used; an EMPTY hand throws a punch
     if (!weapon && sel) return this.useSelected(game);
     const K = weapon ? CFG.player[weapon] : CFG.player.fists;
     this.atkT = K.cooldown;
+    if (game.hidden && game.hidden.swing(weapon)) return;   // update 75: a blow landed on Kaldur
     game.loudAct();   // update 36
     if (weapon) this.swingT = 0.28;
     if (weapon) game.audio.play("knife", { vol: 0.7 }) || game.audio.noise(0.08, 3000, 0.2, "highpass");
@@ -423,7 +427,8 @@ export class Player {
     if (id.startsWith("scroll_")) { game.useScroll(id); return; }
     if (id === "vial_water") { game.potions.brew(); return; }   // update 73: the vial is where the potion is mixed
     if (id === "vial") { game.ui.toast(STR.brew.vialHint); game.audio.sDeny(); return; }
-    if (id.startsWith("potion_")) { game.potions.drink(id); return; }
+    if (id.startsWith("potion_") || id === "monial_potion") { game.potions.drink(id); return; }
+    if (id === "monial_book") { game.hidden.readBook(); return; }   // update 75
     if (id === "pestle") { game.potions.crush(); return; }   // update 73: herbs, shells and horns; the silver dagger inside
     if (id === "death_compass") {
       game.ui.toast(game.lastDeathSpot ? `${STR.compassPoints}…` : STR.compassIdle);

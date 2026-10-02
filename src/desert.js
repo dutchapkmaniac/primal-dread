@@ -16,12 +16,12 @@
 // and the map painting. The two Alioramus live in entities.js and only ask
 // this module where the desert is.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=74";
-import { cityFlatten, cityLakeDip } from "./eternius.js?v=74";   // update 39
-import { STR } from "../strings.js?v=74";
+import { CFG } from "./config.js?v=75";
+import { cityFlatten, cityLakeDip } from "./eternius.js?v=75";   // update 39
+import { STR } from "../strings.js?v=75";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { ClipAnimator } from "./skeletal.js?v=74";
+import { ClipAnimator } from "./skeletal.js?v=75";
 
 const D = () => CFG.desert;
 
@@ -544,6 +544,7 @@ export class DesertSystem {
   }
   // near enough to a water source to fill the bottle?
   waterSource(x, z) {
+    { const hs = this.g.hidden && this.g.hidden.waterSource(x, z); if (hs) return hs; }   // update 75: the hidden lake, and the fountain by night
     const w = this.g.world, des = this.d;
     if (!des) return null;
     const R = des.riverInfo(x, z);

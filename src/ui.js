@@ -1,6 +1,6 @@
-import { STR } from "../strings.js?v=74";
-import { CFG } from "./config.js?v=74";
-import { iconUrl } from "./items.js?v=74";
+import { STR } from "../strings.js?v=75";
+import { CFG } from "./config.js?v=75";
+import { iconUrl } from "./items.js?v=75";
 
 const $ = (s) => document.querySelector(s);
 

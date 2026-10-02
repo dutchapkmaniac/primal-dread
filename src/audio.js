@@ -1,4 +1,4 @@
-import { CFG } from "./config.js?v=74";
+import { CFG } from "./config.js?v=75";
 
 // Generated clips (manifest ids) + procedural WebAudio synth for the small
 // feedback sounds. Mix per the audio reference: music quiet under sfx,
@@ -46,6 +46,7 @@ const GEN = {
   elisiaLaughBig: "./assets/audio/sfx_elisia_laughbig.mp3",     // update 38: when she has eaten a T-Rex
   elisiaChase: "./assets/audio/a_elisia_chase.m4a",              // update 38: her own chase music
   eternius: "./assets/audio/a_eternius.m4a",                     // update 39: the golden city's theme
+  hidden: "./assets/audio/a_hidden.m4a",                         // update 75: the hidden forest's own track (drop the file in; silent until then)
   teleport: "./assets/audio/sfx_teleport.mp3",                   // update 38: a portal takes you
 };
 

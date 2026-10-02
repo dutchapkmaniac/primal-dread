@@ -1,25 +1,26 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=74";
-import { STR } from "../strings.js?v=74";
+import { CFG, ASSET_V } from "./config.js?v=75";
+import { STR } from "../strings.js?v=75";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=74";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=74";
-import { Forest } from "./forest.js?v=74";   // update 69
-import { Potions } from "./potions.js?v=74";   // update 73
-import { Volcano } from "./volcano.js?v=74";   // update 74
-import { ClipAnimator } from "./skeletal.js?v=74";
-import { AudioMan } from "./audio.js?v=74";
-import { UI } from "./ui.js?v=74";
-import { World } from "./world.js?v=74";
-import { Player } from "./player.js?v=74";
-import { Creature, ItemDrop } from "./entities.js?v=74";
-import { GameMap } from "./map.js?v=74";
-import { FarmGame } from "./farmgame.js?v=74";
-import { ElisiaSystem } from "./elisia.js?v=74";   // update 35
-import { DesertSystem } from "./desert.js?v=74";
-import { PortalSystem } from "./portals.js?v=74";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=74";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=75";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=75";
+import { Forest } from "./forest.js?v=75";   // update 69
+import { Potions } from "./potions.js?v=75";   // update 73
+import { Volcano } from "./volcano.js?v=75";   // update 74
+import { HiddenForest } from "./hidden.js?v=75";   // update 75
+import { ClipAnimator } from "./skeletal.js?v=75";
+import { AudioMan } from "./audio.js?v=75";
+import { UI } from "./ui.js?v=75";
+import { World } from "./world.js?v=75";
+import { Player } from "./player.js?v=75";
+import { Creature, ItemDrop } from "./entities.js?v=75";
+import { GameMap } from "./map.js?v=75";
+import { FarmGame } from "./farmgame.js?v=75";
+import { ElisiaSystem } from "./elisia.js?v=75";   // update 35
+import { DesertSystem } from "./desert.js?v=75";
+import { PortalSystem } from "./portals.js?v=75";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=75";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -98,7 +99,7 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
   "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician",
   "et_fountain", "et_bigtree", "et_boat", "et_prisoner", "et_minecart", "et_emerald",
-  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_herbstall", "et_barrel", "et_furnace", "et_silverore", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
+  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_herbstall", "et_barrel", "et_furnace", "et_silverore", "hf_farmer", "hf_wife", "hf_explorer", "hf_witch", "hf_warrior", "hf_historian", "hf_lady", "hf_fountain", "hf_lantern", "hf_staff", "hf_dagger", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
@@ -378,7 +379,8 @@ class Game {
     this.world = new World(this.scene, this.assets, this.rng);
     this.forest = new Forest(this);
     this.potions = new Potions(this);   // update 73: herblore and potions (after the forest and the desert exist)
-    this.volcano = new Volcano(this);   // update 74: the crater, ember leaf, the silver mine, the furnace, the evil dagger   // update 69: hills are the world's; the rest of the forest's new life lives here
+    this.volcano = new Volcano(this);   // update 74: the crater, ember leaf, the silver mine, the furnace, the evil dagger
+    this.hidden = new HiddenForest(this);   // update 75: the hidden forest   // update 69: hills are the world's; the rest of the forest's new life lives here
     this.world.city = this.city;            // update 39: the city's floors, walls and mountain join the world's ground
     this.portals.build();                   // update 37: the portals stand once the ground exists
     this.world.fogMult = presetFx.fog;      // preset draw distance, from boot
@@ -650,6 +652,10 @@ class Game {
       if (slot.id === "vial_water") return `${useKey} mix a potion — ${name}`;   // update 73
       if (slot.id === "vial") return `${name}: ${STR.brew.vialHint}`;
       if (slot.id.startsWith("potion_")) return `${useKey} drink — ${name}`;
+      if (slot.id === "monial_book") return `${useKey} read — ${name}`;   // update 75
+      if (slot.id === "monial_staff") return `${name}: hold it to understand the Monial`;
+      if (slot.id === "monial_staff_raw") return `${name}: the witch or the mage enchants it`;
+      if (slot.id === "monial_potion") return `${name}: joins the staff at the crafting table`;
       if (slot.id === "death_compass") return `${name}: hold it and follow the needle`;
       if (slot.id === "feather") return `${name}: fletching for arrows`;
       if (slot.id === "silver_dust") return `${name}: the heart of a silver arrow`;
@@ -1065,7 +1071,7 @@ class Game {
 
   // ---------- simulation ----------
   step(dt, input) {
-    this.time += dt;
+    this.time += dt * (this.hidden && this.hidden.active ? CFG.hidden.slow : 1);   // update 75: the hidden night passes at half speed
     this.updateDayNight(dt);
     // caught by the mother: the kill cinematic owns the camera
     if (this.grabbed) {
@@ -1148,6 +1154,7 @@ class Game {
     if (this.forest) this.forest.update(dt);   // update 69
     if (this.potions) this.potions.update(dt);   // update 73
     if (this.volcano) this.volcano.update(dt);   // update 74
+    if (this.hidden) this.hidden.update(dt);   // update 75
     this.updateExpansion(dt);
     for (const c of this.creatures) c.update(dt, this);
     for (const w of this.wolves) w.update(dt, this);
@@ -1244,8 +1251,9 @@ class Game {
       else {
         this.fishing.t -= dt;
         if (this.fishing.t <= 0) {
+          const fishId = this.hidden && this.hidden.active && this.hidden.nearShore2(this.fishing.x, this.fishing.z) ? "moonfish" : "raw_fish";   // update 75: moonfish rise only in the hidden night
           this.fishing = null;
-          if (p.inv.add("raw_fish", 1)) { this.ui.toast(STR.fishCaught); this.audio.sPickup(); }
+          if (p.inv.add(fishId, 1)) { this.ui.toast(STR.fishCaught); this.audio.sPickup(); }
           else this.ui.toast(STR.inventoryFull);
           this.ui.renderHotbar(p.inv);
         }
@@ -1761,7 +1769,7 @@ class Game {
 
   tryFish() {
     const p = this.player;
-    if (!this.world.nearShore(p.pos.x, p.pos.z)) { this.ui.toast(STR.items.fishing_rod.desc); return; }
+    if (!this.world.nearShore(p.pos.x, p.pos.z) && !(this.hidden && this.hidden.nearShore2(p.pos.x, p.pos.z))) { this.ui.toast(STR.items.fishing_rod.desc); return; }   // update 75: the hidden lake too
     if (this.fishing) return;
     if (!p.inv.has("bait")) { this.ui.toast(STR.needBait); this.audio.sDeny(); return; }   // update 63: one bait on the hook for every cast
     p.inv.remove("bait", 1); this.ui.renderHotbar(p.inv);
@@ -2666,6 +2674,7 @@ class Game {
     if (this.forest) this.forest.interact(consider, p);   // update 69: pick-ups, the witch, her book and bed
     if (this.potions) this.potions.interact(consider, p);   // update 73: aloe vera
     if (this.volcano) this.volcano.interact(consider, p);   // update 74: ember leaf, the ores, the furnace, the wolves
+    if (this.hidden) this.hidden.interact(consider, p);   // update 75: the Monial, the night's pickings, the beds
     this.ui.prompt(this.cooking ? STR.cooking : best ? best.label : this.compassLine());
     // touch devices mirror the prompt as a circular ONE-word button
     // (OPEN / SLEEP / COOK / TALK...) — visible only while in reach
@@ -2874,7 +2883,8 @@ class Game {
     const elisiaOut = this.creatures.some((c) => c.type === "elisia" && (c.state === "evil" || c.state === "eat") && !c.dead);
     // update 39: the city has its own music inside its walls
     const inCity = this.city && this.city.inside(this.player.pos.x, this.player.pos.z, this.player.pos.y);
-    this.audio.music(elisiaOut && this.audio.buf.elisiaChase ? "elisiaChase" : danger ? "chase" : (inCity && this.audio.buf.eternius) ? "eternius" : "ambient");
+    const inHidden = this.hidden && this.hidden.active && this.audio.buf.hidden;   // update 75: the hidden forest's own track (assets/audio/a_hidden.m4a)
+    this.audio.music(inHidden ? "hidden" : elisiaOut && this.audio.buf.elisiaChase ? "elisiaChase" : danger ? "chase" : (inCity && this.audio.buf.eternius) ? "eternius" : "ambient");
   }
 
   spawnDrop(id, n, x, z, y, ttl = 0) {

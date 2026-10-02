@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=74";
+export const ASSET_V = "?v=75";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -79,6 +79,21 @@ export const CFG = {
     shelfN: 4, lowerN: 1, leaves: [1, 3], bareDmg: 10, emberW: 1.15, emberH: 0.95, glovesPrice: 20, glovesChest: 1 / 16,
     ores: [[6, -4.4], [18, 4.4], [27, -11], [40, 11], [55, -4.4], [68, 4.4], [79, -19], [90, 19], [101, -19], [110, 19], [126, -9], [137, 9]], tPlain: 6, tEternal: 3, breakChance: 0.15, smeltOres: 3, furnaceLight: 7,
     wolfMeats: ["cooked_pork", "cooked_chicken", "cooked_beef", "cooked_goat", "cooked_wolf", "cooked_meganeura"] },
+  // update 75: THE HIDDEN FOREST - the blob east of the witch's hut, its lake and bridge, the Monial village, what grows there at night
+  hidden: {
+    poly: [[470, -420], [500, -500], [560, -560], [640, -600], [730, -625], [820, -610], [900, -580], [960, -520], [970, -430], [940, -330], [880, -260], [790, -235], [700, -250], [620, -290], [560, -300], [500, -340]],
+    window: 2, slow: 0.5, extraTrees: 320,
+    lake: { x: 590, z: -400, r0: 17, r1: 27, wade: 2.5 },
+    bridge: { len: 62, w: 2.6, rise: 1.6, deckY: 0.55, yaw: 0 },
+    village: { x: 840, z: -520, plazaR: 15, hutR: 18, hutSize: 5.2, wallH: 2.6, roofH: 2.2 },
+    field: { dx: 14, w: 9, d: 7 },
+    spawn: { starflower: 90, magic_mushroom: 55, void_bloom: 4, moonstone: 10, voidMax: 3 },
+    lanterns: 70, emblems: 16, fireflyClusters: 6,
+    moon: { dir: [0.45, 0.5, -0.74], size: 95 },
+    battle: { hits: 10, strong: 1, knife: 0.5, fists: 0.25, meleeDmg: 14, meleeEvery: 2.0, laserEvery: 6, laserDmg: 22, laserSpeed: 15, reach: 3.0, leaveR: 16 },
+    tint: { color: [0.6, 0.68, 1.25], emissive: 0x3448ff, emissiveI: 0.34, leafI: 0.95, waterEmissive: 0x4060ff, waterI: 0.4 },
+    npcs: { farmer: { model: "hf_farmer", h: 1.78 }, wife: { model: "hf_wife", h: 1.68 }, explorer: { model: "hf_explorer", h: 1.8 }, witch: { model: "hf_witch", h: 2.05 }, warrior: { model: "hf_warrior", h: 2.1 }, historian: { model: "hf_historian", h: 1.7 }, lady: { model: "hf_lady", h: 1.75 } },
+  },
   potions: [   // every one: a vial of water + these, crushed with the pestle and mortar (update 2 makes them)
     { id: "potion_starvation", needs: [["rosemary", 1], ["bat_wing", 1]] }, { id: "potion_healing", needs: [["rosemary", 1], ["crushed_mushroom", 2]] },
     { id: "potion_energy", needs: [["rosemary", 1], ["energy_drink", 1]] }, { id: "potion_antidote", needs: [["rosemary", 1], ["crushed_shell", 1]] },
@@ -86,6 +101,7 @@ export const CFG = {
     { id: "potion_thickskin", needs: [["belladonna", 1], ["crushed_mushroom", 3]] }, { id: "potion_silence", needs: [["belladonna", 1], ["white_flower", 1]] },
     { id: "potion_stamina", needs: [["aloe_vera", 1], ["energy_drink", 1]] }, { id: "potion_regen", needs: [["aloe_vera", 1], ["crushed_mushroom", 4]] },
     { id: "potion_superantidote", needs: [["aloe_vera", 1], ["crushed_shell", 2]] }, { id: "potion_immortal", needs: [["emberleaf", 1], ["wolf_tooth", 1]] },
+    { id: "monial_potion", needs: [["starflower", 3], ["belladonna", 1]], noDrink: true },   // update 75: for the staff, never for drinking
     { id: "potion_nightvision", needs: [["emberleaf", 1], ["werewolf_eye", 1]] }, { id: "potion_invis", needs: [["voidbloom", 1], ["potion_predator", 1], ["potion_silence", 1]] },
   ],
 
@@ -260,6 +276,9 @@ export const CFG = {
     { id: "bowl", cost: { branch: 2 }, needs: "knife" },   // update 29: two branches whittled into a bowl (the knife stays)
     { id: "trex_dagger", cost: { trex_tooth: 1, branch: 1 } },   // update 38: a tooth lashed to a branch
     { id: "imp_dagger", cost: { imp_tooth: 1, branch: 1 } },
+    { id: "wooden_staff", cost: { branch: 4 }, needs: "knife" },   // update 75: the Monial staff's three parts
+    { id: "monial_emblem", cost: { moonstone: 1 }, needs: "knife" },
+    { id: "monial_staff_raw", cost: { wooden_staff: 1, monial_emblem: 1, monial_potion: 1 } },
   ],
   needleBreakChance: 0.2,       // sewing gambles the needle — 20% it snaps
   wolfBagStackMax: 20,          // wearing the bag doubles every inventory slot
@@ -347,6 +366,7 @@ export const CFG = {
     silver_dagger: { dmg: 30, range: 2.2, arcCos: 0.45, cooldown: 0.45 },
     silver_dagger_plain: { dmg: 25, range: 2.3, arcCos: 0.45, cooldown: 0.5 },   // update 74: swings like the knife until the witch blesses it
     evil_dagger:   { dmg: 30, range: 2.2, arcCos: 0.45, cooldown: 0.45 },   // update 74: as strong as silver; werewolves are its friends
+    monial_dagger: { dmg: 45, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 75: the warrior's prize - an Eternial dagger's bite, and silver's on werewolves
     trex_dagger:   { dmg: 35, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 35: Elisia's gift — a blade ground from a T-Rex tooth
     et_dagger:     { dmg: 45, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 39: the Eternial blades — gold and green stone, sharper than iron and silver
     et_sword:      { dmg: 65, range: 2.6, arcCos: 0.40, cooldown: 0.6 },
@@ -360,7 +380,8 @@ export const CFG = {
   food: {
     apple:         { hu: 10, special: "appleEnergy" },
     green_apple:   { hu: 10, special: "appleEnergy" },
-    cooked_meganeura: { hu: 15 },   // update 69   // update 65: the deep trees' apple - its own item, the same meal for now
+    cooked_meganeura: { hu: 15 },
+    cooked_moonfish: { hu: 20 },   // update 75: the hidden lake's fish, cooked first   // update 69   // update 65: the deep trees' apple - its own item, the same meal for now
     cooked_pork:   { hu: 10 },
     cooked_chicken:{ hu: 10 },
     cooked_eggs:   { hu: 10, en: 5 },
@@ -379,7 +400,7 @@ export const CFG = {
   superEnergyDrink: 40,   // the blue can — rarer, twice the kick
   axeBranches: 3,         // an axe strips three branches where a knife takes one
   cookTime: 2.5,
-  cookMap: { raw_meganeura: "cooked_meganeura", raw_pork: "cooked_pork", raw_chicken: "cooked_chicken", egg: "cooked_eggs", raw_wolf: "cooked_wolf", raw_fish: "cooked_fish", raw_trex: "cooked_trex", raw_goat: "cooked_goat",
+  cookMap: { moonfish: "cooked_moonfish", raw_meganeura: "cooked_meganeura", raw_pork: "cooked_pork", raw_chicken: "cooked_chicken", egg: "cooked_eggs", raw_wolf: "cooked_wolf", raw_fish: "cooked_fish", raw_trex: "cooked_trex", raw_goat: "cooked_goat",
     bowl_milk: "bowl_yogurt",            // update 29: milk sets into yogurt (needs a lemon + the scroll, see cookExtra)
     raw_beef: "cooked_beef" },           // update 30: a cow's meat comes raw
   // the campfire has no pan — meat only, no eggs
@@ -630,7 +651,7 @@ export const CFG = {
     et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55
     et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57
     et_pickaxe: 0.24,
-    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_furnace: 1.35, et_silverore: 1.2, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_furnace: 1.35, et_silverore: 1.2, hf_farmer: 1.78, hf_wife: 1.68, hf_explorer: 1.8, hf_witch: 2.05, hf_warrior: 2.1, hf_historian: 1.7, hf_lady: 1.75, hf_fountain: 2.6, hf_lantern: 0.55, hf_staff: 1.75, hf_dagger: 0.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -675,6 +696,8 @@ export const CFG = {
   // held-item viewmodels (generated GLBs): scale + mount transform per item
   held: {
     knife3d:   { s: 0.40, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] },
+    hf_dagger: { s: 0.48, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] },   // update 75
+    hf_staff:  { s: 1.5, pos: [0.36, -0.62, -0.72], rot: [0.08, -0.2, 0.12] },
     machete3d: { s: 0.85, pos: [0.32, -0.32, -0.72], rot: [0.12, -0.3, 0] },
     torch3d:   { s: 0.68, pos: [-0.3, -0.30, -0.55], rot: [0.28, 0, 0] },
     axe3d:     { s: 0.70, pos: [0.32, -0.32, -0.70], rot: [0.12, -0.3, 0] },
@@ -756,7 +779,7 @@ export const CFG = {
     stalls: [
       { id: "food", name: "Neferu's kitchen", kind: "female", r: 44, th: -50, limit: 5,   // update 42: five of each a day color: 0x2f7a3a, wares: 0xb0402a, blurb: "foodBlurb", lines: "foodLines",
         sells: ["apple", "egg", "blueberries", "cooked_pork", "cooked_chicken", "chocolate", "energy_drink", "fill_water"],   // update 63: the fish and the rod moved to the fishing stall
-        buys: { apple: 1, green_apple: 1, egg: 1, blueberries: 1, lemon: 1, raw_pork: 1, raw_chicken: 1, raw_fish: 1, raw_beef: 1, raw_goat: 1, raw_wolf: 1, cooked_pork: 2, cooked_chicken: 2, cooked_fish: 2, cooked_eggs: 2, cooked_beef: 3, cooked_goat: 3, cooked_wolf: 3, cooked_trex: 5, chocolate: 2, bowl_yogurt: 3, bowl_yogurt_blueberries: 5 } },
+        buys: { magic_mushroom: 3, apple: 1, green_apple: 1, egg: 1, blueberries: 1, lemon: 1, raw_pork: 1, raw_chicken: 1, raw_fish: 1, raw_beef: 1, raw_goat: 1, raw_wolf: 1, cooked_pork: 2, cooked_chicken: 2, cooked_fish: 2, cooked_eggs: 2, cooked_beef: 3, cooked_goat: 3, cooked_wolf: 3, cooked_trex: 5, chocolate: 2, bowl_yogurt: 3, bowl_yogurt_blueberries: 5 } },
       { id: "tools", name: "Khamet's tools", kind: "male", r: 44, th: -18, color: 0x8a5a2a, wares: 0x555a60, blurb: "toolsBlurb", lines: "toolsLines",
         sells: ["hammer", "rope", "torch", "tinderbox", "bandage", "needle", "thread", "arrow", "leather_gloves"],   // update 63: the knife, the axe and the bowl moved to the resource stall   // update 40: no climbing anchor
         buys: { knife: 3, hammer: 4, axe: 10, rope: 1, torch: 1, tinderbox: 2, bandage: 1, needle: 1, thread: 1, arrow: 1, pestle: 4, spear: 6, bowl: 1, crossbow: 40 } },
@@ -766,7 +789,7 @@ export const CFG = {
         sells: ["et_dagger", "et_sword", "et_spear"], buys: { et_dagger: 75, et_sword: 250, et_spear: 175 } },   // update 40: dearer
       // update 63: the fishing stall (five fish of each kind a day; bait and the rod always) and the resource stall (wood, the axe, the bowl, the knife)
       { id: "fish", name: "Ipuy's catch", kind: "male", r: 44, th: -84, limit: 5, noLimit: ["bait", "fishing_rod"], color: 0x2a5a7a, wares: 0x7a97a0, blurb: "fishBlurb", lines: "fishLines",
-        sells: ["raw_fish", "cooked_fish", "bait", "fishing_rod"], buys: { raw_fish: 1, cooked_fish: 2 } },
+        sells: ["raw_fish", "cooked_fish", "bait", "fishing_rod"], buys: { raw_fish: 1, cooked_fish: 2, moonfish: 4, cooked_moonfish: 8 } },
       { id: "wood", name: "Hori's timber", kind: "male", r: 44, th: 86, color: 0x5a3a1a, wares: 0x8a6a3a, blurb: "woodBlurb", lines: "woodLines",
         sells: ["branch", "axe", "bowl", "knife"], buys: { branch: 1, axe: 10, bowl: 1, knife: 3 } },
       // update 73: the herb stall at -118 deg (118 is the hadrosaur's market stop) - a Higgsfield stall with a water barrel; vials without end, one pestle a day, three herbs with a daily count; vials sell five at a time
@@ -866,6 +889,7 @@ export const CFG = {
     night: { sky: 0x0b101c, fog: 0x0b101c, fogNear: 12, fogFar: 72,
              hemiSky: 0x2c3a56, hemiGnd: 0x0c1018, hemi: 0.52,
              sun: 0x7d90b8, sunI: 0.32 },
+    hidden: { sky: 0x070a2c, fog: 0x0a0e38, fogNear: 14, fogFar: 88, hemiSky: 0x3c4eff, hemiGnd: 0x12143c, hemi: 0.8, sun: 0x6070ff, sunI: 0.5 },   // update 75: the Monial night
     // update 42: the mountain's own night — warm and a little dimmer, never the blue moonlight of the desert
     cave:  { sky: 0x0b101c, fog: 0x1a1410, fogNear: 30, fogFar: 150,
              hemiSky: 0x7a6c58, hemiGnd: 0x33291f, hemi: 0.66,

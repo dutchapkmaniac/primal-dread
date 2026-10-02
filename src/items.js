@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=74";
-import { STR } from "../strings.js?v=74";
+import { CFG, ASSET_V } from "./config.js?v=75";
+import { STR } from "../strings.js?v=75";
 
 // Icon sheet: 4x4 grid, 13 icons, generated on a blue key background.
 // Sliced + chroma-keyed at load time into per-item canvases.
@@ -68,6 +68,7 @@ export async function loadIcons() {
     ["raw_goat", "./assets/ui_rawgoat.png"], ["cooked_goat", "./assets/ui_cookedgoat.png"],
     ["goat_horn", "./assets/ui_goathorn.png"], ["climbing_anchor", "./assets/ui_anchor.png"],
     ["silver_bar", "./assets/ui_silverbar.png"], ["silver_ore", "./assets/ui_silverore.png"], ["leather_gloves", "./assets/ui_gloves.png"], ["silver_dagger_plain", "./assets/ui_silverdagger_plain.png"], ["evil_dagger", "./assets/ui_evildagger.png"],   // update 74
+    ["starflower", "./assets/ui_starflower.png"], ["magic_mushroom", "./assets/ui_magicmushroom.png"], ["void_bloom", "./assets/ui_voidbloom.png"], ["moonstone", "./assets/ui_moonstone.png"], ["infial_belladonna", "./assets/ui_infialbelladonna.png"], ["moonfish", "./assets/ui_moonfish.png"], ["cooked_moonfish", "./assets/ui_cookedmoonfish.png"], ["wooden_staff", "./assets/ui_woodenstaff.png"], ["monial_emblem", "./assets/ui_monialemblem.png"], ["monial_potion", "./assets/ui_monialpotion.png"], ["monial_staff_raw", "./assets/ui_woodenstaff.png"], ["monial_staff", "./assets/ui_monialstaff.png"], ["monial_dagger", "./assets/ui_monialdagger.png"], ["monial_book", "./assets/ui_monialbook.png"],   // update 75
     ["hammer", "./assets/ui_hammer.png"], ["broken_hook", "./assets/ui_brokenhook.png"],
     ["lit_torch", "./assets/ui_torch.png"], ["wolf_tooth", "./assets/ui_wolftooth.png"],
     ["crossbow", "./assets/ui_crossbow.png"], ["arrow", "./assets/ui_arrow.png"],
@@ -152,7 +153,7 @@ function fallbackIcon(id) {
     super_energy_drink: "#3a6ac8", axe: "#8a8f96", needle: "#c9ced4",
     thread: "#8a6f4a", wolf_bag: "#7d8083", goggles: "#4a7a3a", lit_torch: "#e8a040",
     raw_goat: "#b06a5e", cooked_goat: "#96662e", goat_horn: "#a89880",
-    climbing_anchor: "#9aa0a6", silver_bar: "#d4d9de", silver_ore: "#8a8f94", leather_gloves: "#8a5a2a", silver_dagger_plain: "#a8adb2", evil_dagger: "#2a1c22",
+    climbing_anchor: "#9aa0a6", silver_bar: "#d4d9de", silver_ore: "#8a8f94", leather_gloves: "#8a5a2a", silver_dagger_plain: "#a8adb2", evil_dagger: "#2a1c22", starflower: "#8fb0ff", magic_mushroom: "#7a8cff", void_bloom: "#8a40c0", moonstone: "#d8e0ff", infial_belladonna: "#c03040", moonfish: "#c8d4e8", cooked_moonfish: "#b08a50", wooden_staff: "#6a4a2a", monial_emblem: "#cfd6ff", monial_potion: "#6a70ff", monial_staff_raw: "#7a5a3a", monial_staff: "#8fa0ff", monial_dagger: "#b0c0ff", monial_book: "#6a4a30",
     hammer: "#7a7d80", broken_hook: "#8a6f5a",
     crossbow: "#5a4a36", arrow: "#8a6f4a", silver_arrow: "#c9ced4",
     feather: "#e0dcd0", pestle: "#8a8d86", silver_dust: "#d4d9de",

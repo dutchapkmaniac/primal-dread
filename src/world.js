@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=74";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=75";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=74";
-import { Desert } from "./desert.js?v=74";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=74";
+import { CFG } from "./config.js?v=75";
+import { Desert } from "./desert.js?v=75";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=75";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,7 +11,8 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=74";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=74";   // update 69: the forest's mild hills
+import { makeHills } from "./forest.js?v=75";
+import { pointInPoly } from "./hidden.js?v=75";   // update 75   // update 69: the forest's mild hills
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;
@@ -104,6 +105,7 @@ export class World {
     if (inFarm(x, z)) return true;           // update 29: the whole farm compound
     if (this.desert.inTentZone(x, z)) return true;   // update 36: Idris's tent
     if (CFG.witchHut && Math.hypot(x - CFG.witchHut.x, z - CFG.witchHut.z) < CFG.witchHut.size / 2 + 3.2) return true;   // update 70: the witch's hut and its doorstep
+    if (this.hiddenZone && this.hiddenZone.active && this.hiddenZone.inside(x, z)) return true;   // update 75: the hidden night keeps every beast out
     if (this.city && this.city.isSafe(x, z, y)) return true;   // update 39: the city's walls (not the chained beast's reach)
     return this.onHut(x, z, y);
   }
@@ -197,6 +199,7 @@ export class World {
     // over a hollow); the hill's own height, up or down, is the forest's ground
     const mh = this.mountainH(x, z), hh = this.hill ? this.hill.h(x, z) : 0, cands = mh !== 0 ? [mh] : [];
     if (this.hill) cands.push(hh);   // update 69
+    if (this.hiddenFloor) { const hf = this.hiddenFloor(x, z, y); if (hf !== null && hf !== undefined) cands.push(hf); }   // update 75: the bridge over the hidden lake
     if (this.city) { const cm = this.city.mountainH(x, z); if (cm !== 0) cands.push(cm); }   // update 39: the city's mountain (update 70: its 0 outside is no floor either)
     this.desert.groundCand(x, z, cands);   // update 36: dunes, the oasis, the bridge decks
     // the treetop perch (update 27): while climbing, the crown holds you
@@ -489,6 +492,7 @@ export class World {
     if (Math.abs(x - C.x) < C.w / 2 + pad && Math.abs(z - C.z) < C.d / 2 + pad) return true;
     if (Math.hypot(x - CFG.camp.x, z - CFG.camp.z) < CFG.camp.r + pad + 2) return true;
     if (CFG.witchHut && Math.hypot(x - CFG.witchHut.x, z - CFG.witchHut.z) < CFG.witchHut.r + pad) return true;   // update 69: the witch's clearing
+    if (CFG.hidden) { const HL = CFG.hidden.lake, HV = CFG.hidden.village; if (Math.hypot(x - HL.x, z - HL.z) < HL.r1 + 6 + pad || Math.hypot(x - HV.x, z - HV.z) < HV.hutR + 9 + pad) return true; }   // update 75: the hidden lake and the Monial village
     if (Math.hypot(x - CFG.ruins.x, z - CFG.ruins.z) < 32 + pad) return true;
     // update 29: the farm compound — house, garden, field and pasture stay clear
     if (Math.abs(x - CFG.farm.x) < CFG.farm.hw + pad && Math.abs(z - CFG.farm.z) < CFG.farm.hd + pad) return true;
@@ -3035,6 +3039,18 @@ export class World {
       positions.push([x, z, 0.95 + rng() * 0.35, rng() * Math.PI * 2]);
     }
 
+    // update 75: the hidden forest is denser - extra trees inside its line; none in its lake or its village
+    if (CFG.hidden) {
+      const HP = CFG.hidden.poly; let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const [px, pz] of HP) { x0 = Math.min(x0, px); x1 = Math.max(x1, px); z0 = Math.min(z0, pz); z1 = Math.max(z1, pz); }
+      for (let i = positions.length - 1; i >= 0; i--) if (this.inNewLandmark(positions[i][0], positions[i][1], 2) && pointInPoly(HP, positions[i][0], positions[i][1])) positions.splice(i, 1);
+      let added = 0, guardH = 0;
+      while (added < CFG.hidden.extraTrees && guardH++ < 60000) {
+        const x = x0 + rng() * (x1 - x0), z = z0 + rng() * (z1 - z0);
+        if (!pointInPoly(HP, x, z) || !this.inForest(x, z) || this.distToPath(x, z) < W.pathClearance) continue;
+        if (positions.some(([px, pz]) => Math.abs(px - x) < 6 && Math.abs(pz - z) < 6 && Math.hypot(x - px, z - pz) < W.treeSpacing * 0.75)) continue;
+        positions.push([x, z, treeScale(), rng() * Math.PI * 2]); added++;
+      }
+    }
     const treeAsset = this.assets.glb.tree;
     const dummy = new THREE.Object3D();
     if (treeAsset) {
@@ -3452,7 +3468,9 @@ export class World {
   // k: 0 = full day, 1 = full night
   updateEnv(k, warm = false) {
     this.nightK = k;
-    const d = CFG.env.day, n = warm && CFG.env.cave ? CFG.env.cave : CFG.env.night;   // update 42: the cavern's warm night
+    let n = warm && CFG.env.cave ? CFG.env.cave : CFG.env.night;   // update 42: the cavern's warm night
+    const d = CFG.env.day;
+    if (this.hiddenK > 0 && CFG.env.hidden) { const Hn = CFG.env.hidden, hk = this.hiddenK, mc = (a, b) => new THREE.Color(a).lerp(new THREE.Color(b), hk), ml = (a, b) => a + (b - a) * hk; n = { sky: mc(n.sky, Hn.sky), fog: mc(n.fog, Hn.fog), fogNear: ml(n.fogNear, Hn.fogNear), fogFar: ml(n.fogFar, Hn.fogFar), hemiSky: mc(n.hemiSky, Hn.hemiSky), hemiGnd: mc(n.hemiGnd, Hn.hemiGnd), hemi: ml(n.hemi, Hn.hemi), sun: mc(n.sun, Hn.sun), sunI: ml(n.sunI, Hn.sunI) }; }   // update 75: the Monial night
     const lerpC = (a, b) => new THREE.Color(a).lerp(new THREE.Color(b), k);
     const lerp = (a, b) => a + (b - a) * k;
     this.scene.background = lerpC(d.sky, n.sky);
