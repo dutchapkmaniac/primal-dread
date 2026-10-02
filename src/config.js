@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=75";
+export const ASSET_V = "?v=76";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -83,12 +83,13 @@ export const CFG = {
   hidden: {
     poly: [[470, -420], [500, -500], [560, -560], [640, -600], [730, -625], [820, -610], [900, -580], [960, -520], [970, -430], [940, -330], [880, -260], [790, -235], [700, -250], [620, -290], [560, -300], [500, -340]],
     window: 2, slow: 0.5, extraTrees: 320,
-    lake: { x: 590, z: -400, r0: 17, r1: 27, wade: 2.5 },
-    bridge: { len: 62, w: 2.6, rise: 1.6, deckY: 0.55, yaw: 0 },
-    village: { x: 840, z: -520, plazaR: 15, hutR: 18, hutSize: 5.2, wallH: 2.6, roofH: 2.2 },
-    field: { dx: 14, w: 9, d: 7 },
-    spawn: { starflower: 90, magic_mushroom: 55, void_bloom: 4, moonstone: 10, voidMax: 3 },
-    lanterns: 70, emblems: 16, fireflyClusters: 6,
+    lake: { x: 590, z: -400, rx: 20, rz: 32.5, wade: 2.5 },   // update 76: an oval the lighthouse lake's size (40 x 65 m)
+    bridge: { len: 52, w: 2.8, rise: 1.9, yaw: 0 },   // update 76: across the narrow side, landing on both shores
+    village: { x: 840, z: -520, plazaR: 17, hutR: 20, hutSize: 5.6, wallH: 2.7, roofH: 2.6, waterY: 1.0, lampposts: 6 },
+    field: { dx: 15, w: 9, d: 7 },
+    spawn: { starflower: 180, magic_mushroom: 60, void_bloom: [3, 4], moonstone: 10 },   // update 76: three or four void blooms a night, all pickable
+    lanternsPerTree: [4, 5], carveEvery: 3, fireflyClusters: 10,
+    glow: { starflower: 0x6a80ff, magic_mushroom: 0x4a70ff, void_bloom: 0xb040ff, infial: 0xff3a3a, moonstone: 0x9fb4ff, lantern: 0x7a8cff, lamppost: 0x8fa0ff, hut: 0x9aa8ff },   // update 76: every glowing thing's light
     moon: { dir: [0.45, 0.5, -0.74], size: 95 },
     battle: { hits: 10, strong: 1, knife: 0.5, fists: 0.25, meleeDmg: 14, meleeEvery: 2.0, laserEvery: 6, laserDmg: 22, laserSpeed: 15, reach: 3.0, leaveR: 16 },
     tint: { color: [0.6, 0.68, 1.25], emissive: 0x3448ff, emissiveI: 0.34, leafI: 0.95, waterEmissive: 0x4060ff, waterI: 0.4 },
@@ -651,7 +652,7 @@ export const CFG = {
     et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55
     et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57
     et_pickaxe: 0.24,
-    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_furnace: 1.35, et_silverore: 1.2, hf_farmer: 1.78, hf_wife: 1.68, hf_explorer: 1.8, hf_witch: 2.05, hf_warrior: 2.1, hf_historian: 1.7, hf_lady: 1.75, hf_fountain: 2.6, hf_lantern: 0.55, hf_staff: 1.75, hf_dagger: 0.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_furnace: 1.35, et_silverore: 1.2, hf_farmer: 1.78, hf_wife: 1.68, hf_explorer: 1.8, hf_witch: 2.05, hf_warrior: 2.1, hf_historian: 1.7, hf_lady: 1.75, hf_fountain: 4.2, hf_fountain2: 4.2, hf_lantern: 0.55, hf_starflower: 0.95, hf_magicmush: 0.85, hf_voidbloom: 0.75, hf_infial: 1.1, hf_moonrock: 1.3, hf_lamppost: 3.2, hf_interior: 1.5, hf_staff: 1.75, hf_dagger: 0.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -889,7 +890,7 @@ export const CFG = {
     night: { sky: 0x0b101c, fog: 0x0b101c, fogNear: 12, fogFar: 72,
              hemiSky: 0x2c3a56, hemiGnd: 0x0c1018, hemi: 0.52,
              sun: 0x7d90b8, sunI: 0.32 },
-    hidden: { sky: 0x070a2c, fog: 0x0a0e38, fogNear: 14, fogFar: 88, hemiSky: 0x3c4eff, hemiGnd: 0x12143c, hemi: 0.8, sun: 0x6070ff, sunI: 0.5 },   // update 75: the Monial night
+    hidden: { sky: 0x070a2c, fog: 0x0a0e38, fogNear: 14, fogFar: 88, hemiSky: 0x3c4eff, hemiGnd: 0x12143c, hemi: 1.05, sun: 0x6070ff, sunI: 0.65 },   // update 75: the Monial night (update 76: lifted, it read too dark)
     // update 42: the mountain's own night — warm and a little dimmer, never the blue moonlight of the desert
     cave:  { sky: 0x0b101c, fog: 0x1a1410, fogNear: 30, fogFar: 150,
              hemiSky: 0x7a6c58, hemiGnd: 0x33291f, hemi: 0.66,

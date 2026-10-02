@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=75";
-import { STR } from "../strings.js?v=75";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=75";
+import { CFG } from "./config.js?v=76";
+import { STR } from "../strings.js?v=76";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=76";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { Creature } from "./entities.js?v=75";
-import { iconUrl } from "./items.js?v=75";
+import { Creature } from "./entities.js?v=76";
+import { iconUrl } from "./items.js?v=76";
 
 // ============================================================================
 // update 69 (prompt37, update 1): the forest dressed up. Mild hills (makeHills, used by World.groundHeight and the forest
@@ -128,7 +128,7 @@ export class Forest {
       const spots = []; let guard = 0;
       while (spots.length < count && guard++ < 60000) {
         const x = (rng() * 2 - 1) * S, z = (rng() * 2 - 1) * S; if (Math.hypot(x, z) < F.minR) continue;
-        if (!w.inForest(x, z) || w.distToPath(x, z) < 4 || w.inNewLandmark(x, z, 6)) continue;
+        if (!w.inForest(x, z) || w.distToPath(x, z) < 4 || w.inNewLandmark(x, z, 6) || w.inHidden(x, z)) continue;   // update 76: the ordinary flowers and mushrooms never grow inside the hidden forest's line
         let ok = true; for (const t of w.treesNear(x, z)) if (Math.hypot(t.x - x, t.z - z) < 1.8) { ok = false; break; } if (!ok) continue;
         if (this.pickups.some((p) => Math.abs(p.x - x) < 5 && Math.abs(p.z - z) < 5 && Math.hypot(p.x - x, p.z - z) < 5)) continue;
         const y = w.groundHeight(x, z, 0);
@@ -335,12 +335,14 @@ export class Forest {
   }
   spawnMeganeura() {
     const g = this.g, p = g.player, w = this.world; let tree = null;
+    if (g.hidden && g.hidden.active && g.hidden.inside(p.pos.x, p.pos.z)) return;   // update 76: nothing bursts from a tree in the hidden night
     for (let i = 0; i < 20 && !tree; i++) { const a = g.rng() * Math.PI * 2, d = 8 + g.rng() * 6, x = p.pos.x + Math.sin(a) * d, z = p.pos.z + Math.cos(a) * d; for (const t of w.treesNear(x, z)) if (!t.tag) { tree = t; break; } }
     const x = tree ? tree.x : p.pos.x + 9, z = tree ? tree.z : p.pos.z; const c = this.makeSmall("meganeura", x, z); c.hover = 6; c.hoverY = 1.6; c.life = 0;
     g.ui.toast(STR.forest.megaAppears); g.audio.sDeny && g.audio.noise && g.audio.noise(0.25, 1800, 0.15, "bandpass");
   }
   chopBats(tree) {
     const g = this.g; if (!g.isNight || g.rng() > CFG.forest.bats.chopChance) return;
+    if (g.hidden && g.hidden.active && g.hidden.inside(tree.x, tree.z)) return;   // update 76
     const n = 1 + (g.rng() < 0.5 ? 1 : 0); for (let i = 0; i < n; i++) { const c = this.makeSmall("bat", tree.x + (g.rng() - 0.5), tree.z + (g.rng() - 0.5)); c.hover = 7; c.hoverY = 1.7; c.hostile = true; c.biteT = 1.0 + i * 0.6; }
     g.ui.toast(STR.forest.batsOut);
   }

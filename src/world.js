@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=75";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=76";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=75";
-import { Desert } from "./desert.js?v=75";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=75";
+import { CFG } from "./config.js?v=76";
+import { Desert } from "./desert.js?v=76";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=76";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,8 +11,8 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=75";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=75";
-import { pointInPoly } from "./hidden.js?v=75";   // update 75   // update 69: the forest's mild hills
+import { makeHills } from "./forest.js?v=76";
+import { pointInPoly, hiddenPathDist } from "./hidden.js?v=76";   // update 75   // update 69: the forest's mild hills
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;
@@ -484,6 +484,7 @@ export class World {
     return best;
   }
   // keep new-area structures clear of vegetation
+  inHidden(x, z) { return !!CFG.hidden && pointInPoly(CFG.hidden.poly, x, z); }   // update 76: inside the hidden forest's line
   inNewLandmark(x, z, pad = 6) {
     const H = CFG.lighthouse, N = CFG.nest, C = CFG.container;
     if (this.lakePenetration(x, z) > -(pad + CFG.lake.beach)) return true;
@@ -492,7 +493,7 @@ export class World {
     if (Math.abs(x - C.x) < C.w / 2 + pad && Math.abs(z - C.z) < C.d / 2 + pad) return true;
     if (Math.hypot(x - CFG.camp.x, z - CFG.camp.z) < CFG.camp.r + pad + 2) return true;
     if (CFG.witchHut && Math.hypot(x - CFG.witchHut.x, z - CFG.witchHut.z) < CFG.witchHut.r + pad) return true;   // update 69: the witch's clearing
-    if (CFG.hidden) { const HL = CFG.hidden.lake, HV = CFG.hidden.village; if (Math.hypot(x - HL.x, z - HL.z) < HL.r1 + 6 + pad || Math.hypot(x - HV.x, z - HV.z) < HV.hutR + 9 + pad) return true; }   // update 75: the hidden lake and the Monial village
+    if (CFG.hidden) { const HL = CFG.hidden.lake, HV = CFG.hidden.village; if (Math.hypot(x - HL.x, z - HL.z) < Math.max(HL.rx, HL.rz) + 6 + pad || Math.hypot(x - HV.x, z - HV.z) < HV.hutR + 9 + pad) return true; if (hiddenPathDist(x, z) < 3.5 + pad * 0.3) return true; }   // update 76: the oval lake, and the stone path between the bridge and the plaza   // update 75: the hidden lake and the Monial village
     if (Math.hypot(x - CFG.ruins.x, z - CFG.ruins.z) < 32 + pad) return true;
     // update 29: the farm compound — house, garden, field and pasture stay clear
     if (Math.abs(x - CFG.farm.x) < CFG.farm.hw + pad && Math.abs(z - CFG.farm.z) < CFG.farm.hd + pad) return true;
@@ -3046,7 +3047,7 @@ export class World {
       let added = 0, guardH = 0;
       while (added < CFG.hidden.extraTrees && guardH++ < 60000) {
         const x = x0 + rng() * (x1 - x0), z = z0 + rng() * (z1 - z0);
-        if (!pointInPoly(HP, x, z) || !this.inForest(x, z) || this.distToPath(x, z) < W.pathClearance) continue;
+        if (!pointInPoly(HP, x, z) || !this.inForest(x, z) || this.distToPath(x, z) < W.pathClearance || this.inNewLandmark(x, z, 2)) continue;   // update 76: never in the lake, the village or on the path
         if (positions.some(([px, pz]) => Math.abs(px - x) < 6 && Math.abs(pz - z) < 6 && Math.hypot(x - px, z - pz) < W.treeSpacing * 0.75)) continue;
         positions.push([x, z, treeScale(), rng() * Math.PI * 2]); added++;
       }

@@ -1,26 +1,26 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=75";
-import { STR } from "../strings.js?v=75";
+import { CFG, ASSET_V } from "./config.js?v=76";
+import { STR } from "../strings.js?v=76";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=75";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=75";
-import { Forest } from "./forest.js?v=75";   // update 69
-import { Potions } from "./potions.js?v=75";   // update 73
-import { Volcano } from "./volcano.js?v=75";   // update 74
-import { HiddenForest } from "./hidden.js?v=75";   // update 75
-import { ClipAnimator } from "./skeletal.js?v=75";
-import { AudioMan } from "./audio.js?v=75";
-import { UI } from "./ui.js?v=75";
-import { World } from "./world.js?v=75";
-import { Player } from "./player.js?v=75";
-import { Creature, ItemDrop } from "./entities.js?v=75";
-import { GameMap } from "./map.js?v=75";
-import { FarmGame } from "./farmgame.js?v=75";
-import { ElisiaSystem } from "./elisia.js?v=75";   // update 35
-import { DesertSystem } from "./desert.js?v=75";
-import { PortalSystem } from "./portals.js?v=75";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=75";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=76";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=76";
+import { Forest } from "./forest.js?v=76";   // update 69
+import { Potions } from "./potions.js?v=76";   // update 73
+import { Volcano } from "./volcano.js?v=76";   // update 74
+import { HiddenForest } from "./hidden.js?v=76";   // update 75
+import { ClipAnimator } from "./skeletal.js?v=76";
+import { AudioMan } from "./audio.js?v=76";
+import { UI } from "./ui.js?v=76";
+import { World } from "./world.js?v=76";
+import { Player } from "./player.js?v=76";
+import { Creature, ItemDrop } from "./entities.js?v=76";
+import { GameMap } from "./map.js?v=76";
+import { FarmGame } from "./farmgame.js?v=76";
+import { ElisiaSystem } from "./elisia.js?v=76";   // update 35
+import { DesertSystem } from "./desert.js?v=76";
+import { PortalSystem } from "./portals.js?v=76";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=76";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -99,7 +99,7 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
   "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician",
   "et_fountain", "et_bigtree", "et_boat", "et_prisoner", "et_minecart", "et_emerald",
-  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_herbstall", "et_barrel", "et_furnace", "et_silverore", "hf_farmer", "hf_wife", "hf_explorer", "hf_witch", "hf_warrior", "hf_historian", "hf_lady", "hf_fountain", "hf_lantern", "hf_staff", "hf_dagger", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
+  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_herbstall", "et_barrel", "et_furnace", "et_silverore", "hf_farmer", "hf_wife", "hf_explorer", "hf_witch", "hf_warrior", "hf_historian", "hf_lady", "hf_fountain", "hf_lantern", "hf_staff", "hf_dagger", "hf_starflower", "hf_magicmush", "hf_voidbloom", "hf_infial", "hf_moonrock", "hf_fountain2", "hf_lamppost", "hf_interior", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
