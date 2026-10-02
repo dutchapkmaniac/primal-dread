@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=73";
-import { STR } from "../strings.js?v=73";
-import { Inventory } from "./items.js?v=73";
+import { CFG } from "./config.js?v=74";
+import { STR } from "../strings.js?v=74";
+import { Inventory } from "./items.js?v=74";
 
 export class Player {
   constructor(camera, ctx) {
@@ -281,12 +281,12 @@ export class Player {
     // attack cooldown + viewmodel — each weapon shows its OWN design
     this.atkT -= dt;
     const sel = this.inv.selected();
-    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
+    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "silver_dagger_plain" || sel.id === "evil_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
     const showVm = game.carriedEgg ? null
       : weapon
         ? (weapon === "knife" && this.knife3dVm) || (weapon === "machete" && this.machete3dVm)
           || (weapon === "axe" && this.axe3dVm)
-          || (weapon === "silver_dagger" && this.dagger3dVm)
+          || (weapon === "silver_dagger" && this.dagger3dVm) || (weapon === "evil_dagger" && this.dagger3dVm)   // update 74
           || (weapon === "trex_dagger" && (this.trexDagger3dVm || this.trexDaggerVm))
           || (weapon === "imp_dagger" && (this.impDagger3dVm || this.trexDagger3dVm || this.trexDaggerVm))
           || (weapon === "et_dagger" && this.etDagger3dVm) || (weapon === "et_sword" && this.etSword3dVm) || this.knifeVm
@@ -341,7 +341,7 @@ export class Player {
       game.throwSpear(this);
       return;
     }
-    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
+    const weapon = sel && (sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "silver_dagger_plain" || sel.id === "evil_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
     // an ITEM in hand gets used; an EMPTY hand throws a punch
     if (!weapon && sel) return this.useSelected(game);
     const K = weapon ? CFG.player[weapon] : CFG.player.fists;

@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=73";
-import { STR } from "../strings.js?v=73";
+import { CFG, ASSET_V } from "./config.js?v=74";
+import { STR } from "../strings.js?v=74";
 
 // Top-down expedition map: the full parchment map (pause menu) and the small
 // living minimap in the HUD corner. Terrain is always drawn; NAMED landmarks
@@ -133,8 +133,8 @@ export class GameMap {
     // the mountain: hatched ridgelines + a snow-capped peak
     const M = CFG.mountain;
     c.lineWidth = 1.2;
-    for (let i = 0; i < 52; i++) {
-      const a = rnd() * Math.PI / 2, d = M.wallD * 0.4 + rnd() * (M.r - M.wallD * 0.4 - 10);
+    for (let i = 0; i < 160; i++) {
+      const a = rnd() * Math.PI * 2, d = M.wallD * 0.4 + rnd() * (M.r - M.wallD * 0.4 - 10);   // update 74: the whole circle
       const x = M.cx + Math.cos(a) * d, z = M.cz + Math.sin(a) * d;
       if (Math.abs(x) > W.square - 6 || Math.abs(z) > W.square - 6) continue;
       const px = tx(x), py = ty(z), l = 3 + rnd() * 5;
@@ -146,6 +146,7 @@ export class GameMap {
     c.closePath(); c.fillStyle = "#83867f"; c.fill(); c.strokeStyle = "#3c3f39"; c.lineWidth = 1.4; c.stroke();
     c.beginPath(); c.moveTo(tx(pk.x) - 4.5, ty(pk.z) - 3); c.lineTo(tx(pk.x), ty(pk.z) - 11); c.lineTo(tx(pk.x) + 4.5, ty(pk.z) - 3);
     c.closePath(); c.fillStyle = "#e8eae6"; c.fill();
+    c.beginPath(); c.arc(tx(pk.x), ty(pk.z) - 7, 3.2, 0, Math.PI * 2); c.fillStyle = "#d9541e"; c.fill();   // update 74: the crater's glow
     // the lake: inked shoreline + wave strokes
     c.lineWidth = 1.6;
     for (const l of [{ x: CFG.lake.x, z: CFG.lake.z, r: CFG.lake.r }, ...CFG.lake.lobes]) {

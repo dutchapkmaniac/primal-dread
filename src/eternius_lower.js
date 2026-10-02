@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=73";
+import { CFG } from "./config.js?v=74";
 const VEIN_BURY = { et_vein1: 0.5, et_vein3: 0.3, et_vein2: 0.8 };   // update 60: how much of each vein model's height sits inside the rock (its grey base); vein1 = the double crystal, vein3 = a single spike with a tall base, vein2 = a slab with crystals along its edges (not used on the walls - its grey face shows whichever way it is turned)
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=73";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=74";
 
 // ============================================================================
 // update 50: FLOOR -1 — the park under the city, 200 m down. The river leaves the ground floor through the

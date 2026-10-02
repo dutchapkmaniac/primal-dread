@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=73";
-import { STR } from "../strings.js?v=73";
+import { CFG, ASSET_V } from "./config.js?v=74";
+import { STR } from "../strings.js?v=74";
 
 // Icon sheet: 4x4 grid, 13 icons, generated on a blue key background.
 // Sliced + chroma-keyed at load time into per-item canvases.
@@ -67,7 +67,7 @@ export async function loadIcons() {
     ["wolf_bag", "./assets/ui_wolfbag.png"], ["goggles", "./assets/ui_goggles.png"],
     ["raw_goat", "./assets/ui_rawgoat.png"], ["cooked_goat", "./assets/ui_cookedgoat.png"],
     ["goat_horn", "./assets/ui_goathorn.png"], ["climbing_anchor", "./assets/ui_anchor.png"],
-    ["silver_bar", "./assets/ui_silverbar.png"],
+    ["silver_bar", "./assets/ui_silverbar.png"], ["silver_ore", "./assets/ui_silverore.png"], ["leather_gloves", "./assets/ui_gloves.png"], ["silver_dagger_plain", "./assets/ui_silverdagger_plain.png"], ["evil_dagger", "./assets/ui_evildagger.png"],   // update 74
     ["hammer", "./assets/ui_hammer.png"], ["broken_hook", "./assets/ui_brokenhook.png"],
     ["lit_torch", "./assets/ui_torch.png"], ["wolf_tooth", "./assets/ui_wolftooth.png"],
     ["crossbow", "./assets/ui_crossbow.png"], ["arrow", "./assets/ui_arrow.png"],
@@ -152,7 +152,7 @@ function fallbackIcon(id) {
     super_energy_drink: "#3a6ac8", axe: "#8a8f96", needle: "#c9ced4",
     thread: "#8a6f4a", wolf_bag: "#7d8083", goggles: "#4a7a3a", lit_torch: "#e8a040",
     raw_goat: "#b06a5e", cooked_goat: "#96662e", goat_horn: "#a89880",
-    climbing_anchor: "#9aa0a6", silver_bar: "#d4d9de",
+    climbing_anchor: "#9aa0a6", silver_bar: "#d4d9de", silver_ore: "#8a8f94", leather_gloves: "#8a5a2a", silver_dagger_plain: "#a8adb2", evil_dagger: "#2a1c22",
     hammer: "#7a7d80", broken_hook: "#8a6f5a",
     crossbow: "#5a4a36", arrow: "#8a6f4a", silver_arrow: "#c9ced4",
     feather: "#e0dcd0", pestle: "#8a8d86", silver_dust: "#d4d9de",

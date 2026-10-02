@@ -1,24 +1,25 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=73";
-import { STR } from "../strings.js?v=73";
+import { CFG, ASSET_V } from "./config.js?v=74";
+import { STR } from "../strings.js?v=74";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=73";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=73";
-import { Forest } from "./forest.js?v=73";   // update 69
-import { Potions } from "./potions.js?v=73";   // update 73
-import { ClipAnimator } from "./skeletal.js?v=73";
-import { AudioMan } from "./audio.js?v=73";
-import { UI } from "./ui.js?v=73";
-import { World } from "./world.js?v=73";
-import { Player } from "./player.js?v=73";
-import { Creature, ItemDrop } from "./entities.js?v=73";
-import { GameMap } from "./map.js?v=73";
-import { FarmGame } from "./farmgame.js?v=73";
-import { ElisiaSystem } from "./elisia.js?v=73";   // update 35
-import { DesertSystem } from "./desert.js?v=73";
-import { PortalSystem } from "./portals.js?v=73";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=73";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=74";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=74";
+import { Forest } from "./forest.js?v=74";   // update 69
+import { Potions } from "./potions.js?v=74";   // update 73
+import { Volcano } from "./volcano.js?v=74";   // update 74
+import { ClipAnimator } from "./skeletal.js?v=74";
+import { AudioMan } from "./audio.js?v=74";
+import { UI } from "./ui.js?v=74";
+import { World } from "./world.js?v=74";
+import { Player } from "./player.js?v=74";
+import { Creature, ItemDrop } from "./entities.js?v=74";
+import { GameMap } from "./map.js?v=74";
+import { FarmGame } from "./farmgame.js?v=74";
+import { ElisiaSystem } from "./elisia.js?v=74";   // update 35
+import { DesertSystem } from "./desert.js?v=74";
+import { PortalSystem } from "./portals.js?v=74";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=74";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -97,7 +98,7 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
   "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician",
   "et_fountain", "et_bigtree", "et_boat", "et_prisoner", "et_minecart", "et_emerald",
-  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_herbstall", "et_barrel", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
+  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_herbstall", "et_barrel", "et_furnace", "et_silverore", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
@@ -376,7 +377,8 @@ class Game {
 
     this.world = new World(this.scene, this.assets, this.rng);
     this.forest = new Forest(this);
-    this.potions = new Potions(this);   // update 73: herblore and potions (after the forest and the desert exist)   // update 69: hills are the world's; the rest of the forest's new life lives here
+    this.potions = new Potions(this);   // update 73: herblore and potions (after the forest and the desert exist)
+    this.volcano = new Volcano(this);   // update 74: the crater, ember leaf, the silver mine, the furnace, the evil dagger   // update 69: hills are the world's; the rest of the forest's new life lives here
     this.world.city = this.city;            // update 39: the city's floors, walls and mountain join the world's ground
     this.portals.build();                   // update 37: the portals stand once the ground exists
     this.world.fogMult = presetFx.fog;      // preset draw distance, from boot
@@ -461,10 +463,10 @@ class Game {
     for (let i = 0; i < CFG.trike.count; i++) {
       // evenly fanned across the quarter, alternating depth — maximum spread,
       // and each one now grazes only its OWN patch (see pickWanderTarget)
-      const a = (0.1 + (i / (CFG.trike.count - 1)) * 0.8) * Math.PI / 2;
-      const d = i % 2 ? 234 : 276;
-      this.creatures.push(new Creature("trike", this.assets.glb.trike,
-        MT.cx + Math.cos(a) * d, MT.cz + Math.sin(a) * d, ctx));
+      // update 74: round the WHOLE volcano, never on Jabb's pad or the cave mouth
+      let a = (i + 0.5) / CFG.trike.count * Math.PI * 2, d = i % 2 ? 234 : 276, tx = MT.cx + Math.cos(a) * d, tz = MT.cz + Math.sin(a) * d;
+      for (let k = 0; k < 8 && (Math.hypot(tx - MT.hut.x, tz - MT.hut.z) < 24 || Math.hypot(tx - MT.cave.x, tz - MT.cave.z) < 20 || Math.abs(tx) > CFG.world.square - 6 || Math.abs(tz) > CFG.world.square - 6); k++) { a += 0.09; tx = MT.cx + Math.cos(a) * d; tz = MT.cz + Math.sin(a) * d; }
+      this.creatures.push(new Creature("trike", this.assets.glb.trike, tx, tz, ctx));
     }
     // the DUNGEON PACK: ten shadows spread sparse through the tunnels —
     // they hunt at ANY hour in there, and never leave the dark by day
@@ -611,7 +613,7 @@ class Game {
     this.ui.hintFor = (slot) => {
       if (!slot) return null;
       const name = STR.items[slot.id]?.name || slot.id;
-      if (slot.id === "knife" || slot.id === "silver_dagger" || slot.id === "trex_dagger" || slot.id === "imp_dagger" || slot.id === "machete" || slot.id === "axe") return `${useKey} ${STR.hintAttack} — ${name}`;
+      if (slot.id === "knife" || slot.id === "silver_dagger" || slot.id === "silver_dagger_plain" || slot.id === "evil_dagger" || slot.id === "trex_dagger" || slot.id === "imp_dagger" || slot.id === "machete" || slot.id === "axe") return `${useKey} ${STR.hintAttack} — ${name}`;
       if (slot.id === "spear") return `${useKey} ${STR.hintSpear}`;
       if (slot.id === "water_bottle") return `${name}: ${this.desert.bottleHint()}`;   // update 36
       if (slot.id === "super_energy_drink") return `${useKey} ${STR.hintDrink} — ${name}`;
@@ -1145,6 +1147,7 @@ class Game {
     }
     if (this.forest) this.forest.update(dt);   // update 69
     if (this.potions) this.potions.update(dt);   // update 73
+    if (this.volcano) this.volcano.update(dt);   // update 74
     this.updateExpansion(dt);
     for (const c of this.creatures) c.update(dt, this);
     for (const w of this.wolves) w.update(dt, this);
@@ -2082,14 +2085,12 @@ class Game {
   openJabb() {
     const lines = [...(this.jabbDone ? STR.jabbLinesDone : STR.jabbLines)];
     const buttons = [["jCoffee", STR.jabbCoffeeBtn]];
-    if (!this.jabbDone && this.player.inv.has("silver_bar")) buttons.unshift(["jBar", STR.jabbGiveBar]);
+    if (!this.jabbDone && this.player.inv.count("emberleaf") >= 3) buttons.unshift(["jBar", STR.jabbGiveLeaves]);   // update 74: ember leaf, not the bar
     const s = this.npcPanel(STR.jabbTitle, lines, buttons);
     s.querySelector("#jBar")?.addEventListener("click", () => {
-      this.player.inv.removeOne("silver_bar");
-      this.player.inv.add("silver_dagger", 1);
+      this.player.inv.remove("emberleaf", 3);
       this.jabbDone = true;   // per-run since update 27 — never persisted again
-      // silver home, grudge settled — the den calms down
-      for (const cw of this.wolves) if (cw.caveWolf) cw.caveAggroed = false;
+      if (this.volcano) this.volcano.lightFurnace();   // update 74: the leaves light the furnace
       this.audio.sPickup();
       this.ui.renderHotbar(this.player.inv);
       const s2 = this.npcPanel(STR.jabbTitle, STR.jabbThanks);
@@ -2664,6 +2665,7 @@ class Game {
     }
     if (this.forest) this.forest.interact(consider, p);   // update 69: pick-ups, the witch, her book and bed
     if (this.potions) this.potions.interact(consider, p);   // update 73: aloe vera
+    if (this.volcano) this.volcano.interact(consider, p);   // update 74: ember leaf, the ores, the furnace, the wolves
     this.ui.prompt(this.cooking ? STR.cooking : best ? best.label : this.compassLine());
     // touch devices mirror the prompt as a circular ONE-word button
     // (OPEN / SLEEP / COOK / TALK...) — visible only while in reach
@@ -2753,6 +2755,7 @@ class Game {
         gained.push([id2, n2]);
       }
     }
+    if (this.lootRng() < CFG.volcano.glovesChest) gained.push(["leather_gloves", 1]);   // update 74
     if (this.potions) this.potions.chestLoot(gained, c);   // update 73: herbs, vials and the common potions
     const names = [];
     for (const [id, n] of gained) {

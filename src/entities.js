@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=73";
-import { inFarm, inPasture } from "./farm.js?v=73";
-import { STR } from "../strings.js?v=73";
-import { icons } from "./items.js?v=73";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=73";
+import { CFG } from "./config.js?v=74";
+import { inFarm, inPasture } from "./farm.js?v=74";
+import { STR } from "../strings.js?v=74";
+import { icons } from "./items.js?v=74";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=74";
 
 // Creatures. Rigged GLBs (T-Rex, werewolf, chicken) play real walk/run clips;
 // the pig gets a procedural quadruped gait. The T-Rex cannot be killed.
@@ -335,6 +335,7 @@ export class Creature {
         const r = rmin + rng() * (rmax - rmin);
         const x = Math.cos(a) * r, z = Math.sin(a) * r;
         if (this.ctx.world.desert && this.ctx.world.desert.inDesert(x, z)) continue;   // update 36: not the sand
+        if (this.ctx.world.inMountain(x, z)) continue;   // update 74: hunters never AIM for the volcano - only a chase takes them up
         return [x, z];
       }
       return [this.pos.x, this.pos.z];
@@ -429,6 +430,7 @@ export class Creature {
       this.group.visible = true;
     }
     // only SILVER wounds a werewolf — the dagger, or a silver arrow (u27)
+    if (this.type === "werewolf" && weapon === "evil_dagger") { game.ui.toast(STR.volcano.evilStops); game.audio.sDeny(); return; }   // update 74: a force stops the arm
     if (this.type === "werewolf" && weapon !== "silver_dagger" && weapon !== "silver_arrow") {
       game.audio.sHit();
       game.ui.toast(STR.wolfImmune);
@@ -1559,7 +1561,8 @@ export class Creature {
       return;
     }
     const d = this.distToPlayer();
-    const playerSafe = w.isSafe(p.pos.x, p.pos.z, p.pos.y);
+    const evilHeld = !!(p.inv.selected() && p.inv.selected().id === "evil_dagger");   // update 74: the black blade makes the pack your kin
+    const playerSafe = w.isSafe(p.pos.x, p.pos.z, p.pos.y) || evilHeld;
     if (playerSafe) {
       this.state = "wander";
       if (!this.target || game.rng() < 0.005) {

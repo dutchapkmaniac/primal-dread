@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=73";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=74";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=73";
-import { Desert } from "./desert.js?v=73";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=73";
+import { CFG } from "./config.js?v=74";
+import { Desert } from "./desert.js?v=74";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=74";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,7 +11,7 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=73";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=73";   // update 69: the forest's mild hills
+import { makeHills } from "./forest.js?v=74";   // update 69: the forest's mild hills
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;
@@ -465,7 +465,7 @@ export class World {
     if (d > M.cliffLo) return M.walkTop * (M.r - d) / (M.r - M.cliffLo);
     if (d > M.cliffHi) return M.walkTop + (M.plateauH - M.walkTop) * (M.cliffLo - d) / (M.cliffLo - M.cliffHi);
     if (d > M.wallD) return M.plateauH;
-    return M.plateauH + (M.wallD - d) * 0.65; // the unreachable summit
+    return Math.min(M.plateauH + (M.wallD - d) * 0.65, M.plateauH + (M.wallD - CFG.volcano.capD) * 0.65); // the unreachable summit — update 74: cut flat at capD: the crater
   }
   inMountain(x, z) { return this.mountainH(x, z) > 0.35; }
 
@@ -1524,7 +1524,7 @@ export class World {
         const rs = (x - CV.x) * ux + (z - CV.z) * uz;
         if (h < caveY + (rs > 70 ? 13.5 : 8)) h = caveY - 0.55;
       }
-      pos.setY(i, h > 0.02 ? h + 0.04 : -0.6);
+      pos.setY(i, h > 0.02 ? h + 0.04 : -1.6);   // update 74: below the hills' deepest hollow (it showed as grey rock in every dip)
     }
     geo.computeVertexNormals();
     const rockGround = new THREE.Mesh(geo, this.mat("t_rock", 34, 34, 0x74776f));
@@ -1537,13 +1537,14 @@ export class World {
     const dtA = this.assets.glb.deadtree;
     this.slopeRockSpots = [];
     let placed = 0, guard = 0, surfaceN = 0;
-    while (placed < 46 && guard++ < 4000) {
-      const a = rng() * Math.PI / 2;
+    while (placed < (M.deadTrees || 46) && guard++ < 16000) {   // update 74: the whole circle, four times the wood
+      const a = rng() * Math.PI * 2;
       const d = 115 + rng() * 175;
       const x = M.cx + Math.cos(a) * d, z = M.cz + Math.sin(a) * d;
       if (Math.abs(x) > CFG.world.square - 4 || Math.abs(z) > CFG.world.square - 4) continue;
       if (Math.hypot(x - M.hut.x, z - M.hut.z) < 14) continue;
       if (Math.hypot(x - M.cave.x, z - M.cave.z) < 15) continue;
+      if (this.inDungeon(x, z)) continue;   // update 74
       const h = this.mountainH(x, z);
       if (h < 0.3) continue;
       if (d > M.cliffLo && ++surfaceN % 5 === 0) {
@@ -1574,7 +1575,8 @@ export class World {
     // mountain's heart, widening into a rock-hall ANTECHAMBER halfway, and
     // ending in a grand chamber where the statue guards the silver.
     const rockMat = this.mat("t_rock", 3, 2, 0x63665f);
-    const darkRock = this.mat("t_rock", 4, 4, 0x4c4f49);
+    const darkRock = this.mat("t_minefloor", 4, 4, 0x4a3a2a);   // update 74: the mine's soil floor
+    const mineRock = this.mat("t_minerock", 3, 2, 0x3a3028); mineRock.fog = false; darkRock.fog = false;   // update 74: the emerald mine's rock on the walls and the vault; no fog inside (fogged far walls read as daylight openings)
     // craggy wall builder: short rotated rock boxes stepped along a line
     const wallRun = (s0, t0, s1, t1, gapFn, hMul = 1) => {
       const len = Math.hypot(s1 - s0, t1 - t0);
@@ -1585,8 +1587,9 @@ export class World {
         if (gapFn && gapFn(s, t)) continue;
         const p = L(s + (rng() - 0.5) * 0.8, t + (rng() - 0.5) * 0.9);
         const bh = (5.6 + rng() * 1.6) * hMul;
-        const b = new THREE.Mesh(new THREE.BoxGeometry(3.0 + rng() * 1.4, bh, 1.6 + rng() * 0.9), rockMat);
+        const b = new THREE.Mesh(new THREE.BoxGeometry(3.0 + rng() * 1.4, bh, 1.6 + rng() * 0.9), mineRock);
         b.position.set(p.x, caveY + bh * 0.46 + rng() * 0.5, p.z);
+        { const q = L(s, t), ln = new THREE.Mesh(new THREE.BoxGeometry(len / n + 0.9, 6.6 * hMul, 0.6), mineRock); ln.position.set(q.x, caveY + 3.3 * hMul, q.z); ln.rotation.y = -Math.PI / 4 + Math.atan2(t1 - t0, s1 - s0); this.scene.add(ln); }   // update 74: a contiguous liner - no gap shows the sky
         b.rotation.y = -Math.PI / 4 + Math.atan2(t1 - t0, s1 - s0) + (rng() - 0.5) * 0.55;
         b.rotation.z = (rng() - 0.5) * 0.14;   // tilted slabs, not fitted panels
         this.scene.add(b);
@@ -1644,30 +1647,30 @@ export class World {
       const mid = [(a0 + a1) / 2, (b0 + b1) / 2];
       const len = Math.hypot(a1 - a0, b1 - b0) + 4.5;
       const rot = Math.atan2(b1 - b0, a1 - a0);
-      const roof = slab(mid[0], mid[1], len, HW * 2 + 5, caveY + 5.9, 1.4, rockMat);
+      const roof = slab(mid[0], mid[1], len, HW * 2 + 5, caveY + 5.9, 1.4, mineRock);
       roof.rotation.y = -Math.PI / 4 + rot;
       const floor = slab(mid[0], mid[1], len, HW * 2 + 5, caveY - 0.31, 0.6, darkRock);
       floor.rotation.y = -Math.PI / 4 + rot;
     }
-    slab(36, 0, 26, 28, caveY + 7.0, 1.6, rockMat);            // antechamber vault
+    slab(36, 0, 26, 28, caveY + 7.0, 1.6, mineRock);            // antechamber vault
     slab(36, 0, 26, 28, caveY - 0.31, 0.6, darkRock);          // antechamber floor
-    slab(92, 0, 44, 46, caveY + 11.2, 2.0, rockMat);           // GRAND HALL vault — high
+    slab(92, 0, 44, 46, caveY + 11.2, 2.0, mineRock);           // GRAND HALL vault — high
     slab(92, 0, 44, 46, caveY - 0.33, 0.6, darkRock);          // grand hall floor
-    slab(117, 0, 12, CORR.hw * 2 + 4.5, caveY + 5.9, 1.4, rockMat);   // exit passage roof
+    slab(117, 0, 12, CORR.hw * 2 + 4.5, caveY + 5.9, 1.4, mineRock);   // exit passage roof
     slab(117, 0, 12, CORR.hw * 2 + 4.5, caveY - 0.35, 0.6, darkRock); // exit passage floor
-    slab(132, 0, 24, 26, caveY + 9.0, 1.8, rockMat);           // sanctum vault
+    slab(132, 0, 24, 26, caveY + 9.0, 1.8, mineRock);           // sanctum vault
     slab(132, 0, 24, 26, caveY - 0.37, 0.6, darkRock);         // sanctum floor
     // door LINTELS — the tall halls meet low doorways; these slabs fill the
     // open band between each door's top and the vault so no daylight leaks in
-    slab(CH.s0, 0, 2.4, 16, caveY + 9.0, 5.6, rockMat);        // hall entry
-    slab(CH.s1, 0, 2.4, 14, caveY + 9.0, 5.6, rockMat);        // hall exit
-    slab(SANCTUM.s0, 0, 2.4, 12, caveY + 7.2, 3.4, rockMat);   // sanctum entry
+    slab(CH.s0, 0, 2.4, 16, caveY + 9.0, 5.6, mineRock);        // hall entry
+    slab(CH.s1, 0, 2.4, 14, caveY + 9.0, 5.6, mineRock);        // hall exit
+    slab(SANCTUM.s0, 0, 2.4, 12, caveY + 7.2, 3.4, mineRock);   // sanctum entry
     // the grand hall's natural columns — stalagmite pillars fused to the vault
     for (const [ps, pt] of [[80, -9], [84, 10], [98, -10], [102, 9]]) {
       const pp = L(ps, pt);
       let py = caveY;
       for (const [pw, ph] of [[3.0, 4.6], [2.3, 4.4], [1.7, 3.6]]) {
-        const seg = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, pw * (0.85 + rng() * 0.3)), rockMat);
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, pw * (0.85 + rng() * 0.3)), mineRock);
         seg.position.set(pp.x + (rng() - 0.5) * 0.4, py + ph / 2, pp.z + (rng() - 0.5) * 0.4);
         seg.rotation.y = rng() * Math.PI;
         this.scene.add(seg);
@@ -1733,44 +1736,26 @@ export class World {
         this.addTree(fp.x, fp.z, 0.95);
       }
     }
-    // CRYSTALS — the dungeon's only sun: teal clusters that keep it walkable-
-    // dark, never pitch black. Lights exist from boot, so no shader recompiles.
+    // update 74: the mine's light is LAMPS, not crystals - a timber post with a lantern at every spot a lit cluster stood
     this.dungeonLights = [];
-    const crystalMat = new THREE.MeshStandardMaterial({
-      color: 0x1e3844, emissive: 0x4fd8ff, emissiveIntensity: 1.45, roughness: 0.3, metalness: 0.1,
-    });
-    const crystalCluster = (cs, ct, lit, sc = 1) => {
-      const p = L(cs, ct);
-      const g = new THREE.Group();
-      const nCr = 3 + Math.floor(rng() * 2);
-      for (let c = 0; c < nCr; c++) {
-        const cone = new THREE.Mesh(new THREE.ConeGeometry((0.16 + rng() * 0.22) * sc, (0.7 + rng() * 0.9) * sc, 5), crystalMat);
-        cone.position.set((rng() - 0.5) * 0.9 * sc, 0.28 * sc, (rng() - 0.5) * 0.9 * sc);
-        cone.rotation.set((rng() - 0.5) * 0.7, rng() * Math.PI, (rng() - 0.5) * 0.7);
-        g.add(cone);
-      }
-      g.position.set(p.x, caveY, p.z);
-      this.scene.add(g);
-      if (lit) {
-        const gl = new THREE.PointLight(0x63c8e8, 5.2, 15 + (sc - 1) * 6, 1.8);
-        gl.position.set(p.x, caveY + 1.9 * sc, p.z);
-        this.scene.add(gl);
-        this.dungeonLights.push(gl);
-      }
+    const lampWood = this.mat("t_darkwood", 1, 3, 0x4a3320), lampGlass = new THREE.MeshStandardMaterial({ color: 0xffd080, emissive: 0xffb050, emissiveIntensity: 1.6, roughness: 0.4 });
+    const lampAt = (cs, ct, sc = 1) => {
+      const p = L(cs, ct); const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.4 * sc, 6), lampWood); post.position.set(p.x, caveY + 1.2 * sc, p.z); this.scene.add(post);
+      const lan = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.42, 0.3), lampGlass); lan.position.set(p.x, caveY + 2.3 * sc, p.z); this.scene.add(lan);
+      const gl = new THREE.PointLight(0xffb060, 5.2, 15 + (sc - 1) * 6, 1.8); gl.position.set(p.x, caveY + 2.4 * sc, p.z); this.scene.add(gl); this.dungeonLights.push(gl);
     };
-    // ten LIT clusters pace the whole run (light count unchanged since u22 —
-    // the forward renderer bills every light on every surface). Update 28:
-    // redistributed over the longer run; the grand hall's are twice the size
     for (const [cs, ct, sc] of [[8, 1.5, 1], [24, 6, 1], [38, -8, 1], [52, 3, 1], [64, 4.4, 1],
-      [80, -14, 2], [92, 15, 2], [104, -13, 2], [117, 2.4, 1], [134, 6, 1.6]]) crystalCluster(cs, ct, true, sc);
-    // ...and unlit ones glow on emissive alone, dressing the dark between
-    for (const [cs, ct, sc] of [[14, -1.6, 1], [20, 7, 1], [30, 10, 1], [33, -5, 1], [44, -10, 1],
-      [58, 5, 1], [70, 3, 1], [76, 10, 1.6], [86, -8, 1.6], [97, 8, 1.6], [108, -6, 1.6],
-      [112, 4, 1], [126, -6, 1.2], [138, -4, 1.2]]) crystalCluster(cs, ct, false, sc);
+      [80, -14, 2], [92, 15, 2], [104, -13, 2], [117, 2.4, 1], [134, 6, 1.6]]) lampAt(cs, ct, sc);
+    // update 74: twelve SILVER ORES against the walls (the Higgsfield cluster), one ore each, back next day
+    this.silverOres = [];
+    { const oreA = this.assets.glb.et_silverore; for (const [os, ot] of CFG.volcano.ores) { const p = L(os, ot); let m;
+      if (oreA) { m = oreA.model.clone(); m.rotation.y = rng() * Math.PI * 2; } else { m = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5, 0), new THREE.MeshStandardMaterial({ color: 0xc8ccd2, metalness: 0.8, roughness: 0.3 })); m.position.y = 0.4; }
+      m.position.x = p.x; m.position.z = p.z; m.position.y += caveY; this.scene.add(m); this.addTree(p.x, p.z, 0.55);
+      this.silverOres.push({ x: p.x, z: p.z, y: caveY, mesh: m, scale0: m.scale.clone(), left: 1 }); } }
     // hide-behind rocks — cover from werewolf EYES, never a safe spot
     const greyRock = greyRock2;
     for (const [rs, rt, sc] of [[10, -3.8, 0.9], [22, 7.6, 1.05], [33, -8, 0.95], [41, -6.8, 1.1],
-      [50, 1.8, 0.9], [64, -0.4, 1.0], [77, -15, 1.15], [82, 13, 1.0], [89, -10, 1.1],
+      [50, 3.9, 0.9], [64, -3.9, 1.0], [77, -15, 1.15], [82, 13, 1.0], [89, -10, 1.1],   // update 74: the two mid-tunnel rocks stand at the wall now
       [96, 16, 0.95], [104, -15, 1.05], [108, 9, 1.0], [127, -7, 0.95], [135, -7, 1.0]]) {
       const p = L(rs, rt);
       let m;
@@ -1799,36 +1784,13 @@ export class World {
       this.scene.add(ch);
     }
     this.chests.push({ x: chP.x, z: chP.z, y: caveY, opened: false, knife: false, snake: false, treasure: true });
-    // the WEREWOLF STATUE — update 28: enthroned in its OWN room, the sanctum
-    // at the very end of the dungeon, silver gleaming in its paws
-    const back = L(136, 0);
-    const statueYaw = Math.PI * 0.75;   // faces back down the tunnel
-    const stA = this.assets.glb.wolfstatue;
-    if (stA) {
-      const st = stA.model.clone();
-      st.position.set(back.x, caveY + 0.02, back.z);
-      st.rotation.y = statueYaw;
-      this.scene.add(st);
-    } else {
-      const st = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 1.0), rockMat);
-      st.position.set(back.x, caveY + 1.1, back.z);
-      this.scene.add(st);
-    }
-    this.addBox(back.x - 0.8, back.x + 0.8, caveY, caveY + 2.2, back.z - 0.8, back.z + 0.8);
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.18),
-      new THREE.MeshStandardMaterial({ color: 0xdfe3e8, roughness: 0.25, metalness: 0.9 }));
-    const barPos = L(134.8, 0);
-    bar.position.set(barPos.x, caveY + 1.32, barPos.z);
-    bar.rotation.y = statueYaw;
-    this.scene.add(bar);
-    this.silverBar = { x: barPos.x, z: barPos.z, y: caveY + 1.3, mesh: bar, taken: false };
+    // update 74: the werewolf statue and its silver bar are gone - the silver is in the rock now (see this.silverOres)
     this.cave = { x: CV.x, z: CV.z, r: CV.r, y: caveY };
     // ten wolf posts spread sparse through tunnel and chamber — tunnel posts
     // sit ON the spine so nobody wakes up inside the rock between two bends
     // update 28: the pack lives mostly in the GRAND HALL now — four posts on
     // the way in, five prowling the hall, one last guard in the sanctum
-    this.dungeonSpawns = [[12, 0.5], [30, 6], [41, -4], [57, 3], [78, -10],
-      [86, 6], [93, -9], [100, 14], [107, -2], [131, 4]].map(([s, t]) => { const p = L(s, t); return [p.x, p.z]; });
+    this.dungeonSpawns = [];   // update 74: the pack left the mine
     // JABB'S MOUNTAIN HUT — on the free lower slope, no anchors needed
     const H = M.hut;
     const hy = this.mountainH(H.x, H.z);
@@ -1922,17 +1884,23 @@ export class World {
     const scA = this.assets.glb.storagechest;
     if (scA) {
       const sc = scA.model.clone();
-      sc.position.set(H.x + 2.4, hy + 0.06, H.z - 2.0);
-      sc.rotation.y = -Math.PI / 2;
+      sc.position.set(H.x - 0.55, hy + 0.06, H.z - 2.6); sc.scale.multiplyScalar(0.75);   // update 74: beside the bed, a quarter smaller
+      sc.rotation.y = Math.PI;
       this.scene.add(sc);
     }
-    this.addBox(H.x + 1.9, H.x + 2.9, hy, hy + 0.7, H.z - 2.5, H.z - 1.5);
-    this.jabbChest = { x: H.x + 2.4, z: H.z - 2.0, y: hy };
+    this.addBox(H.x - 0.95, H.x - 0.15, hy, hy + 0.55, H.z - 3.0, H.z - 2.2);
+    this.jabbChest = { x: H.x - 0.55, z: H.z - 2.6, y: hy };
+    // update 74: the smelting FURNACE in the corner the chest left - cold until Jabb lights it with ember leaf
+    { const fA = this.assets.glb.et_furnace; if (fA) { const f = fA.model.clone(); f.position.set(H.x + 2.6, hy + 0.06, H.z - 2.1); f.rotation.y = -Math.PI * 0.75; this.scene.add(f); }
+      else { const f = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.3, 1.0), this.mat("t_cobble", 1, 1, 0x5a5048)); f.position.set(H.x + 2.6, hy + 0.65, H.z - 2.1); this.scene.add(f); }
+      this.addBox(H.x + 2.0, H.x + 3.2, hy, hy + 1.4, H.z - 2.7, H.z - 1.5); this.furnace = { x: H.x + 2.6, z: H.z - 2.1, y: hy };
+      const fl = new THREE.PointLight(0xff7a30, 0, 8, 2); fl.position.set(H.x + 2.2, hy + 0.9, H.z - 1.7); this.scene.add(fl); this.furnaceLight = fl; this.furnaceLit = false;
+      const gw = new THREE.Mesh(new THREE.CircleGeometry(0.16, 10), new THREE.MeshStandardMaterial({ color: 0xff6a20, emissive: 0xff5a10, emissiveIntensity: 1.8 })); gw.position.set(H.x + 2.25, hy + 0.55, H.z - 1.75); gw.rotation.y = -Math.PI * 0.75; gw.visible = false; this.scene.add(gw); this.furnaceGlow = gw; }
     // the ANVIL — Jabb's pride
     const avA = this.assets.glb.anvil;
     if (avA) {
       const av = avA.model.clone();
-      av.position.set(H.x + 2.1, hy + 0.06, H.z + 1.7);
+      av.position.set(H.x + 2.1, hy + 0.06, H.z + 1.7); av.scale.multiplyScalar(0.75);   // update 74: a quarter smaller
       av.rotation.y = 0.6;
       this.scene.add(av);
     } else {
@@ -1941,7 +1909,7 @@ export class World {
       av.position.set(H.x + 2.1, hy + 0.44, H.z + 1.7);
       this.scene.add(av);
     }
-    this.addBox(H.x + 1.6, H.x + 2.6, hy, hy + 0.9, H.z + 1.2, H.z + 2.2);
+    this.addBox(H.x + 1.7, H.x + 2.5, hy, hy + 0.7, H.z + 1.3, H.z + 2.1);   // update 74
     this.anvil = { x: H.x + 2.1, z: H.z + 1.7, y: hy };
     // Jabb's spot + a warm lamp over the doorway
     this.jabbPos = { x: H.x - 0.9, z: H.z + 0.9, yaw: 2.4 };

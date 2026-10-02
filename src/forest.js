@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=73";
-import { STR } from "../strings.js?v=73";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=73";
+import { CFG } from "./config.js?v=74";
+import { STR } from "../strings.js?v=74";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=74";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { Creature } from "./entities.js?v=73";
-import { iconUrl } from "./items.js?v=73";
+import { Creature } from "./entities.js?v=74";
+import { iconUrl } from "./items.js?v=74";
 
 // ============================================================================
 // update 69 (prompt37, update 1): the forest dressed up. Mild hills (makeHills, used by World.groundHeight and the forest
@@ -222,7 +222,15 @@ export class Forest {
   openWitch() {
     const g = this.g, S = STR.forest, want = this.wantedToday(), name = STR.items[want] ? STR.items[want].name : want, done = this.witchTradedDay === g.dayNum, has = g.player.inv.has(want);
     const lines = [...S.witchLines, done ? S.witchDone : S.witchWant.replace("%i", name).replace("%n", CFG.witchHut.vials)];
-    const s = g.npcPanel(S.witchName, lines, done ? [] : [["witchGive", S.witchGive.replace("%i", name)]]);
+    const btns = done ? [] : [["witchGive", S.witchGive.replace("%i", name)]];
+    const plain = g.player.inv.has("silver_dagger_plain");   // update 74: the dagger from Jabb's anvil
+    if (plain && g.player.inv.has("holy_water")) btns.push(["witchHoly", STR.volcano.witchHoly]);
+    if (plain && g.player.inv.has("unholy_water")) btns.push(["witchUnholy", STR.volcano.witchUnholy]);
+    const s = g.npcPanel(S.witchName, lines, btns);
+    for (const [bid, water, out, msg] of [["witchHoly", "holy_water", "silver_dagger", STR.volcano.blessed], ["witchUnholy", "unholy_water", "evil_dagger", STR.volcano.tainted]]) {
+      const eb = s.querySelector("#" + bid); if (!eb) continue;
+      eb.addEventListener("click", () => { const inv = g.player.inv; if (!inv.has("silver_dagger_plain") || !inv.has(water)) return; inv.removeOne("silver_dagger_plain"); inv.removeOne(water); if (!inv.add(out, 1)) g.spawnDrop(out, 1, this.witchWorld.x, this.witchWorld.z, this.hutY + 0.3); g.audio.sPickup(); g.ui.renderHotbar(inv); g.ui.closeScreen(); g.resume(); g.ui.toast(msg); });
+    }
     const b = s.querySelector("#witchGive"); if (!b) return;
     b.addEventListener("click", () => {
       if (!has && !g.player.inv.has(want)) { g.ui.toast(S.witchNoItem.replace("%i", name)); g.audio.sDeny(); return; }

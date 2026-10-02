@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=73";
+export const ASSET_V = "?v=74";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -74,6 +74,11 @@ export const CFG = {
   potionFx: { food: 20, heal: 20, energy: 40, staminaEnergy: 20, predator: 180, silence: 180, invis: 180, dread: 120, thickskin: 240, stamina: 120, regen: 240, regenEvery: 2, immune: 300, immortal: 300, immortalSkin: 300, nightvision: 300,
     sightMult: 0.6, noiseMult: 0.6, thickMult: 0.75, dinoSources: ["trex", "alio", "croc", "trike", "spino", "mother"], notDino: ["pig", "chicken", "goat", "cow", "werewolf", "elisia", "bat", "beetle", "meganeura"],
     printEvery: 0.5, printStep: 0.9, printsPer: 40, printR: 120, printLife: 20, printSize: [0.45, 1.3], maxPrints: 2000 },
+  // update 74: the volcano, ember leaf, the silver mine and the evil dagger
+  volcano: { capD: 45, lavaR: 40, lavaDrop: 1.6, glowDay: 0.45, glowNight: 1.7, glowLightNight: 60, glowR: 220, plumeN: 14, plumeRise: 30, plumeH: 120, plumeSize0: 9, plumeSize1: 44, haloSize: 150, haloNight: 0.55,
+    shelfN: 4, lowerN: 1, leaves: [1, 3], bareDmg: 10, emberW: 1.15, emberH: 0.95, glovesPrice: 20, glovesChest: 1 / 16,
+    ores: [[6, -4.4], [18, 4.4], [27, -11], [40, 11], [55, -4.4], [68, 4.4], [79, -19], [90, 19], [101, -19], [110, 19], [126, -9], [137, 9]], tPlain: 6, tEternal: 3, breakChance: 0.15, smeltOres: 3, furnaceLight: 7,
+    wolfMeats: ["cooked_pork", "cooked_chicken", "cooked_beef", "cooked_goat", "cooked_wolf", "cooked_meganeura"] },
   potions: [   // every one: a vial of water + these, crushed with the pestle and mortar (update 2 makes them)
     { id: "potion_starvation", needs: [["rosemary", 1], ["bat_wing", 1]] }, { id: "potion_healing", needs: [["rosemary", 1], ["crushed_mushroom", 2]] },
     { id: "potion_energy", needs: [["rosemary", 1], ["energy_drink", 1]] }, { id: "potion_antidote", needs: [["rosemary", 1], ["crushed_shell", 1]] },
@@ -340,6 +345,8 @@ export const CFG = {
     fists: { dmg: 15, range: 1.9, arcCos: 0.45, cooldown: 0.6 },
     knife: { dmg: 25, range: 2.3, arcCos: 0.45, cooldown: 0.5 },
     silver_dagger: { dmg: 30, range: 2.2, arcCos: 0.45, cooldown: 0.45 },
+    silver_dagger_plain: { dmg: 25, range: 2.3, arcCos: 0.45, cooldown: 0.5 },   // update 74: swings like the knife until the witch blesses it
+    evil_dagger:   { dmg: 30, range: 2.2, arcCos: 0.45, cooldown: 0.45 },   // update 74: as strong as silver; werewolves are its friends
     trex_dagger:   { dmg: 35, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 35: Elisia's gift — a blade ground from a T-Rex tooth
     et_dagger:     { dmg: 45, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 39: the Eternial blades — gold and green stone, sharper than iron and silver
     et_sword:      { dmg: 65, range: 2.6, arcCos: 0.40, cooldown: 0.6 },
@@ -394,6 +401,7 @@ export const CFG = {
   anvilRecipes: [
     { id: "climbing_anchor", cost: { broken_hook: 1 }, needs: "hammer" },
     { id: "climbing_anchor", cost: { knife: 1, rope: 1 } },
+    { id: "silver_dagger_plain", cost: { silver_bar: 1 }, needs: "hammer" },   // update 74
   ],
 
   trex: {
@@ -524,6 +532,7 @@ export const CFG = {
     plateauH: 24,            // the high shelf with the goats and the cave
     wallD: 100,              // beyond this the peak is world's-end — hard stop
     hut: { x: -240, z: -240 },   // Jabb's hut on the free lower slope
+    deadTrees: 184,           // update 74: four times the old quarter's 46, round the whole circle
     // update 22: the cave MOUTH on the high shelf — the dungeon tunnels bore
     // from here diagonally INTO the mountain's heart (see world.buildDungeon)
     cave: { x: -323, z: -323, r: 10 },
@@ -535,7 +544,7 @@ export const CFG = {
   // the TRICERATOPS: an unkillable golden-brown battering ram. It charges
   // STRAIGHT — sidestep and it thunders past, then slowly wheels around.
   trike: {
-    count: 5, height: 4.4, speed: 1.4, hp: Infinity, // nearly T-Rex-sized — the research holds up
+    count: 20, height: 4.4, speed: 1.4, hp: Infinity, // update 74: four times as many, round the whole volcano   // nearly T-Rex-sized — the research holds up
     sightR: 26, chargeSpeed: 11.5, chargePast: 9,  // keeps going this far past the mark
     turnTime: 4.4,                                  // the slow wheel-around (+2s of breathing room)
     dmg: 42, knockback: 9, hitR: 3.1, hitCd: 1.2,
@@ -621,7 +630,7 @@ export const CFG = {
     et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55
     et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57
     et_pickaxe: 0.24,
-    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_furnace: 1.35, et_silverore: 1.2, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -749,10 +758,10 @@ export const CFG = {
         sells: ["apple", "egg", "blueberries", "cooked_pork", "cooked_chicken", "chocolate", "energy_drink", "fill_water"],   // update 63: the fish and the rod moved to the fishing stall
         buys: { apple: 1, green_apple: 1, egg: 1, blueberries: 1, lemon: 1, raw_pork: 1, raw_chicken: 1, raw_fish: 1, raw_beef: 1, raw_goat: 1, raw_wolf: 1, cooked_pork: 2, cooked_chicken: 2, cooked_fish: 2, cooked_eggs: 2, cooked_beef: 3, cooked_goat: 3, cooked_wolf: 3, cooked_trex: 5, chocolate: 2, bowl_yogurt: 3, bowl_yogurt_blueberries: 5 } },
       { id: "tools", name: "Khamet's tools", kind: "male", r: 44, th: -18, color: 0x8a5a2a, wares: 0x555a60, blurb: "toolsBlurb", lines: "toolsLines",
-        sells: ["hammer", "rope", "torch", "tinderbox", "bandage", "needle", "thread", "arrow"],   // update 63: the knife, the axe and the bowl moved to the resource stall   // update 40: no climbing anchor
+        sells: ["hammer", "rope", "torch", "tinderbox", "bandage", "needle", "thread", "arrow", "leather_gloves"],   // update 63: the knife, the axe and the bowl moved to the resource stall   // update 40: no climbing anchor
         buys: { knife: 3, hammer: 4, axe: 10, rope: 1, torch: 1, tinderbox: 2, bandage: 1, needle: 1, thread: 1, arrow: 1, pestle: 4, spear: 6, bowl: 1, crossbow: 40 } },
       { id: "rare", name: "Sethra's rarities", kind: "female", r: 44, th: 18, color: 0x3a2a6a, wares: 0xc9a227, blurb: "rareBlurb", lines: "rareLines", rare: true, sells: [],
-        buys: { emerald: 30, golden_apple: 100, silver_dagger: 100, holy_water: 250, unholy_water: 250, trex_dagger: 25, imp_dagger: 500, fossil: 750, gold_statuette: 2500, trex_tooth: 15, imp_tooth: 60, unholy_tiara: 300, silver_bar: 40, croc_skin: 20, wolf_fur: 8, goat_horn: 6, wolf_tooth: 6 } },
+        buys: { emerald: 30, golden_apple: 100, silver_dagger: 100, silver_dagger_plain: 40, holy_water: 250, unholy_water: 250, trex_dagger: 25, imp_dagger: 500, fossil: 750, gold_statuette: 2500, trex_tooth: 15, imp_tooth: 60, unholy_tiara: 300, silver_bar: 40, croc_skin: 20, wolf_fur: 8, goat_horn: 6, wolf_tooth: 6 } },
       { id: "smith", name: "Ankhu the smith", kind: "male", r: 44, th: 52, color: 0x6a2a1a, wares: 0xd9ad2e, blurb: "smithBlurb", lines: "smithLines",
         sells: ["et_dagger", "et_sword", "et_spear"], buys: { et_dagger: 75, et_sword: 250, et_spear: 175 } },   // update 40: dearer
       // update 63: the fishing stall (five fish of each kind a day; bait and the rod always) and the resource stall (wood, the axe, the bowl, the knife)
@@ -768,7 +777,7 @@ export const CFG = {
     prices: { raw_fish: 2, bait: 3, branch: 2, emerald: 60, pickaxe: 30, et_pickaxe: 500, apple: 1, egg: 1, blueberries: 2, cooked_pork: 3, cooked_chicken: 3, cooked_fish: 3, chocolate: 4, energy_drink: 3, fishing_rod: 12, fill_water: 2,
       knife: 8, hammer: 10, axe: 25, rope: 4, torch: 3, tinderbox: 5, bandage: 4, needle: 3, thread: 2, arrow: 6, bowl: 3,
       et_dagger: 150, et_sword: 500, et_spear: 350,
-      vial: 1, pestle: 25, rosemary: 5, belladonna: 10, aloe_vera: 25 },   // update 73: the herb stall   // update 40: the weapons take work to earn
+      vial: 1, pestle: 25, rosemary: 5, belladonna: 10, aloe_vera: 25, leather_gloves: 20 },   // update 73: the herb stall   // update 40: the weapons take work to earn
     bundles: { arrow: 5, bait: 5 },
     tasks: [
       { need: [["apple", 5]], reward: 15 }, { need: [["cookedMeat", 3]], reward: 18 }, { need: [["branch", 8]], reward: 10 },
