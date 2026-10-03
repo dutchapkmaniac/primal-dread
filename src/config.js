@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=77";
+export const ASSET_V = "?v=78";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -35,7 +35,7 @@ export const CFG = {
     // temple's first floor, one behind the hut, the rest deep in the forest.
     // [x, z, guaranteedKnife, y]
     chests: [
-      [7, -28, true, 0],        // where the path enters the forest
+      [7, -28, false, 0],       // where the path enters the forest (update 78: a random chest; the knife and bandage wait in the start storage)
       [5, -5, false, 3.7],      // temple, first floor
       [-26, -139, false, 0],    // behind the hut
       [95, 62, false, 0], [-92, 78, false, 0], [58, -102, false, 0],
@@ -91,7 +91,7 @@ export const CFG = {
     lanternsPerTree: [4, 5], carveEvery: 3, fireflyClusters: 10,
     glow: { starflower: 0x6a80ff, magic_mushroom: 0x4a70ff, void_bloom: 0xb040ff, infial: 0xff3a3a, moonstone: 0x9fb4ff, lantern: 0x7a8cff, lamppost: 0x8fa0ff, hut: 0x9aa8ff, mystic: 0x4a70ff },   // update 76: every glowing thing's light
     // update 77: which part of each plant glows (mask = the texture colours that glow; top = only above this fraction of the height; blackBelow = the rest goes black) and where its light sits
-    plantGlow: { starflower: { mask: "violet", ei: 1.9, lightAt: 0.7 }, magic_mushroom: { mask: "blue", ei: 1.4, lightAt: 0.7 }, void_bloom: { top: 0.5, blackBelow: true, ei: 1.0, lightAt: 0.75 }, infial: { mask: "red", ei: 1.3, lightAt: 0.7 }, moonstone: { ei: 0.7, lightAt: 0.6 } },
+    plantGlow: { starflower: { ei: 0.55, lightAt: 0.65 }, magic_mushroom: { mask: "blue", ei: 1.4, lightAt: 0.7 }, void_bloom: { top: 0.5, blackBelow: true, ei: 0.8, lightAt: 0.75 }, infial: { mask: "red", ei: 1.3, lightAt: 0.7 }, moonstone: { ei: 0.55, lightAt: 0.6 } },   // update 78: the starflower and the moonstone as in update 76
     moon: { dir: [0.45, 0.5, -0.74], size: 95 },
     battle: { hits: 10, strong: 1, knife: 0.5, fists: 0.25, meleeDmg: 14, meleeEvery: 2.0, laserEvery: 6, laserDmg: 22, laserSpeed: 15, reach: 3.0, leaveR: 16 },
     tint: { color: [0.6, 0.68, 1.25], emissive: 0x3448ff, emissiveI: 0.34, leafI: 0.95, waterEmissive: 0x4060ff, waterI: 0.4 },
@@ -577,7 +577,7 @@ export const CFG = {
   },
   trikeRocks: {
     count: 15, r: 2.25, respawn: 300,   // half again bigger since update 22
-    chestChance: 0.2, hookChance: 0.05,
+    chestChance: 0.2, hookChance: 0.05, pickChance: 0.1,   // update 78: one rock in ten hides a pickaxe
   },
   goat: {
     count: 12, height: 0.95, speed: 1.1, fleeSpeed: 5.2, fleeR: 9, hp: 40,
@@ -655,7 +655,7 @@ export const CFG = {
     et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55
     et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57
     et_pickaxe: 0.24,
-    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_furnace: 1.35, et_silverore: 1.2, hf_farmer: 1.78, hf_wife: 1.68, hf_explorer: 1.8, hf_witch: 2.05, hf_warrior: 2.1, hf_historian: 1.7, hf_lady: 1.75, hf_fountain: 4.2, hf_fountain2: 4.2, hf_lantern: 0.55, hf_starflower: 1.15, hf_magicmush: 0.85, hf_voidbloom: 0.75, hf_infial: 1.1, hf_moonrock: 1.3, hf_lamppost: 3.2, hf_interior: 1.5, hf_pedestal: 1.7, hf_rottenbasket: 0.3, hf_rottencrate: 0.62, hf_staff: 1.75, hf_dagger: 0.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_furnace: 1.35, et_silverore: 1.2, hf_farmer: 1.78, hf_wife: 1.68, hf_explorer: 1.8, hf_witch: 2.05, hf_warrior: 2.1, hf_historian: 1.7, hf_lady: 1.75, hf_fountain: 4.2, hf_fountain2: 4.2, hf_lantern: 0.55, hf_starflower: 0.95, hf_magicmush: 0.85, hf_voidbloom: 0.75, hf_infial: 1.1, hf_moonrock: 1.3, hf_lamppost: 3.2, hf_interior: 1.5, hf_pedestal: 1.7, hf_rottenbasket: 0.3, hf_rottencrate: 0.62, hf_staff: 1.75, hf_dagger: 0.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z

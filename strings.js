@@ -211,6 +211,7 @@ export const STR = {
   forest: {
     talkWitch: "Talk to the witch", readBook: "Read the book of potions",
     witchName: "Morwen, the witch of the wood",
+    askWater: "Ask for water (fills every empty vial)", noVials: "You carry no empty vial",   // update 78
     witchLines: ["Mind the cauldron, it bites. You smell of the forest, good. Potions want fresh things.", "I give ten empty vials for one thing I happen to need. The thing changes with the day, as things do.", "There is a forest inside this forest. It turns at dusk, somewhere east of here - I have never found its line. Stand inside it when the dark comes, they say, and the trees light up blue. Our kind do not understand a word there. A staff might.", "There is a forest inside this forest. It turns at dusk, somewhere east of here - I have never found its line. Stand inside it when the dark comes, they say, and the trees light up blue. Our kind do not understand a word there. A staff might."],
     witchWant: "Today I am short of %i. Bring me one and %n empty vials are yours.", witchDone: "You have had your vials today. Tomorrow I will want something else.",
     witchGive: "Give %i (10 empty vials)", witchNoItem: "You do not carry a %i.", witchThanks: "%n empty vials. Fill them at any water. The book on the table tells the rest.",
@@ -792,6 +793,7 @@ export const STR = {
   trikeStuck: "Its horns SLAM into the dead wood and STICK — run. NOW.",
   rockChest: "The rock SHATTERS — a treasure chest was buried beneath it!",
   rockHook: "The rock SHATTERS — something metal glints in the rubble.",
+  rockPick: "The rock SHATTERS — a pickaxe lies in the rubble.",   // update 78
   smithTitle: "THE ANVIL",
   smithHint: "Dwarf-work: hammer metal into what the forest can't give you.",
   smithBtn: "Smith",

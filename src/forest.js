@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=77";
-import { STR } from "../strings.js?v=77";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=77";
+import { CFG } from "./config.js?v=78";
+import { STR } from "../strings.js?v=78";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=78";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { Creature } from "./entities.js?v=77";
-import { iconUrl } from "./items.js?v=77";
+import { Creature, ItemDrop } from "./entities.js?v=78";
+import { iconUrl } from "./items.js?v=78";
 
 // ============================================================================
 // update 69 (prompt37, update 1): the forest dressed up. Mild hills (makeHills, used by World.groundHeight and the forest
@@ -160,7 +160,8 @@ export class Forest {
     if (s.kind === "mushroom") { s.shrooms.forEach((m, i) => { const show = on && i < s.n; d.position.set(m.x, m.y - 0.02, m.z); d.rotation.set(m.tilt, m.yaw, 0); d.scale.setScalar(show ? m.sc : 0.0001); d.updateMatrix(); for (const inst of this.mushroomInst) { inst.setMatrixAt(m.idx, d.matrix); inst.instanceMatrix.needsUpdate = true; } }); return; }
     d.position.set(s.x, s.y, s.z); d.rotation.set(0, s.yaw, 0); d.scale.setScalar(on ? s.sc : 0.0001); d.updateMatrix(); for (const inst of [s.insta, s.instb]) { inst.setMatrixAt(s.idx, d.matrix); inst.instanceMatrix.needsUpdate = true; }
   }
-  respawnPickups() { for (const s of this.pickups) { if (s.n < s.max) { s.n = s.max; this.setPickVisible(s, true); } } }
+  respawnPickups() { for (const s of this.pickups) { if (s.n < s.max) { s.n = s.max; this.setPickVisible(s, true); } } this.spawnWitchGoods(); }
+  spawnWitchGoods() { const g = this.g; for (const it of this.witchGoods || []) { if (it.drop && g.drops.includes(it.drop)) continue; it.drop = new ItemDrop(it.id, 1, it.x, it.z, it.y, this.scene, 0); g.drops.push(it.drop); } }   // update 78
   // ---------------- the night's bats (looks only) ----------------
   batBody(size) {
     const g = new THREE.Group(), m = this.mats.spr_bat;
@@ -215,7 +216,9 @@ export class Forest {
     if (WA) { let skinned = false; WA.model.traverse((o) => { if (o.isSkinnedMesh) skinned = true; }); if (skinned) { body = skeletonClone(WA.model); const bones = {}; body.traverse((o) => { if (o.isBone) bones[o.name] = o; }); const bind = {}; for (const k of Object.keys(bones)) bind[k] = bones[k].quaternion.clone(); body.userData.wbones = bones; body.userData.wbind = bind; } else body = riggedHumanoid(WA.model, {}) || WA.model.clone(); }
     else { body = new THREE.Group(); const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 1.1, 4, 8), new THREE.MeshStandardMaterial({ color: 0x2f4a2a })); m.position.y = 0.85; body.add(m); }
     const WP = W.witch; body.position.set(WP[0], 0.2, WP[1]); body.rotation.y = WP[2] * D2R; root.add(body); this.witch = body; this.witchYaw = WP[2] * D2R;
-    { const c = Math.cos(yaw), s = Math.sin(yaw); this.witchWorld = { x: hx + WP[0] * c + WP[1] * s, z: hz - WP[0] * s + WP[1] * c }; this.bookWorld = { x: hx + (TB[0] + 0.1) * c + (TB[1] - 0.05) * s, z: hz - (TB[0] + 0.1) * s + (TB[1] - 0.05) * c }; this.bedWorld = { x: hx + BD[0] * c + BD[1] * s, z: hz - BD[0] * s + BD[1] * c }; this.hutY = y0; }
+    { const c = Math.cos(yaw), s = Math.sin(yaw); this.witchWorld = { x: hx + WP[0] * c + WP[1] * s, z: hz - WP[0] * s + WP[1] * c }; this.bookWorld = { x: hx + (TB[0] + 0.1) * c + (TB[1] - 0.05) * s, z: hz - (TB[0] + 0.1) * s + (TB[1] - 0.05) * c }; this.bedWorld = { x: hx + BD[0] * c + BD[1] * s, z: hz - BD[0] * s + BD[1] * c }; this.hutY = y0;
+      // update 78: a pestle on the table beside the book, and an empty vial in the grass outside the door - one of each a day
+      this.witchGoods = [{ id: "pestle", x: hx + (TB[0] - 0.45) * c + (TB[1] + 0.15) * s, z: hz - (TB[0] - 0.45) * s + (TB[1] + 0.15) * c, y: y0 + W.tableH + 0.08, drop: null }, { id: "vial", x: hx + 0.9 * c + (S / 2 + 2.6) * s, z: hz - 0.9 * s + (S / 2 + 2.6) * c, y: w.groundHeight(hx + 0.9 * c + (S / 2 + 2.6) * s, hz - 0.9 * s + (S / 2 + 2.6) * c, 0), drop: null }]; this.spawnWitchGoods(); }
     w.addBox(this.witchWorld.x - 0.4, this.witchWorld.x + 0.4, y0, y0 + 1.8, this.witchWorld.z - 0.4, this.witchWorld.z + 0.4);
   }
   wantedToday() { const W = CFG.witchHut, day = this.g.dayNum, dow = ((day - 1) % 7 + 7) % 7; const id = W.wants[dow]; return id === "flower" ? (day % 2 === 0 ? "white_flower" : "yellow_flower") : id; }
@@ -228,7 +231,9 @@ export class Forest {
     if (plain && g.player.inv.has("unholy_water")) btns.push(["witchUnholy", STR.volcano.witchUnholy]);
     if (g.player.inv.has("monial_staff_raw")) btns.push(["witchStaff", STR.hidden.enchantStaff]);   // update 75
     if (g.player.inv.has("infial_belladonna")) btns.push(["witchConv", STR.hidden.convertBtn]);
+    btns.push(["witchWater", S.askWater]);   // update 78: her magic fills every empty vial, free
     const s = g.npcPanel(S.witchName, lines, btns);
+    { const wb = s.querySelector("#witchWater"); if (wb) wb.addEventListener("click", () => { const n = g.potions ? g.potions.fillVials() : 0; if (!n) { g.ui.toast(S.noVials); g.audio.sDeny(); } g.ui.closeScreen(); g.resume(); }); }
     { const sb = s.querySelector("#witchStaff"); if (sb) sb.addEventListener("click", () => { const inv = g.player.inv; if (!inv.has("monial_staff_raw")) return; inv.removeOne("monial_staff_raw"); if (!inv.add("monial_staff", 1)) g.spawnDrop("monial_staff", 1, this.witchWorld.x, this.witchWorld.z, this.hutY + 0.3); g.audio.sPickup(); g.ui.renderHotbar(inv); g.ui.closeScreen(); g.resume(); g.ui.toast(STR.hidden.staffEnchanted); });
       const cb = s.querySelector("#witchConv"); if (cb) cb.addEventListener("click", () => { if (g.hidden) g.hidden.convertInfial(); g.ui.closeScreen(); g.resume(); }); }   // update 75
     for (const [bid, water, out, msg] of [["witchHoly", "holy_water", "silver_dagger", STR.volcano.blessed], ["witchUnholy", "unholy_water", "evil_dagger", STR.volcano.tainted]]) {

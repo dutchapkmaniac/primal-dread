@@ -1,26 +1,26 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=77";
-import { STR } from "../strings.js?v=77";
+import { CFG, ASSET_V } from "./config.js?v=78";
+import { STR } from "../strings.js?v=78";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=77";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=77";
-import { Forest } from "./forest.js?v=77";   // update 69
-import { Potions } from "./potions.js?v=77";   // update 73
-import { Volcano } from "./volcano.js?v=77";   // update 74
-import { HiddenForest } from "./hidden.js?v=77";   // update 75
-import { ClipAnimator } from "./skeletal.js?v=77";
-import { AudioMan } from "./audio.js?v=77";
-import { UI } from "./ui.js?v=77";
-import { World } from "./world.js?v=77";
-import { Player } from "./player.js?v=77";
-import { Creature, ItemDrop } from "./entities.js?v=77";
-import { GameMap } from "./map.js?v=77";
-import { FarmGame } from "./farmgame.js?v=77";
-import { ElisiaSystem } from "./elisia.js?v=77";   // update 35
-import { DesertSystem } from "./desert.js?v=77";
-import { PortalSystem } from "./portals.js?v=77";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=77";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=78";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=78";
+import { Forest } from "./forest.js?v=78";   // update 69
+import { Potions } from "./potions.js?v=78";   // update 73
+import { Volcano } from "./volcano.js?v=78";   // update 74
+import { HiddenForest } from "./hidden.js?v=78";   // update 75
+import { ClipAnimator } from "./skeletal.js?v=78";
+import { AudioMan } from "./audio.js?v=78";
+import { UI } from "./ui.js?v=78";
+import { World } from "./world.js?v=78";
+import { Player } from "./player.js?v=78";
+import { Creature, ItemDrop } from "./entities.js?v=78";
+import { GameMap } from "./map.js?v=78";
+import { FarmGame } from "./farmgame.js?v=78";
+import { ElisiaSystem } from "./elisia.js?v=78";   // update 35
+import { DesertSystem } from "./desert.js?v=78";
+import { PortalSystem } from "./portals.js?v=78";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=78";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -398,6 +398,7 @@ class Game {
       onDeath: (src) => this.onDeath(src),
     };
     this.player = new Player(this.camera, ctx);
+    this.storage.add("knife", 1); this.storage.add("bandage", 1);   // update 78: the knife and bandage start in the storage chest, not the first forest chest
     ctx.player = this.player;
     this.ctx = ctx;
     ctx.potionDamage = (a, src, from) => this.potions ? this.potions.potionDamage(a, src, from) : a;   // update 73: dodges and thick skin
@@ -851,6 +852,9 @@ class Game {
       } else if (roll < CFG.trikeRocks.chestChance + CFG.trikeRocks.hookChance) {
         this.spawnDrop("broken_hook", 1, r.x, r.z, r.y);
         this.ui.toast(STR.rockHook);
+      } else if (roll < CFG.trikeRocks.chestChance + CFG.trikeRocks.hookChance + (CFG.trikeRocks.pickChance || 0)) {   // update 78
+        this.spawnDrop("pickaxe", 1, r.x, r.z, r.y);
+        this.ui.toast(STR.rockPick);
       } else {
         r.respawnT = CFG.trikeRocks.respawn;
       }

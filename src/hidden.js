@@ -18,8 +18,8 @@
 // Mystic apples at night. The explorer sells a map for four plants: read once, the hidden area shows on the world map.
 // The lag: the 3,773 lanterns were 28,000-triangle meshes, never culled - now 1,500 triangles each in 64 m cells.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=77";
-import { STR } from "../strings.js?v=77";
+import { CFG } from "./config.js?v=78";
+import { STR } from "../strings.js?v=78";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const D2R = Math.PI / 180;
@@ -122,16 +122,23 @@ export class HiddenForest {
     this.nightWater = mk(ring(0), nMat, 0.335); this.nightWater.visible = false; this.nightWater.renderOrder = 2; this.nightMat = nMat;
     for (const m of [this.dayWater, this.nightWater]) { const uv = m.geometry.attributes.uv, sc = 7 / (2 * CFG.lake.r); for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * sc, uv.getY(i) * sc); uv.needsUpdate = true; }
   }
-  // old mossy planks and grey posts by day, clean oiled planks at night - the same bridge
+  // update 78: the bridge as drawn - pale weathered wood everywhere, round rails and posts, moss and ivy by day; at night the
+  // same pale wood, clean, with square box lanterns on taller posts
   bridgeMats() {
     if (this._bm) return this._bm; const w = this.w;
-    const dayPlank = w.mat("t_mossplank", 1, 4, 0x6a6f66), nightPlank = w.mat("t_cleanplank", 1, 4, 0x8a6a42);
-    const dayPost = w.mat("t_darkwood", 1, 2, 0x4a3b28); dayPost.color.setHex(0x8a8f86); const nightPost = w.mat("t_darkwood", 1, 2, 0x4a3b28);
-    for (const m of [dayPlank, nightPlank, dayPost, nightPost]) m.userData.hiddenTint = true;
-    this._bm = { dayPlank, nightPlank, dayPost, nightPost }; return this._bm;
+    const dayPlank = w.mat("t_mossplank", 1, 4, 0x8a8f86); dayPlank.color.setHex(0xd8dbd0);
+    const nightPlank = w.mat("t_cleanplank", 1, 4, 0x8a6a42); nightPlank.color.setHex(0xe0cfb0);
+    const dayWood = w.mat("t_mossplank", 1, 1, 0x8a8f86); dayWood.color.setHex(0xcfd2c6);
+    const nightWood = w.mat("t_cleanplank", 1, 1, 0x8a6a42); nightWood.color.setHex(0xdcc9a8);
+    for (const m of [dayPlank, nightPlank, dayWood, nightWood]) m.userData.hiddenTint = true;
+    const stone = w.mat("t_romanstone", 1, 1, 0x8a8a84), iron = new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.6, metalness: 0.4 });
+    const glassD = new THREE.MeshStandardMaterial({ color: 0x2a2c34, roughness: 0.8 }), glassN = new THREE.MeshStandardMaterial({ color: 0xbfd0ff, emissive: 0x7a8cff, emissiveIntensity: 1.6, roughness: 0.3 });
+    for (const m of [stone, iron, glassD, glassN]) m.userData.noTint = true;
+    const ivy = w.mat("t_hedge", 1, 1, 0x2e4a2a); ivy.color.setHex(0x4a5a34); ivy.userData.hiddenTint = true;
+    this._bm = { dayPlank, nightPlank, dayWood, nightWood, stone, iron, glassD, glassN, ivy }; return this._bm;
   }
   buildBridge() {
-    const g = this.g, w = this.w, B = H().bridge, L = H().lake, M = this.bridgeMats();
+    const g = this.g, w = this.w, B = H().bridge, L = H().lake, M = this.bridgeMats(), rng = this.rng;
     const c = Math.cos(B.yaw * D2R), s = Math.sin(B.yaw * D2R); this.bridgeWorld = { c, s, x: L.x, z: L.z };
     const toW = (u, v) => [L.x + u * c + v * s, L.z - u * s + v * c];
     const [ax, az] = toW(-B.len / 2, 0), [bx, bz] = toW(B.len / 2, 0);
@@ -139,14 +146,25 @@ export class HiddenForest {
     this.bridgeEnds = [[ax, az], [bx, bz]];
     this.deck = (u) => { const t = clamp01((u + B.len / 2) / B.len); return yA + (yB - yA) * t + B.rise * Math.sin(Math.PI * t); };
     const root = new THREE.Group(); root.position.set(L.x, 0, L.z); root.rotation.y = B.yaw * D2R; g.scene.add(root); this.bridgeRoot = root;
-    const plank = (geo) => this.swap(new THREE.Mesh(geo, M.dayPlank), M.dayPlank, M.nightPlank), post = (geo) => this.swap(new THREE.Mesh(geo, M.dayPost), M.dayPost, M.nightPost);
+    const plank = (geo) => this.swap(new THREE.Mesh(geo, M.dayPlank), M.dayPlank, M.nightPlank), wood = (geo) => this.swap(new THREE.Mesh(geo, M.dayWood), M.dayWood, M.nightWood);
     const n = Math.round(B.len / 0.5);
     for (let i = 0; i < n; i++) { const u = -B.len / 2 + (i + 0.5) * 0.5, y = this.deck(u); const p = plank(new THREE.BoxGeometry(0.52, 0.09, B.w)); p.position.set(u, y - 0.045, 0); p.rotation.z = Math.atan2(this.deck(u + 0.25) - this.deck(u - 0.25), 0.5); root.add(p); }
-    for (let u = -B.len / 2 + 1.5; u < B.len / 2; u += 3) { const y = this.deck(u); const [wx, wz] = toW(u, 0); const base = this.lakePen2(wx, wz) > 0 ? 0.0 : w.groundHeight(wx, wz, 40); const h = Math.max(0.3, y - base + 0.1); for (const sd of [-1, 1]) { const pl = post(new THREE.BoxGeometry(0.24, h, 0.24)); pl.position.set(u, base + h / 2 - 0.1, sd * (B.w / 2 - 0.2)); root.add(pl); } const beam = post(new THREE.BoxGeometry(0.24, 0.18, B.w + 0.3)); beam.position.set(u, y - 0.2, 0); root.add(beam); }
-    // rail posts every two metres; every other post stands taller and carries a lantern on its cap (update 77)
+    // round piers down to the bed, a cross beam under the deck
+    for (let u = -B.len / 2 + 1.5; u < B.len / 2; u += 3) { const y = this.deck(u); const [wx, wz] = toW(u, 0); const base = this.lakePen2(wx, wz) > 0 ? 0.0 : w.groundHeight(wx, wz, 40); const h = Math.max(0.3, y - base + 0.1); for (const sd of [-1, 1]) { const pl = wood(new THREE.CylinderGeometry(0.13, 0.15, h, 10)); pl.position.set(u, base + h / 2 - 0.1, sd * (B.w / 2 - 0.2)); root.add(pl); } const beam = wood(new THREE.CylinderGeometry(0.11, 0.11, B.w + 0.3, 8)); beam.rotation.x = Math.PI / 2; beam.position.set(u, y - 0.2, 0); root.add(beam); }
+    // round rail posts every two metres; every other post stands taller with a stone cap and a box lantern on it
     this.railLanterns = []; let pi = 0;
-    for (let u = -B.len / 2; u <= B.len / 2 + 0.01; u += 2, pi++) { const y = this.deck(u); const lamp = pi % 2 === 1; for (const sd of [-1, 1]) { const hgt = lamp ? 1.45 : 1.15; const po = post(new THREE.BoxGeometry(lamp ? 0.18 : 0.14, hgt, lamp ? 0.18 : 0.14)); po.position.set(u, y + hgt / 2 - 0.03, sd * (B.w / 2 - 0.1)); root.add(po); if (lamp) { const cap = post(new THREE.BoxGeometry(0.3, 0.06, 0.3)); cap.position.set(u, y + hgt - 0.03, sd * (B.w / 2 - 0.1)); root.add(cap); const [wx, wz] = toW(u, sd * (B.w / 2 - 0.1)); this.railLanterns.push([wx, y + hgt, wz]); } } }
-    for (const sd of [-1, 1]) for (const ry of [0.55, 1.08]) { const pts = []; for (let u = -B.len / 2; u <= B.len / 2 + 0.01; u += 1) pts.push(new THREE.Vector3(u, this.deck(u) + ry, sd * (B.w / 2 - 0.1))); root.add(post(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 72, 0.045, 6, false))); }
+    for (let u = -B.len / 2; u <= B.len / 2 + 0.01; u += 2, pi++) { const y = this.deck(u); const lamp = pi % 2 === 1; for (const sd of [-1, 1]) { const hgt = lamp ? 1.5 : 1.15, v = sd * (B.w / 2 - 0.1); const po = wood(new THREE.CylinderGeometry(lamp ? 0.11 : 0.08, lamp ? 0.12 : 0.09, hgt, 10)); po.position.set(u, y + hgt / 2 - 0.03, v); root.add(po);
+      if (lamp) { const cap = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.34), M.stone); cap.position.set(u, y + hgt + 0.01, v); root.add(cap);
+        const lt = new THREE.Group(); lt.position.set(u, y + hgt + 0.05, v); root.add(lt);
+        const glass = this.swap(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.22), M.glassD), M.glassD, M.glassN); glass.position.y = 0.17; lt.add(glass);
+        for (const [ex, ez] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const rib = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.34, 0.03), M.iron); rib.position.set(ex * 0.12, 0.17, ez * 0.12); lt.add(rib); }
+        const base = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.03, 0.28), M.iron); base.position.y = 0.015; lt.add(base);
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(0.21, 0.17, 4), M.iron); roof.rotation.y = Math.PI / 4; roof.position.y = 0.42; lt.add(roof);
+        const fin = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), M.iron); fin.position.y = 0.52; lt.add(fin);
+        const [wx, wz] = toW(u, v); this.railLanterns.push([wx, y + hgt + 0.25, wz]); } } }
+    for (const sd of [-1, 1]) for (const ry of [0.55, 1.08]) { const pts = []; for (let u = -B.len / 2; u <= B.len / 2 + 0.01; u += 1) pts.push(new THREE.Vector3(u, this.deck(u) + ry, sd * (B.w / 2 - 0.1))); root.add(wood(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 72, 0.055, 7, false))); }
+    // ivy draped over the rails by day
+    for (let i = 0; i < 10; i++) { const u = -B.len / 2 + 3 + rng() * (B.len - 6), sd = rng() < 0.5 ? -1 : 1; const iv = new THREE.Mesh(new THREE.BoxGeometry(0.6 + rng() * 0.6, 0.5 + rng() * 0.5, 0.16), M.ivy); iv.position.set(u, this.deck(u) + 0.95 - 0.2, sd * (B.w / 2 - 0.1)); root.add(iv); this.dayOnly.push(iv); }
     for (const side of [-1, 1]) for (let u = -B.len / 2 + 0.5; u < B.len / 2; u += 1) { const v = side * (B.w / 2 + 0.08); const [wx, wz] = toW(u, v); const y = this.deck(u); w.addBox(wx - 0.5, wx + 0.5, y, y + 1.15, wz - 0.12, wz + 0.12); }
     this.ladySpot = { x: L.x, z: L.z + 0.5, y: this.deck(0) };
   }
@@ -237,12 +255,15 @@ export class HiddenForest {
       w.addTree(x, z, 0.75, "city");
       const R = 0.62, rI = 0.55, dI = 0.27, xI = (R * R - rI * rI + dI * dI) / (2 * dI), yI = Math.sqrt(R * R - xI * xI), phO = Math.atan2(yI, xI), phI = Math.atan2(yI, xI - dI); const sh = new THREE.Shape(); for (let i = 0; i <= 28; i++) { const t = phO + (Math.PI * 2 - 2 * phO) * i / 28; i ? sh.lineTo(Math.cos(t) * R, Math.sin(t) * R) : sh.moveTo(Math.cos(t) * R, Math.sin(t) * R); } for (let i = 1; i <= 28; i++) { const t = -phI - (Math.PI * 2 - 2 * phI) * (i / 28); sh.lineTo(dI + Math.cos(t) * rI, Math.sin(t) * rI); } sh.closePath();   // from the lower horn up the hollow side to the upper horn
       const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.1, bevelEnabled: false }); geo.translate(0, 0, -0.05);
-      const cm = new THREE.MeshStandardMaterial({ color: 0xc8d0ee, emissive: 0x6a7cff, emissiveIntensity: 0, roughness: 0.35 }); cm.userData.noTint = true;
+      // the crack sheet is white lines on alpha: paint it onto black for the glow and onto grey glass for the shards
+      const crackOn = (bg) => { const cv = document.createElement("canvas"); cv.width = cv.height = 256; const c2 = cv.getContext("2d"); c2.fillStyle = bg; c2.fillRect(0, 0, 256, 256); const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2.5, 2.5); t.colorSpace = THREE.SRGBColorSpace; const img = new Image(); img.onload = () => { c2.drawImage(img, 0, 0, 256, 256); t.needsUpdate = true; }; img.src = "./assets/tex/spr_cracks.png"; return t; };
+      const crackGlow = crackOn("#000000"), crackTex = crackOn("#8a8f9c");
+      const cm = new THREE.MeshStandardMaterial({ color: 0x9fb0ff, emissive: 0xb0c0ff, emissiveIntensity: 0, emissiveMap: crackGlow, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.72, side: THREE.DoubleSide, depthWrite: false }); cm.userData.noTint = true;   // update 78: glass, the cracks lit from inside
       const cres = new THREE.Mesh(geo, cm); cres.position.set(x, y + top + 0.85, z); cres.rotation.y = -a + Math.PI / 2; cres.visible = false; g.scene.add(cres); this.shrine = { mesh: cres, mat: cm, x, z, y: y + top + 0.85, a };
       // the broken halves: the crescent's triangles split along its middle, laid flat on the stones
-      const pos = geo.attributes.position, up = [], low = []; for (let i = 0; i < pos.count; i += 3) { const cy = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3; const dst = cy > 0.04 ? up : low; for (let k = 0; k < 3; k++) dst.push(pos.getX(i + k), pos.getY(i + k), pos.getZ(i + k)); }
-      const dull = new THREE.MeshStandardMaterial({ color: 0x8a8f9c, roughness: 0.8, side: THREE.DoubleSide }); dull.userData.noTint = true;
-      [[up, 1.2, 0.3, 0.4], [low, -0.9, 0.6, 2.4]].forEach(([arr, ox, oz, rot]) => { const gg = new THREE.BufferGeometry(); gg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(arr), 3)); gg.computeVertexNormals(); const h = new THREE.Mesh(gg, dull); const dx = Math.cos(a + Math.PI / 2), dz = Math.sin(a + Math.PI / 2); h.position.set(x + dx * ox + Math.cos(a) * oz, y + 0.06, z + dz * ox + Math.sin(a) * oz); h.rotation.set(-Math.PI / 2, 0, rot); g.scene.add(h); this.dayOnly.push(h); });
+      const pos = geo.attributes.position, bins = [[], [], [], [], []]; for (let i = 0; i < pos.count; i += 3) { const cx = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3, cy = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3; const ang = Math.atan2(cy, cx - 0.1); const b = Math.min(4, Math.floor((ang + Math.PI) / (Math.PI * 2) * 5)); for (let k = 0; k < 3; k++) bins[b].push(pos.getX(i + k), pos.getY(i + k), pos.getZ(i + k)); }
+      const dull = new THREE.MeshStandardMaterial({ color: 0xffffff, map: crackTex, roughness: 0.5, side: THREE.DoubleSide }); dull.userData.noTint = true;
+      [[bins[0], 1.3, 0.2, 0.4], [bins[1], 0.7, 0.9, 2.1], [bins[2], -0.6, 1.1, 1.3], [bins[3], -1.3, 0.3, 2.8], [bins[4], 0.2, -1.0, 0.9]].forEach(([arr, ox, oz, rot]) => { if (!arr.length) return; const gg = new THREE.BufferGeometry(); gg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(arr), 3)); { const uv = new Float32Array(arr.length / 3 * 2); for (let k = 0; k < arr.length / 3; k++) { uv[k * 2] = arr[k * 3] * 2 + 1; uv[k * 2 + 1] = arr[k * 3 + 1] * 2 + 1; } gg.setAttribute("uv", new THREE.BufferAttribute(uv, 2)); } gg.computeVertexNormals(); const h = new THREE.Mesh(gg, dull); const dx = Math.cos(a + Math.PI / 2), dz = Math.sin(a + Math.PI / 2); h.position.set(x + dx * ox + Math.cos(a) * oz, y + 0.06, z + dz * ox + Math.sin(a) * oz); h.rotation.set(-Math.PI / 2, 0, rot); g.scene.add(h); this.dayOnly.push(h); });
       this.addLight(x, y + top + 1.0, z, 0x8f9fff, 12, 10); }
     // ---- the three-metre stub of cobbles at the plaza gap
     this.ribbon(pA[0], pA[1], pB[0], pB[1], 2.4, stoneP, 0.045);
@@ -400,8 +421,7 @@ export class HiddenForest {
     const items = [];
     for (const t of trees) { const n = C.lanternsPerTree[0] + (rng() < 0.5 ? C.lanternsPerTree[1] - C.lanternsPerTree[0] : 0); for (let k = 0; k < n; k++) { const a = rng() * Math.PI * 2, d = 1.3 + rng() * 1.1 * Math.max(0.8, t.s); items.push({ x: t.x + Math.cos(a) * d, y: t.y + 2.4 + 1.2 * t.s + rng() * 1.6, z: t.z + Math.sin(a) * d, yaw: rng() * 6.28, tilt: rng() < 0.33 ? (rng() - 0.5) * 0.8 : 0, crack: rng() < 0.3, sc: 1.5 }); }
       this.addLight(t.x, t.y + 3.6 + 0.8 * t.s, t.z, C.glow.lantern, 16, 13); }
-    for (const [x, y, z] of this.railLanterns || []) { items.push({ x, y, z, yaw: rng() * 6.28, tilt: 0, crack: rng() < 0.3, sc: 1.25 }); }
-    for (let i = 0; i < (this.railLanterns || []).length; i += 2) { const [x, y, z] = this.railLanterns[i]; this.addLight(x, y + 0.7, z, C.glow.lantern, 10, 10); }
+    for (let i = 0; i < (this.railLanterns || []).length; i += 2) { const [x, y, z] = this.railLanterns[i]; this.addLight(x, y, z, C.glow.lantern, 10, 10); }
     for (const [x, y, z] of this.hutLanterns || []) items.push({ x, y, z, yaw: 0, tilt: 0, crack: false, sc: 1.5 });
     { const { geo, mat } = this.lanternPiece(); this.lanternMat = mat; this.lanternItems = items;
       const cells = new Map(); items.forEach((it, i) => { const key = Math.floor(it.x / 64) * 4096 + Math.floor(it.z / 64); if (!cells.has(key)) cells.set(key, []); cells.get(key).push(i); });
@@ -491,10 +511,10 @@ export class HiddenForest {
     if (this.nightWater) { this.nightMat.opacity = 0.74 * k; this.nightWater.visible = k > 0.001; }
     if (this.lanternMat) { this.lanternMat.color.copy(this.lanternColor0 || new THREE.Color(0xffffff)).lerp(new THREE.Color(0x2a2c34), 1 - k); this.lanternMat.emissiveIntensity = 2.6 * k; if (k !== prevK) this.layLanterns(k); if (this.cracks) this.cracks.visible = k < 0.5; }
     { const cm = this.carvingMat(); cm.color.copy(new THREE.Color(0x202028)).lerp(new THREE.Color(0xffffff), k); cm.emissiveIntensity = 1.6 * k; }
-    if (this._glow && this._glow.hf_lamppost) this._glow.hf_lamppost.traverse((o) => { if (o.isMesh) { o.material.emissiveIntensity = 1.3 * k; o.material.color.setRGB(1, 1, 1).lerp(new THREE.Color(0x5a5c66), 1 - k); } });
+    if (this._glow && this._glow.hf_lamppost) this._glow.hf_lamppost.traverse((o) => { if (o.isMesh) { o.material.emissiveIntensity = 1.3 * k; o.material.color.setRGB(1, 1, 1).lerp(new THREE.Color(0x8a8c94), 1 - k); } });
     // old by day, new at night: materials swap, day-only and night-only things show
     const wasNight = prevK >= 0.5; if (force || night !== wasNight) { for (const s of this.swaps) s.mesh.material = night ? s.night : s.day; for (const o of this.dayOnly) o.visible = !night; for (const o of this.nightOnly) o.visible = night; }
-    if (this.shrine) { this.shrine.mesh.visible = night; this.shrine.mat.emissiveIntensity = 1.4 * k; }
+    if (this.shrine) { this.shrine.mesh.visible = night; this.shrine.mat.emissiveIntensity = 2.2 * k; this.shrine.mat.color.setHex(0x9fb0ff).lerp(new THREE.Color(0x3a4a9a), 1 - k); }
     if (this.fountainDay) this.fountainDay.visible = !night || !this.fountainNight; if (this.fountainNight) this.fountainNight.visible = night;
     if (this.fountainWater) this.fountainWater.visible = show; if (this.spray) this.spray.pts.visible = show;
     for (const n of this.npcs) n.body.visible = show; this.rimU.value = 0.9 * k;
@@ -512,7 +532,7 @@ export class HiddenForest {
     const g = this.g, w = this.w, S = H().spawn, rng = g.rng; this.clearPickups();
     const b = this.bounds();
     const place = (kind, n, mkMesh) => { let guard = 0; const spots = []; while (spots.length < n && guard++ < 20000) { const x = b.x0 + rng() * (b.x1 - b.x0), z = b.z0 + rng() * (b.z1 - b.z0); if (!this.inside(x, z) || this.lakePen2(x, z) > -6 || this.inVillage(x, z) || w.distToPath(x, z) < 4 || hiddenPathDist(x, z) < 2.5 || !w.inForest(x, z)) continue; if (w.treesNear(x, z).some((t) => Math.hypot(t.x - x, t.z - z) < 1.5)) continue; if (this.pick.some((p) => Math.hypot(p.x - x, p.z - z) < 4)) continue; const y = w.groundHeight(x, z, 40); const grp = mkMesh(); grp.position.set(x, y, z); grp.rotation.y = rng() * Math.PI * 2; g.scene.add(grp); const p = { kind, x, z, y, grp, taken: false, left: 0 }; this.pick.push(p); spots.push(p); } };
-    place("starflower", S.starflower, () => this.plantMesh("hf_starflower", "starflower", 9, 8));
+    place("starflower", S.starflower, () => this.plantMesh("hf_starflower", "starflower", 7, 7));
     place("magic_mushroom", S.magic_mushroom, () => this.plantMesh("hf_magicmush", "magic_mushroom", 7, 7));
     const nv = S.void_bloom[0] + Math.floor(rng() * (S.void_bloom[1] - S.void_bloom[0] + 1)); this.voidMax = nv;
     place("void_bloom", nv, () => this.plantMesh("hf_voidbloom", "void_bloom", 10, 9));

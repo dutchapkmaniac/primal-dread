@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=77";
-import { STR } from "../strings.js?v=77";
-import { Creature } from "./entities.js?v=77";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=77";
+import { CFG } from "./config.js?v=78";
+import { STR } from "../strings.js?v=78";
+import { Creature } from "./entities.js?v=78";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=78";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 58: the miner comes rigged and animated
-import { iconUrl } from "./items.js?v=77";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=77";
+import { iconUrl } from "./items.js?v=78";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=78";
 const MINER_FWD = 1;   // update 60: the miner rig's forward axis (+1 = the model faces +z, as the props do)
-import { buildCity } from "./eternius_build.js?v=77";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=77";   // update 50
-import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=77";   // update 63: the hadrosaurus line
+import { buildCity } from "./eternius_build.js?v=78";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=78";   // update 50
+import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=78";   // update 63: the hadrosaurus line
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -872,8 +872,8 @@ export class EterniusCity {
   openMage(n) {
     const g = this.g, S = STR.et, C = E();
     // update 75: the Monial staff and the infial belladonna - the mage does both for nothing
-    const extra = []; if (g.player.inv.has("monial_staff_raw")) extra.push(["mgStaff", STR.hidden.enchantStaff]); if (g.player.inv.has("infial_belladonna")) extra.push(["mgConv", STR.hidden.convertBtn]);
-    const wire = (sc) => { const sb = sc.querySelector("#mgStaff"); if (sb) sb.addEventListener("click", () => { const inv = g.player.inv; if (!inv.has("monial_staff_raw")) return; inv.removeOne("monial_staff_raw"); if (!inv.add("monial_staff", 1)) g.spawnDrop("monial_staff", 1, n.x, n.z, n.y + 0.3); g.audio.sPickup(); g.ui.renderHotbar(inv); g.ui.closeScreen(); g.resume(); g.ui.toast(STR.hidden.staffEnchanted); }); const cb = sc.querySelector("#mgConv"); if (cb) cb.addEventListener("click", () => { if (g.hidden) g.hidden.convertInfial(); g.ui.closeScreen(); g.resume(); }); };
+    const extra = []; if (g.player.inv.has("monial_staff_raw")) extra.push(["mgStaff", STR.hidden.enchantStaff]); if (g.player.inv.has("infial_belladonna")) extra.push(["mgConv", STR.hidden.convertBtn]); extra.push(["mgWater", STR.forest.askWater]);   // update 78: his magic fills every empty vial, free
+    const wire = (sc) => { { const wb = sc.querySelector("#mgWater"); if (wb) wb.addEventListener("click", () => { const n = g.potions ? g.potions.fillVials() : 0; if (!n) { g.ui.toast(STR.forest.noVials); g.audio.sDeny(); } g.ui.closeScreen(); g.resume(); }); } const sb = sc.querySelector("#mgStaff"); if (sb) sb.addEventListener("click", () => { const inv = g.player.inv; if (!inv.has("monial_staff_raw")) return; inv.removeOne("monial_staff_raw"); if (!inv.add("monial_staff", 1)) g.spawnDrop("monial_staff", 1, n.x, n.z, n.y + 0.3); g.audio.sPickup(); g.ui.renderHotbar(inv); g.ui.closeScreen(); g.resume(); g.ui.toast(STR.hidden.staffEnchanted); }); const cb = sc.querySelector("#mgConv"); if (cb) cb.addEventListener("click", () => { if (g.hidden) g.hidden.convertInfial(); g.ui.closeScreen(); g.resume(); }); };
     if (this.stride) { n.lineI = ((n.lineI ?? -1) + 1) % S.mageHas.length; wire(g.npcPanel(n.name, [S.mageHas[n.lineI]], extra)); return; }
     const s = g.npcPanel(n.name, S.mageLines.map((l) => l.replace("%n", C.stride.price)), [["mageBuy", S.mageBuy.replace("%n", C.stride.price)], ...extra]); wire(s);
     s.querySelector("#mageBuy").addEventListener("click", () => {

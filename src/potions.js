@@ -4,10 +4,10 @@
 // of more than one), every potion drunk like food, and the running effects: scent, silence, thick skin, regeneration, poison
 // immunity, immortality, night vision, the stamina stride and the Dread potion's footprints. Chests add herbs, vials and potions.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=77";
-import { STR } from "../strings.js?v=77";
-import { iconUrl } from "./items.js?v=77";
-import { cityFlatten } from "./eternius.js?v=77";
+import { CFG } from "./config.js?v=78";
+import { STR } from "../strings.js?v=78";
+import { iconUrl } from "./items.js?v=78";
+import { cityFlatten } from "./eternius.js?v=78";
 
 const FX = () => CFG.potionFx;
 const fmt = (t) => { t = Math.max(0, Math.ceil(t)); const m = Math.floor(t / 60), s = t % 60; return `${m}:${s < 10 ? "0" : ""}${s}`; };

@@ -5,8 +5,9 @@
 // turns it into the silver dagger (holy water) or the EVIL DAGGER (unholy water) that makes every werewolf a friend to talk
 // to and feed.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=77";
-import { STR } from "../strings.js?v=77";
+import { CFG } from "./config.js?v=78";
+import { ItemDrop } from "./entities.js?v=78";
+import { STR } from "../strings.js?v=78";
 
 const V = () => CFG.volcano;
 
@@ -15,7 +16,7 @@ export class Volcano {
     this.g = g; this.w = g.world; this.day = g.dayNum; this.embers = []; this.mining = null; this.smoke = []; this.t = 0;
     this.buildLava();
     this.buildEmberMat();
-    this.spawnEmber();
+    this.spawnEmber(); this.spawnPick();
   }
 
   // ---------------- the peak: a crust of cooling lava, a glow, a plume ----------------
@@ -58,6 +59,8 @@ export class Volcano {
     this.emberGeo = [ga, gb];
   }
   // four plants on the high shelf and one on the lower slope, new spots every day
+  // update 78: a plain pickaxe lies ten metres before Jabb's door, one a day
+  spawnPick() { const g = this.g, H = CFG.mountain.hut; if (this.pickDrop && g.drops.includes(this.pickDrop)) return; const x = H.x + 1.27, z = H.z + 3.75 + 10; this.pickDrop = new ItemDrop("pickaxe", 1, x, z, this.w.groundHeight(x, z, 40), g.scene, 0); g.drops.push(this.pickDrop); }
   spawnEmber() {
     const g = this.g, w = this.w, M = CFG.mountain, C = V();
     for (const e of this.embers) g.scene.remove(e.grp);
@@ -139,11 +142,12 @@ export class Volcano {
   update(dt) {
     const g = this.g, w = this.w, C = V();
     this.t += dt;
-    if (g.dayNum !== this.day) { this.day = g.dayNum; this.spawnEmber(); this.respawnOres(); }
+    if (g.dayNum !== this.day) { this.day = g.dayNum; this.spawnEmber(); this.respawnOres(); this.spawnPick(); }
+    const hk = 1 - (w.hiddenK || 0);   // update 78: the lava's glow never shows in the Monial night
     const k = w.nightK || 0;
     if (this.lava) this.lava.mat.emissiveIntensity = C.glowDay + (C.glowNight - C.glowDay) * k;
     if (this.glow) this.glow.intensity = C.glowLightNight * k;
-    if (this.halo) this.halo.material.opacity = C.haloNight * k * (0.9 + 0.1 * Math.sin(this.t * 1.7));
+    if (this.halo) this.halo.material.opacity = C.haloNight * k * (0.9 + 0.1 * Math.sin(this.t * 1.7)) * hk;
     const M = CFG.mountain, cam = g.camera, lim = (cam ? cam.far : 400) * 0.85;
     // the game pulls the camera's far plane in with the fog (~160 m), so anything on the peak is clipped from afar: the plume
     // and the halo are slid along their sight line to just inside the far plane, scaled down by the same ratio, and keep their
@@ -153,7 +157,7 @@ export class Volcano {
       const u = (this.t / C.plumeRise + s.phase) % 1;
       const h = u * C.plumeH, size0 = C.plumeSize0 + (C.plumeSize1 - C.plumeSize0) * u;
       const size = near(M.cx + Math.cos(s.drift + u * 2.5) * (3 + u * 10), this.capH - C.lavaDrop + 1 + h, M.cz + Math.sin(s.drift + u * 2.5) * (3 + u * 10), size0, s.sp);
-      s.sp.scale.set(size, size, 1); s.sp.material.opacity = 0.6 * (1 - u * 0.85) * (u < 0.08 ? u / 0.08 : 1);
+      s.sp.scale.set(size, size, 1); s.sp.material.opacity = 0.6 * (1 - u * 0.85) * (u < 0.08 ? u / 0.08 : 1) * hk;
     }
     if (this.halo) { const hs = near(M.cx, this.capH + 6, M.cz, C.haloSize, this.halo); this.halo.scale.set(hs, hs * 0.6, 1); }
     if (w.furnaceLight && w.furnaceLit) w.furnaceLight.intensity = C.furnaceLight * (0.85 + 0.15 * Math.sin(this.t * 9) * Math.sin(this.t * 2.3));
