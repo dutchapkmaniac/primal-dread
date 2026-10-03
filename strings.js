@@ -237,6 +237,7 @@ export const STR = {
     needItem: "You need %i", converted: "%n infial belladonna turned into belladonna", bookRead: "The letters swim and settle. You understand Monial now - forever",
     mineMoonstone: "Mine moonstone — hold F", needPick: "Moonstone: you need a pickaxe", moonstoneGot: "A piece of moonstone, cold and bright", voidEnough: "Three void blooms is all the night gives. Come back another night",
     bedBeetle: "The bed is full of beetles by day",
+    farmerApple: "Give a Mystic apple (one infial belladonna)", farmerAppleThanks: "An infial belladonna for your blue apple", explorerMap: "Give one of each plant (his map of the forest)", explorerGives: "Thalem rolls up his map and hands it over. Read it", mapRead: "The lines settle in your head. The hidden forest shows on your world map now",   // update 77
     enchantStaff: "Enchant the Monial staff", staffEnchanted: "The crescent on the staff wakes with a blue light. You will understand them now", convertBtn: "Turn infial belladonna into belladonna",
     names: { farmer: "Veyrin", wife: "Ilsae", explorer: "Thalem", witch: "Grandmother Orune", warrior: "Kaldur", historian: "Senna", lady: "The Lady of the Lake" },
     farmerLines: ["The red belladonna is ours: infial, we call it. It grows for the moon, not the sun. The witches turn it back into the green kind, if you ask them nicely.", "A void bloom? For one of those I give ten infial, and gladly. They are worth more to us than to you - do not ask what for."],
@@ -367,6 +368,8 @@ export const STR = {
     monial_staff: { name: "Monial staff",  desc: "Hold it and the Monial speak your tongue" },
     monial_dagger:{ name: "Monial dagger", desc: "Kaldur's prize. Bites like an Eternial dagger and wounds werewolves like silver" },
     monial_book:  { name: "Monial book",   desc: "Senna's book. Read it once and understand them forever" },
+    mystic_apple: { name: "Mystic apple",  desc: "A blue apple from the hidden night. +10% food, boosts low energy to 25%. Veyrin trades one for an infial belladonna" },   // update 77
+    monial_map:   { name: "Explorer's map", desc: "Thalem's map of the hidden forest. Read it once: the area, its lake and its village show on your world map" },
     vial_water:   { name: "Vial of water", desc: "The start of every potion" },
     potion_starvation: { name: "Potion of starvation", desc: "+20% food" },
     potion_healing:    { name: "Potion of healing", desc: "+20% health" },
@@ -501,6 +504,7 @@ export const STR = {
   locations: {
     temple: "Old Temple",
     witch: "Witch's Hut",   // update 70
+    hidden_lake: "Hidden Lake", hidden_village: "Monial Village",   // update 77: the explorer's map
     hut: "Bill's Hut",
     lighthouse: "Lighthouse",
     lake: "The Lake",

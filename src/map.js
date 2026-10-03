@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=76";
-import { STR } from "../strings.js?v=76";
+import { CFG, ASSET_V } from "./config.js?v=77";
+import { STR } from "../strings.js?v=77";
 
 // Top-down expedition map: the full parchment map (pause menu) and the small
 // living minimap in the HUD corner. Terrain is always drawn; NAMED landmarks
@@ -160,6 +160,14 @@ export class GameMap {
     }
     // building glyphs appear only once a place is FOUND — the map keeps its secrets
     const disc = this.game.discovered || new Set();
+    // update 77: the explorer's map - the hidden forest's whole area in blue-violet, its lake and village once stood near
+    if (this.game.monialMap && CFG.hidden) { const mini = s > 0.6;   // the HUD minimap zooms in far closer than the world map
+      const HP = CFG.hidden.poly; c.beginPath(); HP.forEach(([x, z], i) => i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z))); c.closePath();
+      c.fillStyle = "rgba(110,90,230,.42)"; c.fill(); c.strokeStyle = "rgba(80,60,200,.85)"; c.lineWidth = mini ? 1 : 1.6; c.stroke();
+      if (disc.has("hidden_lake")) { const L = CFG.hidden.lake; c.beginPath(); c.ellipse(tx(L.x), ty(L.z), Math.max(2, L.rx * s), Math.max(2, L.rz * s), 0, 0, Math.PI * 2); c.fillStyle = "#5a7ad8"; c.fill(); c.strokeStyle = "#2a3a90"; c.lineWidth = 1; c.stroke(); }
+      if (disc.has("hidden_village")) { const V = CFG.hidden.village; for (let i = 0; i < 4; i++) { const a = (45 + i * 90) * Math.PI / 180, hx = tx(V.x + Math.cos(a) * V.hutR), hz = ty(V.z + Math.sin(a) * V.hutR), w2 = mini ? 3 : 5; c.fillStyle = "#d8d0ff"; c.fillRect(hx - w2 / 2, hz - w2 / 2, w2, w2); c.strokeStyle = "#3a2a90"; c.strokeRect(hx - w2 / 2, hz - w2 / 2, w2, w2); } c.beginPath(); c.arc(tx(V.x), ty(V.z), mini ? 1.5 : 2.5, 0, Math.PI * 2); c.fillStyle = "#8fa0ff"; c.fill(); }
+      if (!mini) { c.font = "700 12px 'Segoe UI',sans-serif"; c.textAlign = "center"; c.fillStyle = "#2a2070"; c.strokeStyle = "rgba(214,198,158,.75)"; c.lineWidth = 3; if (disc.has("hidden_lake")) { c.strokeText(STR.locations.hidden_lake, tx(CFG.hidden.lake.x), ty(CFG.hidden.lake.z) - 10); c.fillText(STR.locations.hidden_lake, tx(CFG.hidden.lake.x), ty(CFG.hidden.lake.z) - 10); } if (disc.has("hidden_village")) { c.strokeText(STR.locations.hidden_village, tx(CFG.hidden.village.x), ty(CFG.hidden.village.z) - 14); c.fillText(STR.locations.hidden_village, tx(CFG.hidden.village.x), ty(CFG.hidden.village.z) - 14); } }
+    }
     if (disc.has("ruinsv")) {
       const RV = CFG.ruins;
       c.lineWidth = 1;

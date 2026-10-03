@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=76";
-import { STR } from "../strings.js?v=76";
-import { Inventory } from "./items.js?v=76";
+import { CFG } from "./config.js?v=77";
+import { STR } from "../strings.js?v=77";
+import { Inventory } from "./items.js?v=77";
 
 export class Player {
   constructor(camera, ctx) {
@@ -429,6 +429,7 @@ export class Player {
     if (id === "vial") { game.ui.toast(STR.brew.vialHint); game.audio.sDeny(); return; }
     if (id.startsWith("potion_") || id === "monial_potion") { game.potions.drink(id); return; }
     if (id === "monial_book") { game.hidden.readBook(); return; }   // update 75
+    if (id === "monial_map") { game.hidden.readMap(); return; }   // update 77
     if (id === "pestle") { game.potions.crush(); return; }   // update 73: herbs, shells and horns; the silver dagger inside
     if (id === "death_compass") {
       game.ui.toast(game.lastDeathSpot ? `${STR.compassPoints}…` : STR.compassIdle);

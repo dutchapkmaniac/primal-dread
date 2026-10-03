@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=76";
-import { STR } from "../strings.js?v=76";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=76";
+import { CFG } from "./config.js?v=77";
+import { STR } from "../strings.js?v=77";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=77";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { Creature } from "./entities.js?v=76";
-import { iconUrl } from "./items.js?v=76";
+import { Creature } from "./entities.js?v=77";
+import { iconUrl } from "./items.js?v=77";
 
 // ============================================================================
 // update 69 (prompt37, update 1): the forest dressed up. Mild hills (makeHills, used by World.groundHeight and the forest

@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=76";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=77";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=76";
-import { Desert } from "./desert.js?v=76";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=76";
+import { CFG } from "./config.js?v=77";
+import { Desert } from "./desert.js?v=77";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=77";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,8 +11,8 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=76";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=76";
-import { pointInPoly, hiddenPathDist } from "./hidden.js?v=76";   // update 75   // update 69: the forest's mild hills
+import { makeHills } from "./forest.js?v=77";
+import { pointInPoly, hiddenPathDist } from "./hidden.js?v=77";   // update 75   // update 69: the forest's mild hills
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;
@@ -3064,6 +3064,7 @@ export class World {
       // the CLIMBABLE trees (update 27) — actual forest trunks, never the
       // rocks and posts that also live in the collision grid
       this.treePoints = positions.map(([x, z]) => [x, z]);
+      this.treePlacements = positions;   // update 77: x, z, scale, yaw - the hidden forest sets its carvings on the real bark
       for (const p of positions) {
         const k = Math.floor((p[0] + HALF) / CELL) * 1000 + Math.floor((p[1] + HALF) / CELL);
         let arr = cells.get(k);
