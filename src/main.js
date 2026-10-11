@@ -1,26 +1,26 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=78";
-import { STR } from "../strings.js?v=78";
+import { CFG, ASSET_V } from "./config.js?v=79";
+import { STR } from "../strings.js?v=79";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=78";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=78";
-import { Forest } from "./forest.js?v=78";   // update 69
-import { Potions } from "./potions.js?v=78";   // update 73
-import { Volcano } from "./volcano.js?v=78";   // update 74
-import { HiddenForest } from "./hidden.js?v=78";   // update 75
-import { ClipAnimator } from "./skeletal.js?v=78";
-import { AudioMan } from "./audio.js?v=78";
-import { UI } from "./ui.js?v=78";
-import { World } from "./world.js?v=78";
-import { Player } from "./player.js?v=78";
-import { Creature, ItemDrop } from "./entities.js?v=78";
-import { GameMap } from "./map.js?v=78";
-import { FarmGame } from "./farmgame.js?v=78";
-import { ElisiaSystem } from "./elisia.js?v=78";   // update 35
-import { DesertSystem } from "./desert.js?v=78";
-import { PortalSystem } from "./portals.js?v=78";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=78";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=79";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=79";
+import { Forest } from "./forest.js?v=79";   // update 69
+import { Potions } from "./potions.js?v=79";   // update 73
+import { Volcano } from "./volcano.js?v=79";   // update 74
+import { HiddenForest } from "./hidden.js?v=79";   // update 75
+import { ClipAnimator } from "./skeletal.js?v=79";
+import { AudioMan } from "./audio.js?v=79";
+import { UI } from "./ui.js?v=79";
+import { World } from "./world.js?v=79";
+import { Player } from "./player.js?v=79";
+import { Creature, ItemDrop } from "./entities.js?v=79";
+import { GameMap } from "./map.js?v=79";
+import { FarmGame } from "./farmgame.js?v=79";
+import { ElisiaSystem } from "./elisia.js?v=79";   // update 35
+import { DesertSystem } from "./desert.js?v=79";
+import { PortalSystem } from "./portals.js?v=79";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=79";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -78,7 +78,7 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "dresser", "dinetable", "dinechair", "trunk", "bush", "bench", "bcrate", "haybale",
   // update 30: the farm's second pass — Tripo lifts (Dirk with a face, Duco from his photo,
   // the doors, the fountain, the bed, the whole kitchen and bathroom)
-  "duco", "fountain2", "kingbed2",
+  "fountain2", "kingbed2",   // update 79: "duco" (the update-30 scan) is retired for duco2
   "k_range", "k_sink", "k_counter", "k_table", "k_chair", "k_potrack", "k_hutch", "k_basket", "k_shelf", "k_herbs",
   "b_basin", "b_towel", "b_cabinet", "b_mirror", "hall_lamp",
   // update 31: door leaves that are never cut, the monitor-top fridge, the attic
@@ -99,7 +99,7 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
   "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician",
   "et_fountain", "et_bigtree", "et_boat", "et_prisoner", "et_minecart", "et_emerald",
-  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_herbstall", "et_barrel", "et_furnace", "et_silverore", "hf_farmer", "hf_wife", "hf_explorer", "hf_witch", "hf_warrior", "hf_historian", "hf_lady", "hf_fountain", "hf_lantern", "hf_staff", "hf_dagger", "hf_starflower", "hf_magicmush", "hf_voidbloom", "hf_infial", "hf_moonrock", "hf_fountain2", "hf_lamppost", "hf_interior", "hf_pedestal", "hf_rottenbasket", "hf_rottencrate", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
+  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_herbstall", "et_barrel", "et_furnace", "et_silverore", "hf_farmer", "hf_wife", "hf_explorer", "hf_witch", "hf_warrior", "hf_historian", "hf_lady", "hf_fountain", "hf_lantern", "hf_staff", "hf_dagger", "hf_starflower", "hf_magicmush", "hf_voidbloom", "hf_infial", "hf_moonrock", "hf_fountain2", "hf_lamppost", "hf_interior", "hf_pedestal", "hf_rottenbasket", "hf_rottencrate", "hf_minelantern", "hf_emberleaf", "hf_evildagger", "hf_spear", "duco2", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
@@ -377,6 +377,8 @@ class Game {
     };
 
     this.world = new World(this.scene, this.assets, this.rng);
+    ItemDrop.assets = this.assets;   // update 79: drops that are models (the spear)
+    ItemDrop.world = this.world;     // update 79: flat spawns lie along the slope they land on - set BEFORE the forest and volcano spawn theirs
     this.forest = new Forest(this);
     this.potions = new Potions(this);   // update 73: herblore and potions (after the forest and the desert exist)
     this.volcano = new Volcano(this);   // update 74: the crater, ember leaf, the silver mine, the furnace, the evil dagger
@@ -1184,7 +1186,9 @@ class Game {
     // F-press still processes IMMEDIATELY (input.interact latches until read).
     this._intT = (this._intT || 0) + 1;
     if (input.interact || this._intT >= 3) { this._intT = 0; this.updateInteract(input); }
-    if (input.use) { this.player.attack(this); input.use = false; }
+    // update 79: a spear in hand - a tap stabs, a hold of holdToThrow seconds throws
+    if (input.use) { const sel = this.player.inv.selected(); if (sel && (sel.id === "spear" || sel.id === "et_spear") && !this.carriedEgg && this.player.atkT <= 0) this.spearPress = { t: 0 }; else this.player.attack(this); input.use = false; }
+    if (this.spearPress) { if (input.useHeld) { this.spearPress.t += dt; if (this.spearPress.t >= CFG.spear.holdToThrow) { this.spearPress = null; this.player.attack(this, "throw"); } } else { this.spearPress = null; this.player.attack(this); } }
     this.updateDropHold(dt, input);
     this.updateArrowStore(dt, input);
     this.updateTreePerch(dt);
@@ -1372,6 +1376,8 @@ class Game {
     this.ui.renderHotbar(player.inv);
     let mesh = this.buildSpearMesh();
     if (kind === "et_spear" && this.assets.glb.etspear3d) { mesh = new THREE.Group(); const m = this.assets.glb.etspear3d.model.clone(); m.rotation.y = Math.PI / 2; m.scale.setScalar(0.75); mesh.add(m); }
+    else if (kind === "spear" && this.assets.glb.hf_spear) {   // update 79: the wood-and-iron spear flies as itself, point first (its longest side along +z)
+      mesh = new THREE.Group(); const m = this.assets.glb.hf_spear.model.clone(); const bb = new THREE.Box3().setFromObject(m), sz = bb.getSize(new THREE.Vector3()); m.scale.multiplyScalar(1.7 / Math.max(sz.x, sz.y, sz.z)); const bb2 = new THREE.Box3().setFromObject(m); m.position.sub(bb2.getCenter(new THREE.Vector3())); m.rotation.y = Math.PI / 2; mesh.add(m); }
     const dir = new THREE.Vector3();
     this.camera.getWorldDirection(dir);
     mesh.position.copy(this.camera.position).addScaledVector(dir, 0.7);
@@ -2892,8 +2898,8 @@ class Game {
     this.audio.music(inHidden ? "hidden" : elisiaOut && this.audio.buf.elisiaChase ? "elisiaChase" : danger ? "chase" : (inCity && this.audio.buf.eternius) ? "eternius" : "ambient");
   }
 
-  spawnDrop(id, n, x, z, y, ttl = 0) {
-    this.drops.push(new ItemDrop(id, n, x, z, y, this.scene, ttl));
+  spawnDrop(id, n, x, z, y, ttl = 0, opts) {
+    this.drops.push(new ItemDrop(id, n, x, z, y, this.scene, ttl, opts));
   }
 
   // ---- right-click drop (update 23) ----

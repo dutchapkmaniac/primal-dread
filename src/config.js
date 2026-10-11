@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=78";
+export const ASSET_V = "?v=79";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -75,7 +75,7 @@ export const CFG = {
     sightMult: 0.6, noiseMult: 0.6, thickMult: 0.75, dinoSources: ["trex", "alio", "croc", "trike", "spino", "mother"], notDino: ["pig", "chicken", "goat", "cow", "werewolf", "elisia", "bat", "beetle", "meganeura"],
     printEvery: 0.5, printStep: 0.9, printsPer: 40, printR: 120, printLife: 20, printSize: [0.45, 1.3], maxPrints: 2000 },
   // update 74: the volcano, ember leaf, the silver mine and the evil dagger
-  volcano: { capD: 45, lavaR: 40, lavaDrop: 1.6, glowDay: 0.45, glowNight: 1.7, glowLightNight: 60, glowR: 220, plumeN: 14, plumeRise: 30, plumeH: 120, plumeSize0: 9, plumeSize1: 44, haloSize: 150, haloNight: 0.55,
+  volcano: { capD: 45, lavaR: 40, lavaDrop: 1.6, glowDay: 0.45, glowNight: 1.7, glowLightNight: 60, glowR: 220, plumeN: 14, plumeRise: 30, plumeH: 120, plumeSize0: 9, plumeSize1: 44, haloSize: 150, haloNight: 0.55, haloRange: 250,
     shelfN: 4, lowerN: 1, leaves: [1, 3], bareDmg: 10, emberW: 1.15, emberH: 0.95, glovesPrice: 20, glovesChest: 1 / 16,
     ores: [[6, -4.4], [18, 4.4], [27, -11], [40, 11], [55, -4.4], [68, 4.4], [79, -19], [90, 19], [101, -19], [110, 19], [126, -9], [137, 9]], tPlain: 6, tEternal: 3, breakChance: 0.15, smeltOres: 3, furnaceLight: 7,
     wolfMeats: ["cooked_pork", "cooked_chicken", "cooked_beef", "cooked_goat", "cooked_wolf", "cooked_meganeura"] },
@@ -83,7 +83,7 @@ export const CFG = {
   hidden: {
     poly: [[470, -420], [500, -500], [560, -560], [640, -600], [730, -625], [820, -610], [900, -580], [960, -520], [970, -430], [940, -330], [880, -260], [790, -235], [700, -250], [620, -290], [560, -300], [500, -340]],
     window: 2, slow: 0.5, extraTrees: 320,
-    lake: { x: 590, z: -400, rx: 20, rz: 32.5, wade: 2.5 },   // update 76: an oval the lighthouse lake's size (40 x 65 m)
+    lake: { x: 590, z: -400, rx: 20, rz: 32.5, wade: 2.5, depth: 2.4 },   // update 76: an oval the lighthouse lake's size (40 x 65 m)
     bridge: { len: 52, w: 2.8, rise: 1.9, yaw: 0 },   // update 76: across the narrow side, landing on both shores
     village: { x: 840, z: -520, plazaR: 17, hutR: 20, hutSize: 5.6, wallH: 2.7, roofH: 2.6, waterY: 1.0, lampposts: 6 },
     field: { dx: 15, w: 9, d: 7 },
@@ -93,7 +93,7 @@ export const CFG = {
     // update 77: which part of each plant glows (mask = the texture colours that glow; top = only above this fraction of the height; blackBelow = the rest goes black) and where its light sits
     plantGlow: { starflower: { ei: 0.55, lightAt: 0.65 }, magic_mushroom: { mask: "blue", ei: 1.4, lightAt: 0.7 }, void_bloom: { top: 0.5, blackBelow: true, ei: 0.8, lightAt: 0.75 }, infial: { mask: "red", ei: 1.3, lightAt: 0.7 }, moonstone: { ei: 0.55, lightAt: 0.6 } },   // update 78: the starflower and the moonstone as in update 76
     moon: { dir: [0.45, 0.5, -0.74], size: 95 },
-    battle: { hits: 10, strong: 1, knife: 0.5, fists: 0.25, meleeDmg: 14, meleeEvery: 2.0, laserEvery: 6, laserDmg: 22, laserSpeed: 15, reach: 3.0, leaveR: 16 },
+    battle: { hp: 300, fistDmg: 10, meleeDmg: 14, meleeEvery: 2.0, laserEvery: 6, laserDmg: 22, laserSpeed: 15, reach: 3.0, leaveR: 16 },
     tint: { color: [0.6, 0.68, 1.25], emissive: 0x3448ff, emissiveI: 0.34, leafI: 0.95, waterEmissive: 0x4060ff, waterI: 0.4 },
     npcs: { farmer: { model: "hf_farmer", h: 1.78 }, wife: { model: "hf_wife", h: 1.68 }, explorer: { model: "hf_explorer", h: 1.8 }, witch: { model: "hf_witch", h: 2.05 }, warrior: { model: "hf_warrior", h: 2.1 }, historian: { model: "hf_historian", h: 1.7 }, lady: { model: "hf_lady", h: 1.75 } },
   },
@@ -290,6 +290,7 @@ export const CFG = {
   // ---- update 11: the T-Rex hunt ----
   // The spear is the ONLY thing that wounds a T-Rex. Thrown, not swung.
   spear: {
+    holdToThrow: 0.45,                    // update 79: hold the button this long and the spear flies; a tap stabs
     throwSpeed: 28, gravity: 9, cooldown: 0.7,   // a flatter arc than a stone — it's MADE to fly
     dmg: 120, headMult: 3, headR: 1.15,   // a skull hit does TRIPLE damage
     bleedDps: 4, bleedTime: 20,           // a stuck spear keeps cutting
@@ -299,6 +300,7 @@ export const CFG = {
     hp: 800,                              // ~7 body hits, or 3 clean skull throws
     enrageFrac: 0.3, enrageSpeedMult: 1.25,
     respawn: 180,                         // update 38: a slain hunter is back 3 REAL minutes later
+    stuckTime: 180,                       // update 79: three minutes on one spot (stuck at a lake) and the hunter is set down somewhere new
     drops: [],                            // update 38: Elisia eats what she kills — only a tooth may be left...
     toothChance: 0.1,                     // ...one time in ten
   },
@@ -368,6 +370,7 @@ export const CFG = {
     knife: { dmg: 25, range: 2.3, arcCos: 0.45, cooldown: 0.5 },
     silver_dagger: { dmg: 30, range: 2.2, arcCos: 0.45, cooldown: 0.45 },
     silver_dagger_plain: { dmg: 25, range: 2.3, arcCos: 0.45, cooldown: 0.5 },   // update 74: swings like the knife until the witch blesses it
+    spear: { dmg: 35, range: 2.9, arcCos: 0.5, cooldown: 0.6 }, et_spear: { dmg: 50, range: 2.9, arcCos: 0.5, cooldown: 0.55 },   // update 79: a spear STABS on a click; held, it is thrown
     evil_dagger:   { dmg: 30, range: 2.2, arcCos: 0.45, cooldown: 0.45 },   // update 74: as strong as silver; werewolves are its friends
     monial_dagger: { dmg: 45, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 75: the warrior's prize - an Eternial dagger's bite, and silver's on werewolves
     trex_dagger:   { dmg: 35, range: 2.3, arcCos: 0.45, cooldown: 0.45 },   // update 35: Elisia's gift — a blade ground from a T-Rex tooth
@@ -512,7 +515,7 @@ export const CFG = {
     // update 37: arched decks (arch = the rise in the middle) with solid rails railT thick — enter only from the ends
     bridge: { halfWidth: 1.8, overhang: 7, deckY: 0.6, arch: 1.3, railT: 0.5, endY: 0.03 },   // update 38: endY — both ends meet the ground
     tent: { fromBridge: 32, along: 6, zoneR: 5 },        // Idris's tent: on the desert bank of the MIDDLE bridge
-    oasis: { x: -352, z: 924, r: 9, palmX: -338, palmZ: 912, shadeR: 5 },   // update 40: the farthest sand from river, city and tent (the castle lake is an oasis too)   // update 39: shifted with the tent (+170, -98)   // update 38: 150 m deeper into the corner
+    oasis: { x: -352, z: 924, r: 9, palmX: -338, palmZ: 912, shadeR: 5, depth: 1.5 },   // update 40: the farthest sand from river, city and tent (the castle lake is an oasis too)   // update 39: shifted with the tent (+170, -98)   // update 38: 150 m deeper into the corner
     dune: { base: 0.35, fadeIn: 30, a1: 0.9, a2: 0.8, a3: 0.9, a4: 1.4, a5: 1.3 },   // rolling ridges, 2-5 m; a4/a5 are the crests you hide behind
     cactusCount: 60, cactusSpacing: 30, cactusFailChance: 0.2, cactusDmg: 10,   // update 37: same density over the bigger sand
     chestCount: 8, chestCountNew: 10, chestSpacing: 60,   // update 37: six more, all in the desert's new outer part
@@ -655,7 +658,7 @@ export const CFG = {
     et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55
     et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57
     et_pickaxe: 0.24,
-    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_furnace: 1.35, et_silverore: 1.2, hf_farmer: 1.78, hf_wife: 1.68, hf_explorer: 1.8, hf_witch: 2.05, hf_warrior: 2.1, hf_historian: 1.7, hf_lady: 1.75, hf_fountain: 4.2, hf_fountain2: 4.2, hf_lantern: 0.55, hf_starflower: 0.95, hf_magicmush: 0.85, hf_voidbloom: 0.75, hf_infial: 1.1, hf_moonrock: 1.3, hf_lamppost: 3.2, hf_interior: 1.5, hf_pedestal: 1.7, hf_rottenbasket: 0.3, hf_rottencrate: 0.62, hf_staff: 1.75, hf_dagger: 0.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_furnace: 1.35, et_silverore: 1.2, hf_farmer: 1.78, hf_wife: 1.68, hf_explorer: 1.8, hf_witch: 2.05, hf_warrior: 2.1, hf_historian: 1.7, hf_lady: 1.75, hf_fountain: 4.2, hf_fountain2: 4.2, hf_lantern: 0.55, hf_starflower: 0.95, hf_magicmush: 0.85, hf_voidbloom: 0.75, hf_infial: 1.1, hf_moonrock: 1.3, hf_lamppost: 3.2, hf_interior: 1.5, hf_pedestal: 1.7, hf_rottenbasket: 0.3, hf_rottencrate: 0.62, hf_minelantern: 0.62, hf_emberleaf: 0.8, hf_evildagger: 0.5, hf_spear: 1.7, duco2: 0.93, hf_staff: 1.75, hf_dagger: 0.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -672,7 +675,7 @@ export const CFG = {
     // Duco was lifted from a side photo, so his yaw comes from the measured head direction.
     // update 34: mesh straightened by tools/glb_straighten_head.py -- the raw file now faces exactly -z,
     // so only the node matrix's -9.08 deg azimuth is left to undo on the way to +z: 180 + 9.08
-    duco: -170.9 * DEG, fountain2: -90 * DEG,   // update 37: the update-30 Duco again (body along -z in the file, node yaw -9.1) — turned onto +z
+    duco: -170.9 * DEG, duco2: 0, fountain2: -90 * DEG,   // update 79: the new Duco already walks along +z   // update 37: the update-30 Duco again (body along -z in the file, node yaw -9.1) — turned onto +z
     // update 31 (same rule: the lift's own azimuth, undone, then +x turned into +z)
     leaf_front: -96.1 * DEG, leaf_back: -89 * DEG, leaf_balc: -92.4 * DEG,
     fridge2: -112.6 * DEG, ladder: -80.2 * DEG, a_crates: -121.1 * DEG, a_sacks: -94.6 * DEG,
@@ -701,6 +704,8 @@ export const CFG = {
   held: {
     knife3d:   { s: 0.40, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] },
     hf_dagger: { s: 0.48, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] },   // update 75
+    hf_evildagger: { s: 0.48, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] },   // update 79: the evil dagger as its icon
+    hf_spear:  { s: 1.7, pos: [0.30, -0.26, -0.72], rot: [0.35, -1.75, 0.25] },   // update 79: the bound spear, wood and iron
     hf_staff:  { s: 1.5, pos: [0.36, -0.62, -0.72], rot: [0.08, -0.2, 0.12] },
     machete3d: { s: 0.85, pos: [0.32, -0.32, -0.72], rot: [0.12, -0.3, 0] },
     torch3d:   { s: 0.68, pos: [-0.3, -0.30, -0.55], rot: [0.28, 0, 0] },

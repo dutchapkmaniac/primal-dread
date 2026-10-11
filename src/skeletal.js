@@ -216,7 +216,19 @@ export function riggedCreature(sourceGroup, type) {
 
   srcMesh.updateWorldMatrix(true, false);
   const geo = srcMesh.geometry.clone();
-  geo.applyMatrix4(srcMesh.matrixWorld);
+  if (srcMesh.isSkinnedMesh && srcMesh.skeleton) {
+    // update 79: a scan that ships its own skeleton (duco2) keeps its vertices in bind space, and its bones carry the
+    // scale its mesh node lacks (an Armature at 0.01 under a mesh node at 1); the node matrix alone made a 1 cm dog.
+    // Bake what the file's rest pose actually shows - the skinned position through the node - and rig THAT
+    if (srcMesh.skeleton.update) srcMesh.skeleton.update();
+    const sp = geo.attributes.position, sn = geo.attributes.normal, sv = new THREE.Vector3();
+    const nm = new THREE.Matrix3().getNormalMatrix(srcMesh.matrixWorld);
+    for (let i = 0; i < sp.count; i++) {
+      sv.fromBufferAttribute(sp, i); srcMesh.applyBoneTransform(i, sv); sv.applyMatrix4(srcMesh.matrixWorld); sp.setXYZ(i, sv.x, sv.y, sv.z);
+      if (sn) { sv.fromBufferAttribute(sn, i).applyMatrix3(nm).normalize(); sn.setXYZ(i, sv.x, sv.y, sv.z); }
+    }
+    sp.needsUpdate = true; if (sn) sn.needsUpdate = true;
+  } else geo.applyMatrix4(srcMesh.matrixWorld);
   geo.computeBoundingBox();
   const bb = geo.boundingBox;
   const size = new THREE.Vector3(); bb.getSize(size);

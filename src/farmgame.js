@@ -3,12 +3,12 @@
 // clock, the werewolf raid roll. Geometry lives in farm.js.
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=78";
-import { STR } from "../strings.js?v=78";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=78";
-import { Creature } from "./entities.js?v=78";
-import { Inventory, iconUrl } from "./items.js?v=78";
-import { inFarm, inField, inHouseRooms, inPasture, X, Z } from "./farm.js?v=78";
+import { CFG } from "./config.js?v=79";
+import { STR } from "../strings.js?v=79";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=79";
+import { Creature } from "./entities.js?v=79";
+import { Inventory, iconUrl } from "./items.js?v=79";
+import { inFarm, inField, inHouseRooms, inPasture, X, Z } from "./farm.js?v=79";
 
 const FA = CFG.farm;
 
@@ -52,7 +52,9 @@ export class FarmGame {
     this.dirk = this.placeNpc("dirk6", w.dirkPos);   // update 33c: a plain farmer, built new, on the mesher's own skeleton
     if (this.dirk) this.dirkW = { state: "stand", t: 3 + g.rng() * 4, tx: 0, tz: 0 };
     // Duco: an NPC body with the dog's procedural rig — never a target
-    const da = A.glb.duco;   // update 30: Duco lifted from his own photo, 50% bigger
+    // update 79: Duco is a NEW scan, rigged from his own photo (duco2.glb). Its file skeleton is a humanoid template
+    // squeezed onto a dog (no hind-leg bones, a one-frame clip), so the dog rig below drives the mesh, as before
+    const da = A.glb.duco2 ? { model: A.glb.duco2.model } : A.glb.duco;
     let body = null, rig = null, anim = null;
     if (da && da.anims && da.anims.length) { body = skeletonClone(da.model); anim = new ClipAnimator(body, da.anims); }
     else if (da) { rig = riggedCreature(da.model, "dog"); body = rig || da.model.clone(); }
@@ -435,7 +437,10 @@ export class FarmGame {
           // the pitch that puts his eyes on yours, from wherever he is sitting
           const eye = p.pos.y + CFG.player.height * 0.9;
           const hy = b.position.y + C.height * 0.9;
-          D.look = -Math.max(-0.25, Math.min(0.9, Math.atan2(eye - hy, Math.max(0.5, pd))));
+          // update 79: the sit already pitches his whole body nose-up (0.5 rad in driveCreature); the neck only adds
+          // what is left to reach your eyes - before, both stacked and a sitting dog stared at the sky
+          const bodyUp = D.rig && D.rig.userData.rig ? 0.5 * D.rig.userData.rig.sit : 0;
+          D.look = -Math.max(-0.25, Math.min(0.9, Math.atan2(eye - hy, Math.max(0.5, pd)) - bodyUp));
         }
         D.target = null;
       } else {

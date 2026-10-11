@@ -238,6 +238,7 @@ export const STR = {
     needItem: "You need %i", converted: "%n infial belladonna turned into belladonna", bookRead: "The letters swim and settle. You understand Monial now - forever",
     mineMoonstone: "Mine moonstone — hold F", needPick: "Moonstone: you need a pickaxe", moonstoneGot: "A piece of moonstone, cold and bright", voidEnough: "Three void blooms is all the night gives. Come back another night",
     bedBeetle: "The bed is full of beetles by day",
+    historianHas: "The book is yours already. Sit, and hear a story.",   // update 79
     farmerApple: "Give a Mystic apple (one infial belladonna)", farmerAppleThanks: "An infial belladonna for your blue apple", explorerMap: "Give one of each plant (his map of the forest)", explorerGives: "Thalem rolls up his map and hands it over. Read it", mapRead: "The lines settle in your head. The hidden forest shows on your world map now",   // update 77
     enchantStaff: "Enchant the Monial staff", staffEnchanted: "The crescent on the staff wakes with a blue light. You will understand them now", convertBtn: "Turn infial belladonna into belladonna",
     names: { farmer: "Veyrin", wife: "Ilsae", explorer: "Thalem", witch: "Grandmother Orune", warrior: "Kaldur", historian: "Senna", lady: "The Lady of the Lake" },
@@ -774,7 +775,7 @@ export const STR = {
   jabbLines: [
     "Hmph. A soft-lander, up here. The bed's yours if you need it — mountain rule.",
     "You want my STORAGE and my FURNACE? Earn them. EMBER LEAF grows on the high shelf of the volcano — orange, with a black flower. Bring me THREE leaves and I light the furnace with them. Mind: it burns bare hands. Gloves.",
-    "The old wolf den is a SILVER MINE now. Twelve ores in the rock, a pickaxe to get them, three to a bar in my furnace. A bar and a hammer on my anvil: a dagger, dull until the witch blesses it.",
+    "The old wolf den is a SILVER MINE now. There is silver in the rock - a pickaxe gets it out, and three ores make a bar in my furnace. A bar and a hammer on my anvil: a dagger, dull until the witch blesses it.",
   ],
   jabbLinesDone: [
     "The furnace sings with your ember leaf, friend. My box, my bed, my coffee — all yours.",

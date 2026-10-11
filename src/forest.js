@@ -1,10 +1,11 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=78";
-import { STR } from "../strings.js?v=78";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=78";
+import { CFG } from "./config.js?v=79";
+import { STR } from "../strings.js?v=79";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=79";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { Creature, ItemDrop } from "./entities.js?v=78";
-import { iconUrl } from "./items.js?v=78";
+import { Creature, ItemDrop } from "./entities.js?v=79";
+import { hiddenLakeR } from "./hidden.js?v=79";   // update 79: the hidden lake is a bowl in the hills
+import { iconUrl } from "./items.js?v=79";
 
 // ============================================================================
 // update 69 (prompt37, update 1): the forest dressed up. Mild hills (makeHills, used by World.groundHeight and the forest
@@ -51,6 +52,8 @@ export function makeHills(world) {
     const x = ix * G, z = iz * G, m = maskAt(x, z);
     if (m <= 0.001) v = 0;
     else { const n = (vn(x, z, H.wave1) - 0.5) * 1.3 + (vn(x + 1000, z - 1000, H.wave2) - 0.5) * 0.6; v = Math.max(-H.amp, Math.min(H.amp, n * H.amp * 1.7)) * m; }
+    // update 79: the hidden lake is a bowl cut into the ground (its water lies in it instead of floating over the grass)
+    if (CFG.hidden) { const L = CFG.hidden.lake, dx = x - L.x, dz = z - L.z, d = Math.hypot(dx, dz); if (d < Math.max(L.rx, L.rz) * 1.1) { const R = hiddenLakeR(Math.atan2(dz, dx)); if (d < R) { const u = d / R; v = -(L.depth || 2.4) * (1 - u * u); } } }
     samples.set(key, v); return v;
   };
   // the cell (ix, iz) is two triangles: (x,z)-(x,z+G)-(x+G,z) and (x,z+G)-(x+G,z+G)-(x+G,z); fx+fz<=1 is the first
@@ -161,7 +164,7 @@ export class Forest {
     d.position.set(s.x, s.y, s.z); d.rotation.set(0, s.yaw, 0); d.scale.setScalar(on ? s.sc : 0.0001); d.updateMatrix(); for (const inst of [s.insta, s.instb]) { inst.setMatrixAt(s.idx, d.matrix); inst.instanceMatrix.needsUpdate = true; }
   }
   respawnPickups() { for (const s of this.pickups) { if (s.n < s.max) { s.n = s.max; this.setPickVisible(s, true); } } this.spawnWitchGoods(); }
-  spawnWitchGoods() { const g = this.g; for (const it of this.witchGoods || []) { if (it.drop && g.drops.includes(it.drop)) continue; it.drop = new ItemDrop(it.id, 1, it.x, it.z, it.y, this.scene, 0); g.drops.push(it.drop); } }   // update 78
+  spawnWitchGoods() { const g = this.g; for (const it of this.witchGoods || []) { if (it.drop && g.drops.includes(it.drop)) continue; it.drop = new ItemDrop(it.id, 1, it.x, it.z, it.y, this.scene, 0, { flat: true }); g.drops.push(it.drop); } }   // update 78
   // ---------------- the night's bats (looks only) ----------------
   batBody(size) {
     const g = new THREE.Group(), m = this.mats.spr_bat;
@@ -332,7 +335,7 @@ export class Forest {
     const g = this.g, c = new Creature(type, null, x, z, g.ctx, {});
     c.small = true; c.cfg = { ...CFG[type] }; c.hp = c.maxHp = c.cfg.hp; c.corpseHold = 1.2;
     c.group.remove(c.body);
-    if (type === "meganeura") { const b = new THREE.Group(), m = this.mats.spr_meganeura, W = 1.0, H = 0.72; const body = new THREE.Mesh(flatPlane(W * 0.16, H, 0.42, 0.58), m); const wl = new THREE.Mesh(flatPlane(W * 0.44, H, 0, 0.44, -W * 0.22), m), wr = new THREE.Mesh(flatPlane(W * 0.44, H, 0.56, 1, W * 0.22), m); b.add(body, wl, wr); b.userData.anim = { wl, wr, hz: 17, amp: 0.55 }; c.body = b; }
+    if (type === "meganeura") { const b = new THREE.Group(), m = this.mats.spr_meganeura, W = 1.6, H = 1.15; const body = new THREE.Mesh(flatPlane(W * 0.16, H, 0.42, 0.58), m); const wl = new THREE.Mesh(flatPlane(W * 0.44, H, 0, 0.44, -W * 0.22), m), wr = new THREE.Mesh(flatPlane(W * 0.44, H, 0.56, 1, W * 0.22), m); b.add(body, wl, wr); b.userData.anim = { wl, wr, hz: 17, amp: 0.55 }; c.body = b; }
     else if (type === "bat") { c.body = this.batBody(0.6); }
     else { const b = new THREE.Group(); const m = new THREE.Mesh(flatPlane(0.42, 0.5), this.mats.spr_beetle); m.position.y = 0.04; b.add(m); b.userData.anim = null; c.body = b; }
     c.group.add(c.body); c.hover = 0;

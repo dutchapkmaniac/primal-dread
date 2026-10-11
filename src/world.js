@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=78";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=79";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=78";
-import { Desert } from "./desert.js?v=78";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=78";
+import { CFG } from "./config.js?v=79";
+import { Desert } from "./desert.js?v=79";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=79";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,8 +11,8 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=78";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=78";
-import { pointInPoly, hiddenPathDist } from "./hidden.js?v=78";   // update 75   // update 69: the forest's mild hills
+import { makeHills } from "./forest.js?v=79";
+import { pointInPoly, hiddenPathDist } from "./hidden.js?v=79";   // update 75   // update 69: the forest's mild hills
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;
@@ -804,7 +804,7 @@ export class World {
       const sxz = (N.r * 2.2) / Math.max(size.x, size.z);
       const sy = 1.15 / size.y;
       m.scale.set(m.scale.x * sxz, m.scale.y * sy, m.scale.z * sxz);
-      m.position.set(N.x, 0.02, N.z);
+      m.position.set(N.x, this.groundHeight(N.x, N.z, 0) + 0.02, N.z);   // update 79: on the ground, not over a hollow
       this.scene.add(m);
     } else {
       const dirt = new THREE.Mesh(new THREE.CylinderGeometry(N.r, N.r + 1.2, 0.5, 18),
@@ -832,7 +832,7 @@ export class World {
           new THREE.MeshStandardMaterial({ color: 0xcfc0a0, roughness: 0.7 }));
         m.scale.y = 1.35;
       }
-      m.position.set(N.x + Math.cos(a) * 1.5, nestAsset ? 0.34 : 0.5, N.z + Math.sin(a) * 1.5);
+      m.position.set(N.x + Math.cos(a) * 1.5, this.groundHeight(N.x, N.z, 0) + (nestAsset ? 0.34 : 0.5), N.z + Math.sin(a) * 1.5);
       m.rotation.y = a * 2;
       this.scene.add(m);
       this.nestEggs.push(m);
@@ -1517,6 +1517,7 @@ export class World {
     const geo = new THREE.PlaneGeometry(span, span, 110, 110);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.attributes.position;
+    const vIn = new Uint8Array(pos.count), vSunk = new Uint8Array(pos.count);   // update 79
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i) + M.cx, z = pos.getZ(i) + M.cz;
       let h = this.mountainH(x, z);
@@ -1527,10 +1528,19 @@ export class World {
         // the deep rooms (grand hall + sanctum) vault far higher — they sit
         // under the peak, where the rock towers above even the taller band
         const rs = (x - CV.x) * ux + (z - CV.z) * uz;
-        if (h < caveY + (rs > 70 ? 13.5 : 8)) h = caveY - 0.55;
+        vIn[i] = 1;
+        if (h < caveY + (rs > 70 ? 13.5 : 8)) { h = caveY - 0.55; vSunk[i] = 1; }
       }
       pos.setY(i, h > 0.02 ? h + 0.04 : -1.6);   // update 74: below the hills' deepest hollow (it showed as grey rock in every dip)
     }
+    // update 79: where the sunk strip meets rock kept high INSIDE the passage, the sheet climbed from under the floor to
+    // above the roof within one grid cell - a grey slope standing across the mine. Those triangles are dropped (the roof
+    // slabs cover the gap from above); the slopes down into the strip from OUTSIDE the passage stay, hidden by the liners
+    { const idx = geo.index.array, keep = [];
+      for (let k = 0; k < idx.length; k += 3) { const a = idx[k], b = idx[k + 1], c = idx[k + 2];
+        const sunk = vSunk[a] + vSunk[b] + vSunk[c], high = (vIn[a] && !vSunk[a]) + (vIn[b] && !vSunk[b]) + (vIn[c] && !vSunk[c]);
+        if (sunk > 0 && high > 0) continue; keep.push(a, b, c); }
+      geo.setIndex(keep); }
     geo.computeVertexNormals();
     const rockGround = new THREE.Mesh(geo, this.mat("t_rock", 34, 34, 0x74776f));
     rockGround.position.set(M.cx, 0, M.cz);
@@ -1594,7 +1604,7 @@ export class World {
         const bh = (5.6 + rng() * 1.6) * hMul;
         const b = new THREE.Mesh(new THREE.BoxGeometry(3.0 + rng() * 1.4, bh, 1.6 + rng() * 0.9), mineRock);
         b.position.set(p.x, caveY + bh * 0.46 + rng() * 0.5, p.z);
-        { const q = L(s, t), ln = new THREE.Mesh(new THREE.BoxGeometry(len / n + 0.9, 6.6 * hMul, 0.6), mineRock); ln.position.set(q.x, caveY + 3.3 * hMul, q.z); ln.rotation.y = -Math.PI / 4 + Math.atan2(t1 - t0, s1 - s0); this.scene.add(ln); }   // update 74: a contiguous liner - no gap shows the sky
+        { const q = L(s, t), ln = new THREE.Mesh(new THREE.BoxGeometry(len / n + 2.6, 10 * hMul, 1.6), mineRock); ln.position.set(q.x, caveY + 4.6 * hMul, q.z); ln.rotation.y = -Math.PI / 4 + Math.atan2(t1 - t0, s1 - s0); this.scene.add(ln); }   // update 74: a contiguous liner - no gap shows the sky
         b.rotation.y = -Math.PI / 4 + Math.atan2(t1 - t0, s1 - s0) + (rng() - 0.5) * 0.55;
         b.rotation.z = (rng() - 0.5) * 0.14;   // tilted slabs, not fitted panels
         this.scene.add(b);
@@ -1746,7 +1756,8 @@ export class World {
     const lampWood = this.mat("t_darkwood", 1, 3, 0x4a3320), lampGlass = new THREE.MeshStandardMaterial({ color: 0xffd080, emissive: 0xffb050, emissiveIntensity: 1.6, roughness: 0.4 });
     const lampAt = (cs, ct, sc = 1) => {
       const p = L(cs, ct); const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.4 * sc, 6), lampWood); post.position.set(p.x, caveY + 1.2 * sc, p.z); this.scene.add(post);
-      const lan = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.42, 0.3), lampGlass); lan.position.set(p.x, caveY + 2.3 * sc, p.z); this.scene.add(lan);
+      const la = this.assets.glb.hf_minelantern; if (la) { const m = la.model.clone(); m.scale.multiplyScalar(sc); m.position.set(p.x + 0.18, caveY + 1.72 * sc, p.z); this.scene.add(m); const arm = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.05), lampWood); arm.position.set(p.x + 0.12, caveY + 2.38 * sc, p.z); this.scene.add(arm); }   // update 79: a real lantern
+      else { const lan = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.42, 0.3), lampGlass); lan.position.set(p.x, caveY + 2.3 * sc, p.z); this.scene.add(lan); }
       const gl = new THREE.PointLight(0xffb060, 5.2, 15 + (sc - 1) * 6, 1.8); gl.position.set(p.x, caveY + 2.4 * sc, p.z); this.scene.add(gl); this.dungeonLights.push(gl);
     };
     for (const [cs, ct, sc] of [[8, 1.5, 1], [24, 6, 1], [38, -8, 1], [52, 3, 1], [64, 4.4, 1],
@@ -1896,7 +1907,7 @@ export class World {
     this.addBox(H.x - 0.95, H.x - 0.15, hy, hy + 0.55, H.z - 3.0, H.z - 2.2);
     this.jabbChest = { x: H.x - 0.55, z: H.z - 2.6, y: hy };
     // update 74: the smelting FURNACE in the corner the chest left - cold until Jabb lights it with ember leaf
-    { const fA = this.assets.glb.et_furnace; if (fA) { const f = fA.model.clone(); f.position.set(H.x + 2.6, hy + 0.06, H.z - 2.1); f.rotation.y = -Math.PI * 0.75; this.scene.add(f); }
+    { const fA = this.assets.glb.et_furnace; if (fA) { const f = fA.model.clone(); f.position.set(H.x + 2.6, hy + 0.06, H.z - 2.1); f.rotation.y = -Math.PI * 0.25; this.scene.add(f); }
       else { const f = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.3, 1.0), this.mat("t_cobble", 1, 1, 0x5a5048)); f.position.set(H.x + 2.6, hy + 0.65, H.z - 2.1); this.scene.add(f); }
       this.addBox(H.x + 2.0, H.x + 3.2, hy, hy + 1.4, H.z - 2.7, H.z - 1.5); this.furnace = { x: H.x + 2.6, z: H.z - 2.1, y: hy };
       const fl = new THREE.PointLight(0xff7a30, 0, 8, 2); fl.position.set(H.x + 2.2, hy + 0.9, H.z - 1.7); this.scene.add(fl); this.furnaceLight = fl; this.furnaceLit = false;
@@ -1994,6 +2005,8 @@ export class World {
     (this.knifeSpots ||= []).push({ x, z, y, mesh: g });
   }
 
+  // update 79: the flame sheet with its red and blue swapped - a blue fire for the Monial night
+  blueFlame(tex) { try { const img = tex.image, cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height; const c2 = cv.getContext("2d"); c2.drawImage(img, 0, 0); const id = c2.getImageData(0, 0, cv.width, cv.height), d = id.data; for (let i = 0; i < d.length; i += 4) { const r = d[i], g = d[i + 1], b = d[i + 2]; d[i] = Math.round(b * 0.55 + g * 0.1); d[i + 1] = Math.round(g * 0.75 + b * 0.1); d[i + 2] = Math.min(255, Math.round(r * 1.05)); } c2.putImageData(id, 0, 0); const t = new THREE.CanvasTexture(cv); t.colorSpace = tex.colorSpace; t.flipY = tex.flipY; return t; } catch (e) { return null; } }
   spawnTempFire(x, z, flameTex, fromY = 0) {
     const g = new THREE.Group();
     const logMat = this.mat("t_bark", 1.2, 0.5, 0x4a3b28);
@@ -2036,7 +2049,7 @@ export class World {
     }
     g.position.set(x, this.groundHeight(x, z, fromY + 0.6), z);
     this.scene.add(g);
-    this.tempFires.push({ g, flames, light, ttl: CFG.tempFire.ttl });
+    this.tempFires.push({ g, flames, light, ttl: CFG.tempFire.ttl, fm, x, z });
   }
 
   // mossy boulders: cover to hide behind (and they block your path too)
@@ -3399,6 +3412,8 @@ export class World {
           f.flames[j].scale.y = 1 + Math.sin(t * 13 + j * 2) * 0.15;
         }
         if (f.light) f.light.intensity = CFG.tempFire.light * Math.min(1, f.ttl / 5) * (1 + Math.sin(t * 11 + i) * 0.15);
+        // update 79: inside the hidden forest's night the fire burns blue like everything else there
+        { const hk = this.hiddenZone && this.hiddenZone.k > 0 && this.hiddenZone.inside(f.x, f.z) ? this.hiddenZone.k : 0; if (hk !== (f.hk || 0)) { f.hk = hk; if (f.fm) { if (!this.flameBlue && f.fm.map && f.fm.map.image) this.flameBlue = this.blueFlame(f.fm.map); if (this.flameBlue) { f.fm.map = hk > 0.5 ? this.flameBlue : (this.flameOrange || (this.flameOrange = f.fm.map)); f.fm.needsUpdate = true; } } if (f.light) f.light.color.setHex(0xd07a30).lerp(new THREE.Color(0x5a78ff), hk); } }
         if (f.ttl <= 0) {
           this.scene.remove(f.g);
           if (f.light) {   // the flame goes back into the pool, parked underground

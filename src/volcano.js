@@ -5,9 +5,9 @@
 // turns it into the silver dagger (holy water) or the EVIL DAGGER (unholy water) that makes every werewolf a friend to talk
 // to and feed.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=78";
-import { ItemDrop } from "./entities.js?v=78";
-import { STR } from "../strings.js?v=78";
+import { CFG } from "./config.js?v=79";
+import { ItemDrop } from "./entities.js?v=79";
+import { STR } from "../strings.js?v=79";
 
 const V = () => CFG.volcano;
 
@@ -60,7 +60,7 @@ export class Volcano {
   }
   // four plants on the high shelf and one on the lower slope, new spots every day
   // update 78: a plain pickaxe lies ten metres before Jabb's door, one a day
-  spawnPick() { const g = this.g, H = CFG.mountain.hut; if (this.pickDrop && g.drops.includes(this.pickDrop)) return; const x = H.x + 1.27, z = H.z + 3.75 + 10; this.pickDrop = new ItemDrop("pickaxe", 1, x, z, this.w.groundHeight(x, z, 40), g.scene, 0); g.drops.push(this.pickDrop); }
+  spawnPick() { const g = this.g, H = CFG.mountain.hut; if (this.pickDrop && g.drops.includes(this.pickDrop)) return; const x = H.x + 1.27, z = H.z + 3.75 + 10; this.pickDrop = new ItemDrop("pickaxe", 1, x, z, this.w.groundHeight(x, z, 40), g.scene, 0, { flat: true }); g.drops.push(this.pickDrop); }
   spawnEmber() {
     const g = this.g, w = this.w, M = CFG.mountain, C = V();
     for (const e of this.embers) g.scene.remove(e.grp);
@@ -74,7 +74,7 @@ export class Volcano {
         if (this.embers.some((e) => Math.hypot(e.x - x, e.z - z) < 12)) continue;
         if (w.treesNear(x, z).some((t) => Math.hypot(t.x - x, t.z - z) < 2.2)) continue;
         const y = w.groundHeight(x, z, 60);
-        const grp = new THREE.Group(); grp.add(new THREE.Mesh(this.emberGeo[0], this.emberMat), new THREE.Mesh(this.emberGeo[1], this.emberMat));
+        const grp = new THREE.Group(); const ea = g.assets.glb.hf_emberleaf; if (ea) { grp.add(this.emberModel().clone()); const l = new THREE.PointLight(0xff7a30, 4, 5, 1.8); l.position.y = 0.5; grp.add(l); } else grp.add(new THREE.Mesh(this.emberGeo[0], this.emberMat), new THREE.Mesh(this.emberGeo[1], this.emberMat));   // update 79: the Higgsfield plant, its leaves aglow
         grp.position.set(x, y, z); grp.rotation.y = rng() * Math.PI; g.scene.add(grp);
         this.embers.push({ x, z, y, grp, taken: false }); return true;
       }
@@ -83,6 +83,8 @@ export class Volcano {
     for (let i = 0; i < C.shelfN; i++) tryPlace(M.wallD + 10, M.cliffHi - 8);
     for (let i = 0; i < C.lowerN; i++) tryPlace(M.cliffLo + 8, M.r - 12);
   }
+  // update 79: one glowing copy of the ember leaf (the orange of its own texture is what shines)
+  emberModel() { if (this._emberModel) return this._emberModel; const m = this.g.assets.glb.hf_emberleaf.model.clone(); const seen = new Map(); m.traverse((o) => { if (!o.isMesh) return; const mats = Array.isArray(o.material) ? o.material : [o.material]; const out = mats.map((mm) => { if (seen.has(mm)) return seen.get(mm); const c = mm.clone(); c.emissive = new THREE.Color(0xff6a20); c.emissiveMap = c.map || null; c.emissiveIntensity = 0.9; seen.set(mm, c); return c; }); o.material = Array.isArray(o.material) ? out : out[0]; }); this._emberModel = m; return m; }
   pickEmber(e) {
     const g = this.g, p = g.player, C = V(), S = STR.volcano;
     if (e.taken) return;
@@ -143,7 +145,7 @@ export class Volcano {
     const g = this.g, w = this.w, C = V();
     this.t += dt;
     if (g.dayNum !== this.day) { this.day = g.dayNum; this.spawnEmber(); this.respawnOres(); this.spawnPick(); }
-    const hk = 1 - (w.hiddenK || 0);   // update 78: the lava's glow never shows in the Monial night
+    const hk = (1 - (w.hiddenK || 0)) * (() => { const M0 = CFG.mountain, pd = Math.hypot(g.player.pos.x - M0.cx, g.player.pos.z - M0.cz), R0 = C.haloRange || 250; return pd < R0 ? 1 : Math.max(0, 1 - (pd - R0) / 60); })();   // update 78: never in the Monial night; update 79: only near the mountain
     const k = w.nightK || 0;
     if (this.lava) this.lava.mat.emissiveIntensity = C.glowDay + (C.glowNight - C.glowDay) * k;
     if (this.glow) this.glow.intensity = C.glowLightNight * k;

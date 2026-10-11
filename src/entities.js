@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=78";
-import { inFarm, inPasture } from "./farm.js?v=78";
-import { STR } from "../strings.js?v=78";
-import { icons } from "./items.js?v=78";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=78";
+import { CFG } from "./config.js?v=79";
+import { inFarm, inPasture } from "./farm.js?v=79";
+import { STR } from "../strings.js?v=79";
+import { icons } from "./items.js?v=79";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=79";
 
 // Creatures. Rigged GLBs (T-Rex, werewolf, chicken) play real walk/run clips;
 // the pig gets a procedural quadruped gait. The T-Rex cannot be killed.
@@ -119,6 +119,10 @@ export class Creature {
   collideXZ(x, z, ignoreTrees) {
     const w = this.ctx.world;
     const r = Math.max(0.4, this.cfg.height * 0.18);
+    // update 79: no beast walks into the silver mine (its own wolves and the goats excepted), and no hunter climbs the
+    // volcano unless it is chasing you up there - the Imperator never
+    if (w.dungeon && !this.caveWolf && this.type !== "goat" && w.inDungeon(x, z) && !w.inDungeon(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
+    if (this.type === "trex" && !this.chain && w.inMountain(x, z) && !w.inMountain(this.pos.x, this.pos.z) && (this.imperator || this.state !== "chase")) return { x: this.pos.x, z: this.pos.z };
     // update 42: the werewolves never set foot in Eternius — the mountain, the castle, the bridge
     if (this.type === "werewolf" && !this.caveWolf && w.city && w.city.inZone(x, z) && !w.city.inZone(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
     // update 44: the desert's hunters (and any wandering T-Rex) stop at the castle's sill — the bridge is as far as they come
@@ -639,6 +643,12 @@ export class Creature {
       default: this.updatePrey(dt, game); break;
     }
 
+    // update 79: a hunter that has not moved for three minutes is stuck (a lake's edge, a trunk) - it is set down on a
+    // fresh wander spot and lives on from there
+    if (this.type === "trex" && !this.chain && !this.dead) {
+      if (!this.stillAt || Math.hypot(this.pos.x - this.stillAt.x, this.pos.z - this.stillAt.z) > 2.5) { this.stillAt = { x: this.pos.x, z: this.pos.z }; this.stillT = 0; }
+      else if ((this.stillT = (this.stillT || 0) + dt) > (CFG.trexHunt.stuckTime || 180)) { const t = this.pickWanderTarget(game.rng); this.spawn = { x: t[0], z: t[1] }; this.pos.set(t[0], 0, t[1]); this.stillAt = null; this.state = "wander"; this.target = null; this.loseT = 0; }
+    }
     // update 39: the chain holds — a step past its length is pulled back
     if (this.chain) {
       const dx = this.pos.x - this.chain.x, dz = this.pos.z - this.chain.z, d = Math.hypot(dx, dz);
@@ -1655,12 +1665,26 @@ export class Creature {
 // ---- item drops ----
 // Eggs lie on the ground like the apples do; everything else floats.
 export class ItemDrop {
-  constructor(id, count, x, z, y, scene, ttl = 0) {
+  constructor(id, count, x, z, y, scene, ttl = 0, opts = {}) {
     this.id = id; this.count = count;
     this.ttl = ttl;   // 0 = forever; player-dropped items fade after 10 min
     this.pos = new THREE.Vector3(x, y, z);
-    this.grounded = id === "egg" || id === "torch";
-    if (id === "egg") {
+    const spearA = (id === "spear" || id === "et_spear") && ItemDrop.assets && ItemDrop.assets.glb && ItemDrop.assets.glb[id === "spear" ? "hf_spear" : "etspear3d"];
+    this.grounded = id === "egg" || id === "torch" || !!opts.flat || !!spearA;
+    if (spearA) {
+      // update 79: a thrown spear lies where it landed, as itself - its longest side along the ground
+      const m = spearA.model.clone(); const bb = new THREE.Box3().setFromObject(m), sz = bb.getSize(new THREE.Vector3()); m.scale.multiplyScalar(1.7 / Math.max(sz.x, sz.y, sz.z));
+      const g = new THREE.Group(); const bb2 = new THREE.Box3().setFromObject(m), c = bb2.getCenter(new THREE.Vector3()); m.position.sub(c); g.add(m);
+      g.position.set(x, y + 0.08, z); g.rotation.y = Math.random() * Math.PI * 2; this.sprite = g; scene.add(g);
+    } else if (opts.flat) {
+      // update 79: a spawned tool lies flat on its table or on the ground, no bob
+      const cnv = icons[id]; const texMap = new THREE.CanvasTexture(cnv || document.createElement("canvas")); texMap.colorSpace = THREE.SRGBColorSpace;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), new THREE.MeshStandardMaterial({ map: texMap, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, roughness: 0.8 }));
+      m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * Math.PI * 2; m.position.set(x, y + 0.03, z); this.sprite = m; scene.add(m);
+      // on a slope (the pickaxe on the volcano's foot) a level card sinks into the rise on one side: lie it ALONG the ground
+      const W = ItemDrop.world; if (W && W.groundHeight) { const e = 0.3, dx = (W.groundHeight(x + e, z, y + 1) - W.groundHeight(x - e, z, y + 1)) / (2 * e), dz = (W.groundHeight(x, z + e, y + 1) - W.groundHeight(x, z - e, y + 1)) / (2 * e);
+        if (Math.abs(dx) < 1.5 && Math.abs(dz) < 1.5 && (Math.abs(dx) > 0.02 || Math.abs(dz) > 0.02)) { const nrm = new THREE.Vector3(-dx, 1, -dz).normalize(); const spin = m.rotation.z; m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), nrm).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), spin)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2)); m.position.y = y + 0.05; } }
+    } else if (id === "egg") {
       const egg = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8),
         new THREE.MeshStandardMaterial({ color: 0xdfd2b8, roughness: 0.55 }));
       egg.scale.y = 1.3;

@@ -16,12 +16,12 @@
 // and the map painting. The two Alioramus live in entities.js and only ask
 // this module where the desert is.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=78";
-import { cityFlatten, cityLakeDip } from "./eternius.js?v=78";   // update 39
-import { STR } from "../strings.js?v=78";
+import { CFG } from "./config.js?v=79";
+import { cityFlatten, cityLakeDip } from "./eternius.js?v=79";   // update 39
+import { STR } from "../strings.js?v=79";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { ClipAnimator } from "./skeletal.js?v=78";
+import { ClipAnimator } from "./skeletal.js?v=79";
 
 const D = () => CFG.desert;
 
@@ -131,7 +131,7 @@ export class Desert {
   // stand on the dune, you never slide under it (0 off the sand, on a deck, or in the forest)
   baseH(x, z) {
     if (!this.inDesert(x, z) || this.bridgeAt(x, z)) return 0;
-    return this.inOasisWater(x, z) ? D().dune.base - 0.25 : this.duneH(x, z);
+    return this.duneH(x, z);   // update 79: the bowl itself
   }
   // shade: the tent (also a safe zone) and the palm's crown
   inTentZone(x, z) { return Math.hypot(x - this.tent.x, z - this.tent.z) < D().tent.zoneR; }
@@ -152,6 +152,8 @@ export class Desert {
       C.a3 * (0.5 + 0.5 * Math.sin(0.045 * (x + z) + 0.7 * Math.sin(0.02 * (x - z)))) +
       C.a4 * (0.5 + 0.5 * Math.sin(0.09 * x + 0.6 * Math.sin(0.05 * z + 2.0))) +
       C.a5 * (0.5 + 0.5 * Math.sin(0.14 * z + 0.05 * x + 0.5 * Math.sin(0.06 * x - 0.8)));
+    // update 79: the oasis is a bowl in the sand - the dunes dip to oasis.depth under its water
+    { const O = this.oasis, d = Math.hypot(x - O.x, z - O.z), R = O.r + 1.2; if (d < R) { const u = d / R; return C.base - (D().oasis.depth || 1.5) * (1 - u * u); } }
     return C.base + ridges * f * of * of * cityFlatten(x, z) - cityLakeDip(x, z);   // update 39: level around the city, a bowl for its lake
   }
   // a candidate for World.groundHeight
@@ -218,7 +220,7 @@ export class Desert {
       const x = pos.getX(i), z = pos.getZ(i);
       const R = this.riverInfo(x, z);
       let y;
-      if (R.side > 0 && R.d >= C.river.halfW) y = this.inOasisWater(x, z) ? C.dune.base - 0.3 : this.duneH(x, z);
+      if (R.side > 0 && R.d >= C.river.halfW) y = this.duneH(x, z);
       else if (R.side > 0) y = C.dune.base - 0.1 - (C.river.halfW - R.d) * 0.12;   // the bank slopes into the water
       else y = -3;                                                                 // the forest side: under the grass
       // update 40: under the mountain the sand drops away — the cavern floor is its own ground (no sand layer through the city)
@@ -322,11 +324,10 @@ export class Desert {
     // --- the oasis: a small pool and one palm
     {
       const O = this.oasis;
-      const bed = new THREE.Mesh(new THREE.CircleGeometry(O.r + 0.4, 36), new THREE.MeshStandardMaterial({ color: 0x3e5a58, roughness: 1 }));
-      bed.rotation.x = -Math.PI / 2; bed.position.set(O.x, C.dune.base - 0.28, O.z);
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(O.r, 36), waterMat);
-      pool.rotation.x = -Math.PI / 2; pool.position.set(O.x, C.dune.base - 0.02, O.z);
-      scene.add(bed, pool);
+      // update 79: no bed disc - the sand itself bowls down under the water (duneH); the pool sits just under the rim
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(O.r + 0.3, 48), waterMat);
+      pool.rotation.x = -Math.PI / 2; pool.position.set(O.x, C.dune.base - 0.16, O.z);
+      scene.add(pool);
       const pa = assets.glb.palm;
       const py = this.duneH(this.palm.x, this.palm.z);
       if (pa) {

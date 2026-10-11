@@ -18,8 +18,8 @@
 // Mystic apples at night. The explorer sells a map for four plants: read once, the hidden area shows on the world map.
 // The lag: the 3,773 lanterns were 28,000-triangle meshes, never culled - now 1,500 triangles each in 64 m cells.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=78";
-import { STR } from "../strings.js?v=78";
+import { CFG } from "./config.js?v=79";
+import { STR } from "../strings.js?v=79";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const D2R = Math.PI / 180;
@@ -41,6 +41,8 @@ export function hiddenPathEnds() {
   const ang = Math.atan2(L.z - V.z, L.x - V.x);
   return [[V.x + Math.cos(ang) * (V.plazaR + 3.2), V.z + Math.sin(ang) * (V.plazaR + 3.2)], [V.x + Math.cos(ang) * (V.plazaR - 0.5), V.z + Math.sin(ang) * (V.plazaR - 0.5)], ang];
 }
+// update 79: the lake's edge, for the hills (the bowl is cut into the heightfield itself)
+export function hiddenLakeR(theta) { const L = CFG.hidden.lake, c = Math.cos(theta), s = Math.sin(theta); const e = L.rx * L.rz / Math.sqrt((L.rz * c) * (L.rz * c) + (L.rx * s) * (L.rx * s)); return e * (1 + 0.05 * Math.sin(theta * 3 + 0.7) + 0.035 * Math.cos(theta * 5 + 2.1)); }
 export function hiddenPathDist(x, z) {
   const [[ax, az], [bx, bz]] = hiddenPathEnds();
   const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz || 1; const u = clamp01(((x - ax) * dx + (z - az) * dz) / L2);
@@ -103,23 +105,28 @@ export class HiddenForest {
   }
 
   // ---------------- the second lake and its bridge ----------------
-  lakeR(theta) { const L = H().lake, c = Math.cos(theta), s = Math.sin(theta); const e = L.rx * L.rz / Math.sqrt((L.rz * c) * (L.rz * c) + (L.rx * s) * (L.rx * s)); return e * (1 + 0.05 * Math.sin(theta * 3 + 0.7) + 0.035 * Math.cos(theta * 5 + 2.1)); }
+  lakeR(theta) { return hiddenLakeR(theta); }
   lakePen2(x, z) { const L = H().lake, dx = x - L.x, dz = z - L.z, d = Math.hypot(dx, dz); return this.lakeR(Math.atan2(dz, dx)) - d; }
   nearShore2(x, z) { const pen = this.lakePen2(x, z); return pen > -4 && pen < H().lake.wade + 0.5; }
   buildLake() {
     const g = this.g, w = this.w, L = H().lake, N = 72;
     const ring = (f) => { const sh = new THREE.Shape(); for (let i = 0; i < N; i++) { const t = i / N * Math.PI * 2, r = this.lakeR(t) + f; const x = Math.cos(t) * r, y = -Math.sin(t) * r; i ? sh.lineTo(x, y) : sh.moveTo(x, y); } sh.closePath(); return sh; };
     const mk = (sh, mat, y) => { const m = new THREE.Mesh(new THREE.ShapeGeometry(sh, 1), mat); m.rotation.x = -Math.PI / 2; m.position.set(L.x, y, L.z); g.scene.add(m); return m; };
-    mk(ring(3.5), w.mat("t_beach", 7, 7, 0x9a8a68), 0.02);
-    // the bed sits ABOVE the forest floor and runs past the water's edge, so no grass shows through the water (update 77)
-    mk(ring(0.6), new THREE.MeshStandardMaterial({ color: 0x18231f, roughness: 1 }), 0.1);
+    // update 79: the lake is a BOWL in the ground now (makeHills dips to lake.depth inside the edge): a mud bed follows
+    // it, the beach is a ring round the rim and the water lies just under the rim - nothing floats over grass
+    { const beach = ring(3.5); const hole = new THREE.Path(); for (let i = 0; i < N; i++) { const t = i / N * Math.PI * 2, r = this.lakeR(t) - 0.6; const x = Math.cos(t) * r, y = -Math.sin(t) * r; i ? hole.lineTo(x, y) : hole.moveTo(x, y); } hole.closePath(); beach.holes.push(hole); mk(beach, w.mat("t_beach", 7, 7, 0x9a8a68), 0.02); }
+    { const RINGS = 14, pos = new Float32Array((RINGS + 1) * N * 3), uv = new Float32Array((RINGS + 1) * N * 2), idx = []; const D = L.depth || 2.4;
+      for (let k = 0; k <= RINGS; k++) for (let i = 0; i < N; i++) { const t = i / N * Math.PI * 2, u = k / RINGS, r = (this.lakeR(t) + 0.4) * u; const j = k * N + i; pos[j * 3] = Math.cos(t) * r; pos[j * 3 + 1] = -D * (1 - u * u) + 0.05; pos[j * 3 + 2] = Math.sin(t) * r; uv[j * 2] = Math.cos(t) * r / 6; uv[j * 2 + 1] = Math.sin(t) * r / 6; }
+      for (let k = 0; k < RINGS; k++) for (let i = 0; i < N; i++) { const a = k * N + i, b = k * N + (i + 1) % N, c = (k + 1) * N + i, d = (k + 1) * N + (i + 1) % N; idx.push(a, c, b, b, c, d); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+      const mud = w.mat("t_soil", 1, 1, 0x3a3024); mud.color.setHex(0x5a4a3a); const bed = new THREE.Mesh(geo, mud); bed.position.set(L.x, 0, L.z); g.scene.add(bed); this.lakeBed = bed; }
     const dayMat = new THREE.MeshStandardMaterial({ color: 0x8fb2b8, transparent: true, opacity: 0.88, roughness: 0.12, metalness: 0.08 });
     if (w.waterTex) { dayMat.map = w.waterTex; dayMat.color.setHex(0xffffff); }
-    dayMat.userData.noTint = true; this.dayWater = mk(ring(0), dayMat, 0.32); this.dayMat = dayMat;
+    dayMat.userData.noTint = true; this.dayWater = mk(ring(0.2), dayMat, -0.14); this.dayMat = dayMat;
     const nMat = new THREE.MeshStandardMaterial({ color: 0xbccaf8, transparent: true, opacity: 0, roughness: 0.12, metalness: 0.12, emissive: 0x3a4ce0, emissiveIntensity: 0.42, depthWrite: false });
     nMat.userData.noTint = true; if (w.waterTex) nMat.map = w.waterTex;
     const nn = g.assets.texN && g.assets.texN.t_water; if (nn) { const t = nn.clone(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 8); t.needsUpdate = true; nMat.normalMap = t; nMat.normalScale.set(0.22, 0.22); this.nightNorm = t; }
-    this.nightWater = mk(ring(0), nMat, 0.335); this.nightWater.visible = false; this.nightWater.renderOrder = 2; this.nightMat = nMat;
+    this.nightWater = mk(ring(0.2), nMat, -0.125); this.nightWater.visible = false; this.nightWater.renderOrder = 2; this.nightMat = nMat;
     for (const m of [this.dayWater, this.nightWater]) { const uv = m.geometry.attributes.uv, sc = 7 / (2 * CFG.lake.r); for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * sc, uv.getY(i) * sc); uv.needsUpdate = true; }
   }
   // update 78: the bridge as drawn - pale weathered wood everywhere, round rails and posts, moss and ivy by day; at night the
@@ -150,7 +157,7 @@ export class HiddenForest {
     const n = Math.round(B.len / 0.5);
     for (let i = 0; i < n; i++) { const u = -B.len / 2 + (i + 0.5) * 0.5, y = this.deck(u); const p = plank(new THREE.BoxGeometry(0.52, 0.09, B.w)); p.position.set(u, y - 0.045, 0); p.rotation.z = Math.atan2(this.deck(u + 0.25) - this.deck(u - 0.25), 0.5); root.add(p); }
     // round piers down to the bed, a cross beam under the deck
-    for (let u = -B.len / 2 + 1.5; u < B.len / 2; u += 3) { const y = this.deck(u); const [wx, wz] = toW(u, 0); const base = this.lakePen2(wx, wz) > 0 ? 0.0 : w.groundHeight(wx, wz, 40); const h = Math.max(0.3, y - base + 0.1); for (const sd of [-1, 1]) { const pl = wood(new THREE.CylinderGeometry(0.13, 0.15, h, 10)); pl.position.set(u, base + h / 2 - 0.1, sd * (B.w / 2 - 0.2)); root.add(pl); } const beam = wood(new THREE.CylinderGeometry(0.11, 0.11, B.w + 0.3, 8)); beam.rotation.x = Math.PI / 2; beam.position.set(u, y - 0.2, 0); root.add(beam); }
+    for (let u = -B.len / 2 + 1.5; u < B.len / 2; u += 3) { const y = this.deck(u); const [wx, wz] = toW(u, 0); const base = w.hill ? w.hill.h(wx, wz) : 0; const h = Math.max(0.3, y - base + 0.1); for (const sd of [-1, 1]) { const pl = wood(new THREE.CylinderGeometry(0.13, 0.15, h, 10)); pl.position.set(u, base + h / 2 - 0.1, sd * (B.w / 2 - 0.2)); root.add(pl); } const beam = wood(new THREE.CylinderGeometry(0.11, 0.11, B.w + 0.3, 8)); beam.rotation.x = Math.PI / 2; beam.position.set(u, y - 0.2, 0); root.add(beam); }
     // round rail posts every two metres; every other post stands taller with a stone cap and a box lantern on it
     this.railLanterns = []; let pi = 0;
     for (let u = -B.len / 2; u <= B.len / 2 + 0.01; u += 2, pi++) { const y = this.deck(u); const lamp = pi % 2 === 1; for (const sd of [-1, 1]) { const hgt = lamp ? 1.5 : 1.15, v = sd * (B.w / 2 - 0.1); const po = wood(new THREE.CylinderGeometry(lamp ? 0.11 : 0.08, lamp ? 0.12 : 0.09, hgt, 10)); po.position.set(u, y + hgt / 2 - 0.03, v); root.add(po);
@@ -256,13 +263,14 @@ export class HiddenForest {
       const R = 0.62, rI = 0.55, dI = 0.27, xI = (R * R - rI * rI + dI * dI) / (2 * dI), yI = Math.sqrt(R * R - xI * xI), phO = Math.atan2(yI, xI), phI = Math.atan2(yI, xI - dI); const sh = new THREE.Shape(); for (let i = 0; i <= 28; i++) { const t = phO + (Math.PI * 2 - 2 * phO) * i / 28; i ? sh.lineTo(Math.cos(t) * R, Math.sin(t) * R) : sh.moveTo(Math.cos(t) * R, Math.sin(t) * R); } for (let i = 1; i <= 28; i++) { const t = -phI - (Math.PI * 2 - 2 * phI) * (i / 28); sh.lineTo(dI + Math.cos(t) * rI, Math.sin(t) * rI); } sh.closePath();   // from the lower horn up the hollow side to the upper horn
       const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.1, bevelEnabled: false }); geo.translate(0, 0, -0.05);
       // the crack sheet is white lines on alpha: paint it onto black for the glow and onto grey glass for the shards
-      const crackOn = (bg) => { const cv = document.createElement("canvas"); cv.width = cv.height = 256; const c2 = cv.getContext("2d"); c2.fillStyle = bg; c2.fillRect(0, 0, 256, 256); const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2.5, 2.5); t.colorSpace = THREE.SRGBColorSpace; const img = new Image(); img.onload = () => { c2.drawImage(img, 0, 0, 256, 256); t.needsUpdate = true; }; img.src = "./assets/tex/spr_cracks.png"; return t; };
-      const crackGlow = crackOn("#000000"), crackTex = crackOn("#8a8f9c");
-      const cm = new THREE.MeshStandardMaterial({ color: 0x9fb0ff, emissive: 0xb0c0ff, emissiveIntensity: 0, emissiveMap: crackGlow, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.72, side: THREE.DoubleSide, depthWrite: false }); cm.userData.noTint = true;   // update 78: glass, the cracks lit from inside
+      // update 79: a luminous moon surface (Higgsfield), glowing from within when it floats; the day shards carry it dull
+      const moonTex = new THREE.TextureLoader().load("./assets/tex/spr_moonface.png"); moonTex.colorSpace = THREE.SRGBColorSpace; moonTex.wrapS = moonTex.wrapT = THREE.RepeatWrapping; moonTex.repeat.set(0.6, 0.6); moonTex.offset.set(0.2, 0.2);
+      const crackTex = moonTex;
+      const cm = new THREE.MeshStandardMaterial({ color: 0xffffff, map: moonTex, emissive: 0x8fa0ff, emissiveIntensity: 0, emissiveMap: moonTex, roughness: 0.35, metalness: 0.0, side: THREE.DoubleSide }); cm.userData.noTint = true;   // update 78: glass, the cracks lit from inside
       const cres = new THREE.Mesh(geo, cm); cres.position.set(x, y + top + 0.85, z); cres.rotation.y = -a + Math.PI / 2; cres.visible = false; g.scene.add(cres); this.shrine = { mesh: cres, mat: cm, x, z, y: y + top + 0.85, a };
       // the broken halves: the crescent's triangles split along its middle, laid flat on the stones
       const pos = geo.attributes.position, bins = [[], [], [], [], []]; for (let i = 0; i < pos.count; i += 3) { const cx = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3, cy = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3; const ang = Math.atan2(cy, cx - 0.1); const b = Math.min(4, Math.floor((ang + Math.PI) / (Math.PI * 2) * 5)); for (let k = 0; k < 3; k++) bins[b].push(pos.getX(i + k), pos.getY(i + k), pos.getZ(i + k)); }
-      const dull = new THREE.MeshStandardMaterial({ color: 0xffffff, map: crackTex, roughness: 0.5, side: THREE.DoubleSide }); dull.userData.noTint = true;
+      const dull = new THREE.MeshStandardMaterial({ color: 0x8a8f9c, map: crackTex, roughness: 0.7, side: THREE.DoubleSide }); dull.userData.noTint = true;
       [[bins[0], 1.3, 0.2, 0.4], [bins[1], 0.7, 0.9, 2.1], [bins[2], -0.6, 1.1, 1.3], [bins[3], -1.3, 0.3, 2.8], [bins[4], 0.2, -1.0, 0.9]].forEach(([arr, ox, oz, rot]) => { if (!arr.length) return; const gg = new THREE.BufferGeometry(); gg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(arr), 3)); { const uv = new Float32Array(arr.length / 3 * 2); for (let k = 0; k < arr.length / 3; k++) { uv[k * 2] = arr[k * 3] * 2 + 1; uv[k * 2 + 1] = arr[k * 3 + 1] * 2 + 1; } gg.setAttribute("uv", new THREE.BufferAttribute(uv, 2)); } gg.computeVertexNormals(); const h = new THREE.Mesh(gg, dull); const dx = Math.cos(a + Math.PI / 2), dz = Math.sin(a + Math.PI / 2); h.position.set(x + dx * ox + Math.cos(a) * oz, y + 0.06, z + dz * ox + Math.sin(a) * oz); h.rotation.set(-Math.PI / 2, 0, rot); g.scene.add(h); this.dayOnly.push(h); });
       this.addLight(x, y + top + 1.0, z, 0x8f9fff, 12, 10); }
     // ---- the three-metre stub of cobbles at the plaza gap
@@ -406,6 +414,8 @@ export class HiddenForest {
     const wa = new THREE.Vector3(), wb = new THREE.Vector3();
     for (const [side, sgn] of [["Right", 1], ["Left", -1]]) { const arm = B[side + "Arm"], fore = B[side + "ForeArm"]; if (!arm || !fore) continue; arm.getWorldPosition(wa); fore.getWorldPosition(wb); const v = wb.sub(wa).normalize(); const rest = Math.atan2(v.dot(R) * sgn, -v.dot(U)); turn(arm, new THREE.Quaternion().setFromAxisAngle(F, sgn * (rest - 7 * D2R))); b.updateMatrixWorld(true); turn(fore, new THREE.Quaternion().setFromAxisAngle(R, 12 * D2R)); b.updateMatrixWorld(true); }
     const t = this.g.time + n.x * 0.01; const sp = B.Spine02 || B.Spine01 || B.Spine; if (sp) { turn(sp, new THREE.Quaternion().setFromAxisAngle(R, Math.sin(t * 1.0) * 0.014)); b.updateMatrixWorld(true); }
+    // update 79: in a fight the arms swing - a punch every half second, one side then the other, the chest leaning in
+    if (n.fight) { const ph = this.t * 6.5; for (const [side, off] of [["Right", 0], ["Left", Math.PI]]) { const arm = B[side + "Arm"], fore = B[side + "ForeArm"]; if (!arm) continue; const k = 0.5 + 0.5 * Math.sin(ph + off); turn(arm, new THREE.Quaternion().setFromAxisAngle(R, 0.4 + 1.05 * k)); b.updateMatrixWorld(true); if (fore) { turn(fore, new THREE.Quaternion().setFromAxisAngle(R, 1.15 - 1.0 * k)); b.updateMatrixWorld(true); } } const sp2 = B.Spine01 || B.Spine; if (sp2) { turn(sp2, new THREE.Quaternion().setFromAxisAngle(R, 0.12 + 0.1 * Math.sin(ph * 2))); b.updateMatrixWorld(true); } }
     if (B.Head && n.headTurn) { turn(B.Head, new THREE.Quaternion().setFromAxisAngle(U, n.headTurn)); b.updateMatrixWorld(true); }
   }
 
@@ -514,7 +524,7 @@ export class HiddenForest {
     if (this._glow && this._glow.hf_lamppost) this._glow.hf_lamppost.traverse((o) => { if (o.isMesh) { o.material.emissiveIntensity = 1.3 * k; o.material.color.setRGB(1, 1, 1).lerp(new THREE.Color(0x8a8c94), 1 - k); } });
     // old by day, new at night: materials swap, day-only and night-only things show
     const wasNight = prevK >= 0.5; if (force || night !== wasNight) { for (const s of this.swaps) s.mesh.material = night ? s.night : s.day; for (const o of this.dayOnly) o.visible = !night; for (const o of this.nightOnly) o.visible = night; }
-    if (this.shrine) { this.shrine.mesh.visible = night; this.shrine.mat.emissiveIntensity = 2.2 * k; this.shrine.mat.color.setHex(0x9fb0ff).lerp(new THREE.Color(0x3a4a9a), 1 - k); }
+    if (this.shrine) { this.shrine.mesh.visible = night; this.shrine.mat.emissiveIntensity = 0.9 * k; }
     if (this.fountainDay) this.fountainDay.visible = !night || !this.fountainNight; if (this.fountainNight) this.fountainNight.visible = night;
     if (this.fountainWater) this.fountainWater.visible = show; if (this.spray) this.spray.pts.visible = show;
     for (const n of this.npcs) n.body.visible = show; this.rimU.value = 0.9 * k;
@@ -544,7 +554,7 @@ export class HiddenForest {
   inVillage(x, z) { const V = H().village; return Math.hypot(x - V.x, z - V.z) < V.hutR + 9 || (this.field && Math.abs(x - this.field.x) < H().field.w / 2 + 3 && Math.abs(z - this.field.z) < H().field.d / 2 + 3); }
   understands() { const s = this.g.player.inv.selected(); return !!this.g.monialKnown || !!(s && s.id === "monial_staff"); }
   strideOn() { return this.active && !!this.g.monialStride; }
-  waterSource(x, z) { if (this.lakePen2(x, z) > -4.5) return { x, z, y: 0.3, name: "lake2" }; if (this.active && this.fountain) { const f = this.fountain, dx = x - f.x, dz = z - f.z, d = Math.hypot(dx, dz) || 1, R = this.fountainR || 2.3; if (d < R + 2.6) return { x: f.x + dx / d * (R - 0.25), z: f.z + dz / d * (R - 0.25), y: f.y + 0.9, name: "fountain2" }; } return null; }
+  waterSource(x, z) { if (this.lakePen2(x, z) > -4.5) return { x, z, y: -0.1, name: "lake2" }; if (this.active && this.fountain) { const f = this.fountain, dx = x - f.x, dz = z - f.z, d = Math.hypot(dx, dz) || 1, R = this.fountainR || 2.3; if (d < R + 2.6) return { x: f.x + dx / d * (R - 0.25), z: f.z + dz / d * (R - 0.25), y: f.y + 0.9, name: "fountain2" }; } return null; }
   // the explorer's map: read once, the hidden area shows on the world map; the lake and the village once you have stood there
   readMap() { const g = this.g; g.monialMap = true; g.player.inv.consumeSelected(); g.audio.sPickup(); g.ui.renderHotbar(g.player.inv); g.ui.toast(STR.hidden.mapRead); }
 
@@ -576,7 +586,8 @@ export class HiddenForest {
     { const L = H().lake, pen = this.lakePen2(p.pos.x, p.pos.z); if (pen > L.wade && !this.floorAt(p.pos.x, p.pos.z, p.pos.y)) { const dx = p.pos.x - L.x, dz = p.pos.z - L.z, d = Math.hypot(dx, dz) || 1, r = this.lakeR(Math.atan2(dz, dx)) - L.wade; p.pos.x = L.x + dx / d * r; p.pos.z = L.z + dz / d * r; } }
     if (this.k > 0) {
       if (this.nightNorm) { this.nightNorm.offset.x = (this.t * 0.012) % 1; this.nightNorm.offset.y = (Math.sin(this.t * 0.07) * 0.08 + this.t * 0.006) % 1; }
-      for (const n of this.npcs) { const d = Math.hypot(p.pos.x - n.x, p.pos.z - n.z); n.headTurn = d < 8 ? Math.max(-0.7, Math.min(0.7, ((Math.atan2(p.pos.x - n.x, p.pos.z - n.z) - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI)) : 0; if (d < 40) this.poseNpc(n); }
+      for (const n of this.npcs) { if (n.home && !n.fight && (Math.abs(n.x - n.home.x) > 0.05 || Math.abs(n.z - n.home.z) > 0.05)) { const hd = Math.hypot(n.home.x - n.x, n.home.z - n.z), st = Math.min(1.6 * dt, hd); n.x += (n.home.x - n.x) / hd * st; n.z += (n.home.z - n.z) / hd * st; n.body.position.x = n.x; n.body.position.z = n.z; if (hd - st < 0.06) { n.x = n.home.x; n.z = n.home.z; n.body.position.x = n.x; n.body.position.z = n.z; n.yaw = n.home.yaw; n.body.rotation.y = n.yaw; } }   // update 79: back to his yard after a fight
+        const d = Math.hypot(p.pos.x - n.x, p.pos.z - n.z); n.headTurn = d < 8 ? Math.max(-0.7, Math.min(0.7, ((Math.atan2(p.pos.x - n.x, p.pos.z - n.z) - n.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI)) : 0; if (d < 40) this.poseNpc(n); }
       if (this.spray) { const S = this.spray, P = S.pos, sc = S.sc || 1; for (let i = 0; i < S.N; i++) { const u = (this.t * 0.55 + S.seeds[i]) % 1; const a = S.seeds[i] * Math.PI * 2 * 7; P[i * 3] = Math.cos(a) * u * 1.4 * sc; P[i * 3 + 1] = (1.2 + 2.2 * Math.sin(u * Math.PI)) * sc; P[i * 3 + 2] = Math.sin(a) * u * 1.4 * sc; } S.pts.geometry.attributes.position.needsUpdate = true; }
       for (const f of this.fireflies || []) { const P = f.pts.geometry.attributes.position; for (let i = 0; i < P.count; i++) P.setY(i, 0.8 + 1.2 * (0.5 + 0.5 * Math.sin(this.t * 0.8 + f.phase + i * 1.7))); P.needsUpdate = true; }
       if (this.shrine && this.shrine.mesh.visible) { const s = this.shrine; s.mesh.position.y = s.y + Math.sin(this.t * 0.9) * 0.12; s.mesh.rotation.y = -s.a + Math.PI / 2 + Math.sin(this.t * 0.35) * 0.35; }
@@ -622,7 +633,7 @@ export class HiddenForest {
     else if (n.role === "explorer") { const four = ["infial_belladonna", "starflower", "magic_mushroom", "void_bloom"]; const btns = S.explorerQ.map((q, i) => ["hfQ" + i, q.q]); if (!g.monialMap && !inv.has("monial_map") && four.every((id) => inv.has(id))) btns.push(["hfMap", S.explorerMap]); const s = g.npcPanel(n.name, [S.explorerIntro], btns); S.explorerQ.forEach((q, i) => { const b = s.querySelector("#hfQ" + i); if (b) b.addEventListener("click", () => { const s2 = g.npcPanel(n.name, [q.a]); g.backToMain(s2, () => this.talk(n)); }); }); const mb = s.querySelector("#hfMap"); if (mb) mb.addEventListener("click", () => { if (!four.every((id) => inv.has(id))) { g.audio.sDeny(); return; } for (const id of four) inv.remove(id, 1); if (!inv.add("monial_map", 1)) g.spawnDrop("monial_map", 1, n.x, n.z, n.y + 0.3); g.audio.sPickup(); g.ui.renderHotbar(inv); g.ui.toast(S.explorerGives); close(); }); }
     else if (n.role === "witch") { const btns = []; if (inv.has("void_bloom") && !g.monialStride) btns.push(["hfStride", S.witchStride]); if (inv.has("infial_belladonna")) btns.push(["hfConv", S.convertBtn]); const s = g.npcPanel(n.name, g.monialStride ? S.witchLinesHas : S.witchLines, btns); give(s, "hfStride", "void_bloom", 1, () => { g.monialStride = true; g.ui.toast(S.witchStrideOn); }); const cb = s.querySelector("#hfConv"); if (cb) cb.addEventListener("click", () => { this.convertInfial(); close(); }); }
     else if (n.role === "warrior") { const s = g.npcPanel(n.name, this.battle ? S.warriorBusy : S.warriorLines, this.battle ? [] : [["hfFight", S.warriorFight]]); const b = s.querySelector("#hfFight"); if (b) b.addEventListener("click", () => { close(); this.startBattle(n); }); }
-    else if (n.role === "historian") { const btns = [["hfStory", S.historianStory]]; if (inv.has("void_bloom")) btns.push(["hfBook", S.historianBook]); const s = g.npcPanel(n.name, S.historianLines, btns); const sb = s.querySelector("#hfStory"); if (sb) sb.addEventListener("click", () => { const st = S.stories[(this.storyI = ((this.storyI || 0) % S.stories.length))]; this.storyI++; const s2 = g.npcPanel(st.title, st.lines); g.backToMain(s2, () => this.talk(n)); }); give(s, "hfBook", "void_bloom", 1, () => { if (!inv.add("monial_book", 1)) g.spawnDrop("monial_book", 1, n.x, n.z, n.y + 0.3); g.ui.toast(S.historianGives); }); }
+    else if (n.role === "historian") { const btns = [["hfStory", S.historianStory]]; if (inv.has("void_bloom") && !g.monialBookGiven) btns.push(["hfBook", S.historianBook]); const s = g.npcPanel(n.name, g.monialBookGiven ? [S.historianHas] : S.historianLines, btns); const sb = s.querySelector("#hfStory"); if (sb) sb.addEventListener("click", () => { const st = S.stories[(this.storyI = ((this.storyI || 0) % S.stories.length))]; this.storyI++; const s2 = g.npcPanel(st.title, st.lines); g.backToMain(s2, () => this.talk(n)); }); give(s, "hfBook", "void_bloom", 1, () => { g.monialBookGiven = true; if (!inv.add("monial_book", 1)) g.spawnDrop("monial_book", 1, n.x, n.z, n.y + 0.3); g.ui.toast(S.historianGives); }); }
     else { g.npcPanel(n.name, S.ladyLines); }
   }
   convertInfial() { const g = this.g, inv = g.player.inv, n = inv.count("infial_belladonna"); if (!n) { g.ui.toast(STR.hidden.needItem.replace("%i", STR.items.infial_belladonna.name)); g.audio.sDeny(); return; } inv.remove("infial_belladonna", n); for (let i = 0; i < n; i++) if (!inv.add("belladonna", 1)) g.spawnDrop("belladonna", 1, g.player.pos.x, g.player.pos.z, g.world.groundHeight(g.player.pos.x, g.player.pos.z, g.player.pos.y)); g.audio.sPickup(); g.ui.renderHotbar(inv); g.ui.toast(STR.hidden.converted.replace("%n", n)); }
@@ -630,20 +641,20 @@ export class HiddenForest {
 
   // ---------------- the warrior's battle ----------------
   startBattle(n) {
-    const g = this.g, B = H().battle; this.battle = { n, hits: 0, meleeT: 1.5, laserT: 3, t: 0 }; g.ui.toast(STR.hidden.battleStart); g.audio.sGrowl && g.audio.sGrowl();
+    const g = this.g, B = H().battle; this.battle = { n, hp: B.hp, meleeT: 1.5, laserT: 3, t: 0 }; n.home = n.home || { x: n.x, z: n.z, yaw: n.yaw }; n.fight = true; g.ui.toast(STR.hidden.battleStart); g.audio.sGrowl && g.audio.sGrowl();
     let el = document.getElementById("foeBar"); if (!el) { el = document.createElement("div"); el.id = "foeBar"; el.style.cssText = "position:fixed;left:50%;top:76px;transform:translateX(-50%);width:260px;padding:5px 8px;border-radius:8px;background:rgba(0,0,0,.55);color:#cfd8ff;font:700 12px 'Segoe UI',sans-serif;text-align:center;z-index:20"; document.body.appendChild(el); }
     el.style.display = "block"; this.drawFoeBar();
   }
-  drawFoeBar() { const el = document.getElementById("foeBar"), b = this.battle; if (!el || !b) return; const B = H().battle, k = Math.max(0, 1 - b.hits / B.hits); el.innerHTML = `${b.n.name} — ${Math.max(0, B.hits - Math.floor(b.hits))} ${STR.hidden.hitsLeft}<div style="height:7px;margin-top:4px;border-radius:4px;background:#1a1f3a"><div style="width:${Math.round(k * 100)}%;height:100%;border-radius:4px;background:linear-gradient(90deg,#6f7fff,#b070ff)"></div></div>`; }
-  endBattle(won) { const el = document.getElementById("foeBar"); if (el) el.style.display = "none"; for (const l of this.lasers) this.g.scene.remove(l.sp); this.lasers = []; this.battle = null; }
+  drawFoeBar() { const el = document.getElementById("foeBar"), b = this.battle; if (!el || !b) return; const B = H().battle, k = Math.max(0, b.hp / B.hp); el.innerHTML = `${b.n.name}<div style="height:7px;margin-top:4px;border-radius:4px;background:#1a1f3a"><div style="width:${Math.round(k * 100)}%;height:100%;border-radius:4px;background:linear-gradient(90deg,#6f7fff,#b070ff)"></div></div>`; }
+  endBattle(won) { const el = document.getElementById("foeBar"); if (el) el.style.display = "none"; for (const l of this.lasers) this.g.scene.remove(l.sp); this.lasers = []; if (this.battle) this.battle.n.fight = false; this.battle = null; }
   swing(weapon) {
     const g = this.g, p = g.player, b = this.battle; if (!b) return false; const B = H().battle, n = b.n;
     const dx = n.x - p.pos.x, dz = n.z - p.pos.z, d = Math.hypot(dx, dz); if (d > B.reach + 0.6) return false;
     const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw); if ((dx * fx + dz * fz) / (d || 1) < 0.35) return false;
-    const strong = ["axe", "et_sword", "et_dagger", "silver_dagger", "evil_dagger", "monial_dagger", "machete", "trex_dagger", "imp_dagger"];
-    b.hits += weapon === "knife" || weapon === "silver_dagger_plain" ? B.knife : weapon ? (strong.includes(weapon) ? B.strong : B.knife) : B.fists;
+    // update 79: every weapon takes its own bite out of him (CFG.player[weapon].dmg); fists barely scratch
+    const K = weapon && CFG.player[weapon]; b.hp -= K ? K.dmg : B.fistDmg;
     g.audio.sHit(); this.drawFoeBar();
-    if (b.hits >= B.hits) { if (!p.inv.add("monial_dagger", 1)) g.spawnDrop("monial_dagger", 1, n.x, n.z, n.y + 0.3); g.ui.renderHotbar(p.inv); g.ui.toast(STR.hidden.battleWon); this.endBattle(true); }
+    if (b.hp <= 0) { if (!p.inv.add("monial_dagger", 1)) g.spawnDrop("monial_dagger", 1, n.x, n.z, n.y + 0.3); g.ui.renderHotbar(p.inv); g.ui.toast(STR.hidden.battleWon); this.endBattle(true); }
     return true;
   }
   updateBattle(dt) {
@@ -651,6 +662,8 @@ export class HiddenForest {
     b.t += dt; const d = Math.hypot(n.x - p.pos.x, n.z - p.pos.z);
     if (d > B.leaveR || !this.active) { g.ui.toast(STR.hidden.battleLeft); this.endBattle(false); return; }
     n.yaw = Math.atan2(p.pos.x - n.x, p.pos.z - n.z); n.body.rotation.y = n.yaw;
+    // update 79: he comes for you - steps in to arm's reach (never past his own yard), and swings while he is there
+    if (d > B.reach - 0.4) { const step = Math.min(2.4 * dt, d - (B.reach - 0.5)); const hx = n.home ? n.home.x : n.x, hz = n.home ? n.home.z : n.z; const nx = n.x + (p.pos.x - n.x) / d * step, nz = n.z + (p.pos.z - n.z) / d * step; if (Math.hypot(nx - hx, nz - hz) < B.leaveR * 0.7) { n.x = nx; n.z = nz; n.body.position.x = nx; n.body.position.z = nz; } }
     const hurt = (dmg, from) => { const real = Math.min(dmg, p.hp - 1); if (real > 0) p.damage(real, "warrior", from); if (p.hp <= 1) { p.hp = 100; g.ui.toast(STR.hidden.battleLost); this.endBattle(false); } };
     b.meleeT -= dt; if (b.meleeT <= 0) { b.meleeT = B.meleeEvery; if (d < B.reach) hurt(B.meleeDmg, { x: n.x, z: n.z }); }
     b.laserT -= dt; if (b.laserT <= 0 && this.battle) { b.laserT = B.laserEvery; const cv = this.laserTex || (this.laserTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d"); const gr = x.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.3, "rgba(150,120,255,0.9)"); gr.addColorStop(1, "rgba(90,60,255,0)"); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })()); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cv, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); sp.scale.set(0.9, 0.9, 1); sp.position.set(n.x, n.y + 1.4, n.z); g.scene.add(sp); const tx = p.pos.x, ty = p.pos.y + 1.0, tz = p.pos.z; const L = Math.hypot(tx - n.x, ty - (n.y + 1.4), tz - n.z) || 1; this.lasers.push({ sp, vx: (tx - n.x) / L * B.laserSpeed, vy: (ty - n.y - 1.4) / L * B.laserSpeed, vz: (tz - n.z) / L * B.laserSpeed, life: 3 }); g.audio.sDeny(); }
