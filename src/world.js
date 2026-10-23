@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=80";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=81";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=80";
-import { Desert } from "./desert.js?v=80";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=80";
+import { CFG } from "./config.js?v=81";
+import { Desert } from "./desert.js?v=81";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=81";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,8 +11,8 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=80";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=80";
-import { pointInPoly, hiddenPathDist } from "./hidden.js?v=80";   // update 75   // update 69: the forest's mild hills
+import { makeHills } from "./forest.js?v=81";
+import { pointInPoly, hiddenPathDist } from "./hidden.js?v=81";   // update 75   // update 69: the forest's mild hills
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;

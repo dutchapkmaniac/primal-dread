@@ -3,12 +3,12 @@
 // clock, the werewolf raid roll. Geometry lives in farm.js.
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=80";
-import { STR } from "../strings.js?v=80";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=80";
-import { Creature } from "./entities.js?v=80";
-import { Inventory, iconUrl } from "./items.js?v=80";
-import { inFarm, inField, inHouseRooms, inPasture, X, Z } from "./farm.js?v=80";
+import { CFG } from "./config.js?v=81";
+import { STR } from "../strings.js?v=81";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=81";
+import { Creature } from "./entities.js?v=81";
+import { Inventory, iconUrl } from "./items.js?v=81";
+import { inFarm, inField, inHouseRooms, inPasture, X, Z } from "./farm.js?v=81";
 
 const FA = CFG.farm;
 

@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=80";
-import { inFarm, inPasture } from "./farm.js?v=80";
-import { STR } from "../strings.js?v=80";
-import { icons } from "./items.js?v=80";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=80";
+import { CFG } from "./config.js?v=81";
+import { inFarm, inPasture } from "./farm.js?v=81";
+import { STR } from "../strings.js?v=81";
+import { icons } from "./items.js?v=81";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=81";
 
 // Creatures. Rigged GLBs (T-Rex, werewolf, chicken) play real walk/run clips;
 // the pig gets a procedural quadruped gait. The T-Rex cannot be killed.
