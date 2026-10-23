@@ -127,7 +127,7 @@ PLANS.spino = {
 PLANS.spinobaby = PLANS.trex;
 // update 39: the Imperator — a T-Rex whose small arms (shrunk in the mesh) stay pinned to the body:
 // the box in front of the chest is fenced off from both the neck and the legs
-PLANS.imperator = { ...PLANS.trex, armFence: { y0: 0.26, y1: 0.68, z0: 0.62, z1: 0.9 } };
+PLANS.imperator = { ...PLANS.trex, armFence: { y0: 0.14, y1: 0.7, z0: 0.6, z1: 1.0 } };   // update 80: the fence reaches the claws' tips, so the hands stay on the body instead of stretching toward the legs
 PLANS.goat = PLANS.pig; // the mountain herd: same four-legged plan
 PLANS.trike = {         // the battering ram: quadruped with a heavy tail
   legs: [[-0.24, 0.7], [0.24, 0.7], [-0.24, 0.28], [0.24, 0.28]],
@@ -140,7 +140,7 @@ PLANS.trike = {         // the battering ram: quadruped with a heavy tail
   ankle: 0.12, knee: 0.28,   // flat feet + folding knees (see spino note)
   // lift (fraction of body height): each diagonal pair steps OFF the ground —
   // hip rotation alone read as four columns sliding in place
-  gait: { freq: 2.4, legAmp: 0.5, neckAmp: 0.04, tailAmp: 0.15, lift: 0.08, kneeAmp: 0.28 },
+  gait: { freq: 2.4, legAmp: 0.5, neckAmp: 0.04, tailAmp: 0.15, lift: 0.05, kneeAmp: 0.28 },   // update 80: a lower step (the lift translation stretched the thigh)
 };
 // update 29: the dairy cow — a boxy quadruped with long legs and a thin tail
 // update 30: `autoLegs` plans find their four legs IN THE MESH (k-means on the vertices
@@ -370,6 +370,10 @@ export function riggedCreature(sourceGroup, type) {
       const zLim = t ? ((footLvl && dzz > 0 && t.zFoot) ? t.zFoot : t.z) : 0;
       let tightOk = !t || (Math.abs(v.x - anchors[best].x) < size.x * t.x
         && dzz > -size.z * t.z && dzz < size.z * zLim);
+      // update 80: at FOOT level the toes belong to the foot whatever the fence says - a toe left on the spine while
+      // the foot stepped was the flat stretched plate on the guardian's feet
+      const toe = footLvl && dzz > -size.z * 0.06 && dzz < size.z * 0.4 && Math.abs(v.x - anchors[best].x) < size.x * 0.3;
+      if (toe) tightOk = true;
       if (legFence) {
         // update 30: the leg's own measured spread, widening toward the hip where
         // the thigh flares — the toes reach a little further forward at foot level
@@ -379,12 +383,12 @@ export function riggedCreature(sourceGroup, type) {
         tightOk = Math.abs(v.x - anchors[best].x) < f.x * widen
           && dzz > -f.z * widen && dzz < f.z * widen * (footLvl && dzz > 0 ? 1.4 : 1);
       }
-      if (bd < legR && tightOk && !inArm) {
-        blend = Math.min(1, (hipY - v.y) / (size.y * 0.12));
+      if ((bd < legR || toe) && tightOk && !inArm) {
+        blend = Math.min(1, (hipY - v.y) / (size.y * 0.06));   // update 80: a short ramp at the hip - the long one smeared the thigh root across the belly
         const thighB = legBase + best;
         const kneeB = knees ? bones.indexOf(knees[best]) : -1;
         const ankleB = ankles ? bones.indexOf(ankles[best]) : -1;
-        const fade = size.y * 0.04;
+        const fade = size.y * 0.02;   // update 80: tighter joints - the wide fades stretched the shin and the toes
         // walk down the chain: thigh above the knee, shin between the joints,
         // foot below the ankle — fading across each joint line
         if (ankleB >= 0 && v.y < ankleY + fade) {

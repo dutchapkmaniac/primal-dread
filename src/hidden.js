@@ -18,8 +18,8 @@
 // Mystic apples at night. The explorer sells a map for four plants: read once, the hidden area shows on the world map.
 // The lag: the 3,773 lanterns were 28,000-triangle meshes, never culled - now 1,500 triangles each in 64 m cells.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=79";
-import { STR } from "../strings.js?v=79";
+import { CFG } from "./config.js?v=80";
+import { STR } from "../strings.js?v=80";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const D2R = Math.PI / 180;
@@ -435,7 +435,7 @@ export class HiddenForest {
     for (const [x, y, z] of this.hutLanterns || []) items.push({ x, y, z, yaw: 0, tilt: 0, crack: false, sc: 1.5 });
     { const { geo, mat } = this.lanternPiece(); this.lanternMat = mat; this.lanternItems = items;
       const cells = new Map(); items.forEach((it, i) => { const key = Math.floor(it.x / 64) * 4096 + Math.floor(it.z / 64); if (!cells.has(key)) cells.set(key, []); cells.get(key).push(i); });
-      this.lanternCells = []; for (const idx of cells.values()) { const inst = new THREE.InstancedMesh(geo, mat, idx.length); inst.count = idx.length; g.scene.add(inst); this.lanternCells.push({ inst, idx }); }
+      this.lanternCells = []; for (const idx of cells.values()) { const inst = new THREE.InstancedMesh(geo, mat, idx.length); inst.count = idx.length; g.scene.add(inst); const it0 = items[idx[0]]; this.lanternCells.push({ inst, idx, cx: Math.floor(it0.x / 64) * 64 + 32, cz: Math.floor(it0.z / 64) * 64 + 32 }); }
       const cm = this.texMat("spr_cracks", { alphaTest: 0.35 }); cm.color.setHex(0xd8dce8); const cracks = items.filter((it) => it.crack); const ci = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.34, 0.5), cm, Math.max(1, cracks.length)); ci.count = cracks.length; ci.frustumCulled = false; g.scene.add(ci); this.cracks = ci; this.crackItems = cracks;
       this.layLanterns(0); }
     // ---- the carved crescent on every third trunk, set on the REAL bark surface by a ray against that tree's own mesh
@@ -562,6 +562,9 @@ export class HiddenForest {
   update(dt) {
     const g = this.g, w = this.w, C = H(), p = g.player, T = CFG.time, cycle = T.dayLen + T.nightLen, t = g.time % cycle, W = C.window;
     this.t += dt;
+    // update 80: the lantern cells (every one of their 28,000-triangle pieces, untouched) are only drawn within 115 m (a 64 m cell's centre; its far corner reaches ~160 m) -
+    // from the village the whole wood's lanterns made nineteen million triangles a frame
+    this._lcTick = (this._lcTick || 0) + 1; if (this.lanternCells && (this._lcTick % 12) === 1) for (const c of this.lanternCells) c.inst.visible = Math.hypot(c.cx - p.pos.x, c.cz - p.pos.z) < 115;
     const inPoly = this.inside(p.pos.x, p.pos.z);
     let k = this.active ? 1 : 0;
     if (!this.active) {

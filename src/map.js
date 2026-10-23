@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=79";
-import { STR } from "../strings.js?v=79";
+import { CFG, ASSET_V } from "./config.js?v=80";
+import { STR } from "../strings.js?v=80";
 
 // Top-down expedition map: the full parchment map (pause menu) and the small
 // living minimap in the HUD corner. Terrain is always drawn; NAMED landmarks
@@ -42,6 +42,7 @@ export class GameMap {
     ring(CFG.ring5.treeMinR, CFG.ring5.treeMaxR, FOREST_DEEP);   // the +20% band (update 27)
     ring(CFG.ring6.treeMinR, CFG.ring6.treeMaxR, FOREST_DEEP);   // the ring6 band (update 29)
     ring(CFG.ring7.treeMinR, CFG.ring7.treeMaxR, FOREST_DEEP);   // the ring7 band (update 36)
+    ring(CFG.ring10.treeMinR, CFG.ring10.treeMaxR, FOREST_DEEP);   // update 80: the seventh band
     if (mini) {   // update 39: the corner wilds outside the old circle (the full map paints them in paintPro)
       c.beginPath();
       c.rect(tx(-W.square), ty(-W.square), 2 * W.square * s, 2 * W.square * s);
@@ -120,7 +121,7 @@ export class GameMap {
       const x = (rnd() * 2 - 1) * (W.square - 8), z = (rnd() * 2 - 1) * (W.square - 8);
       const r = Math.hypot(x, z);
       const wooded = (r > W.treeMinR && r < W.treeMaxR)
-        || (r > CFG.newArea.treeMinR && r < CFG.ring9.treeMaxR)   // update 38
+        || (r > CFG.newArea.treeMinR && r < CFG.ring10.treeMaxR)   // update 38; update 80: ring10
         || r > W.boundaryR;
       if (!wooded) continue;
       if (this.game.world.inMountain(x, z)) continue;

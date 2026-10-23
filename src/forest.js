@@ -1,11 +1,12 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=79";
-import { STR } from "../strings.js?v=79";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=79";
+import { CFG } from "./config.js?v=80";
+import { STR } from "../strings.js?v=80";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=80";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { Creature, ItemDrop } from "./entities.js?v=79";
-import { hiddenLakeR } from "./hidden.js?v=79";   // update 79: the hidden lake is a bowl in the hills
-import { iconUrl } from "./items.js?v=79";
+import { Creature, ItemDrop } from "./entities.js?v=80";
+import { hiddenLakeR } from "./hidden.js?v=80";
+import { riverProfileY } from "./desert.js?v=80";   // update 80   // update 79: the hidden lake is a bowl in the hills
+import { iconUrl } from "./items.js?v=80";
 
 // ============================================================================
 // update 69 (prompt37, update 1): the forest dressed up. Mild hills (makeHills, used by World.groundHeight and the forest
@@ -54,6 +55,11 @@ export function makeHills(world) {
     else { const n = (vn(x, z, H.wave1) - 0.5) * 1.3 + (vn(x + 1000, z - 1000, H.wave2) - 0.5) * 0.6; v = Math.max(-H.amp, Math.min(H.amp, n * H.amp * 1.7)) * m; }
     // update 79: the hidden lake is a bowl cut into the ground (its water lies in it instead of floating over the grass)
     if (CFG.hidden) { const L = CFG.hidden.lake, dx = x - L.x, dz = z - L.z, d = Math.hypot(dx, dz); if (d < Math.max(L.rx, L.rz) * 1.1) { const R = hiddenLakeR(Math.atan2(dz, dx)); if (d < R) { const u = d / R; v = -(L.depth || 2.4) * (1 - u * u); } } }
+    // update 80: the T-Rex nest sits on level ground (on a hillside its far rim floated in the air)
+    { const NE = CFG.nest, dn = Math.hypot(x - NE.x, z - NE.z); if (dn < 16) v *= smooth((dn - 9) / 7); }
+    // update 80: the river runs in a channel: the forest ground drops to the bed's profile beside it (the soil mesh in
+    // desert.js lies a hand above this, so no grass shows under the water)
+    if (world.desert && world.desert.riverInfo) { const RV = CFG.desert.river, RI = world.desert.riverInfo(x, z); if (RI.d < RV.halfW + RV.beach + 1.5) v = Math.min(v, riverProfileY(RI.d) - 0.08); }
     samples.set(key, v); return v;
   };
   // the cell (ix, iz) is two triangles: (x,z)-(x,z+G)-(x+G,z) and (x,z+G)-(x+G,z+G)-(x+G,z); fx+fz<=1 is the first

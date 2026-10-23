@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=79";
+import { CFG } from "./config.js?v=80";
 const VEIN_BURY = { et_vein1: 0.5, et_vein3: 0.3, et_vein2: 0.8 };   // update 60: how much of each vein model's height sits inside the rock (its grey base); vein1 = the double crystal, vein3 = a single spike with a tall base, vein2 = a slab with crystals along its edges (not used on the walls - its grey face shows whichever way it is turned)
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=79";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=80";
 
 // ============================================================================
 // update 50: FLOOR -1 — the park under the city, 200 m down. The river leaves the ground floor through the
@@ -285,7 +285,7 @@ export function buildLower(city, grp) {
     { const gaGeo = new THREE.SphereGeometry(0.14, 7, 5); let sg = 9173; const rg = () => { sg = (sg * 1103515245 + 12345) & 0x7fffffff; return sg / 0x7fffffff; };
       city.groundApples = []; city.groundAppleMats = { green: appleM, gold: goldM };
       for (const [t, rr] of LW.trees) { const [ta, tb] = pt(rr, t); const slots = [];
-        for (let k = 0; k < 4; k++) { const ang = rg() * Math.PI * 2, rad = 6.2 + rg() * 2.4; const a = ta + Math.cos(ang) * rad, b = tb + Math.sin(ang) * rad, gold = rg() < 0.01; const m = new THREE.Mesh(gaGeo, gold ? goldM : appleM); m.position.set(b, Y.park + 0.42, a); m.rotation.set(rg() * 0.6, rg() * 6.28, 0); grp.add(m); city.keepExtra.push(m); city.lowerProps.push(m); m.visible = false; slots.push({ a, b, mesh: m, gold, taken: false }); }
+        for (let k = 0; k < 4; k++) { const ang = rg() * Math.PI * 2, rad = 6.2 + rg() * 2.4; const a = ta + Math.cos(ang) * rad, b = tb + Math.sin(ang) * rad, gold = rg() < 0.05; const m = new THREE.Mesh(gaGeo, gold ? goldM : appleM); m.position.set(b, Y.park + 0.42, a); m.rotation.set(rg() * 0.6, rg() * 6.28, 0); grp.add(m); city.keepExtra.push(m); city.lowerProps.push(m); m.visible = false; slots.push({ a, b, mesh: m, gold, taken: false }); }
         city.groundApples.push({ slots, lastT: 0, ta, tb }); } }
   }
 

@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=79";
-import { STR } from "../strings.js?v=79";
-import { Inventory } from "./items.js?v=79";
+import { CFG } from "./config.js?v=80";
+import { STR } from "../strings.js?v=80";
+import { Inventory } from "./items.js?v=80";
 
 export class Player {
   constructor(camera, ctx) {
@@ -86,6 +86,7 @@ export class Player {
     this.machete3dVm = this.mountHeld("machete3d");
     this.axe3dVm = this.mountHeld("axe3d");
     this.dagger3dVm = this.mountHeld("dagger3d");   // the silver dagger's REAL design
+    this.holyDaggerVm = this.mountHeld("hf_holydagger");   // update 80: the HOLY dagger, made in heaven
     this.monialDaggerVm = this.mountHeld("hf_dagger"); this.staffVm = this.mountHeld("hf_staff");   // update 75
     this.trexDagger3dVm = this.mountHeld("trexdagger3d");   // update 38: the generated tooth daggers
     this.impDagger3dVm = this.mountHeld("impdagger3d");
@@ -291,7 +292,7 @@ export class Player {
       : weapon
         ? (weapon === "knife" && this.knife3dVm) || (weapon === "machete" && this.machete3dVm)
           || (weapon === "axe" && this.axe3dVm)
-          || (weapon === "silver_dagger" && this.dagger3dVm) || (weapon === "silver_dagger_plain" && this.dagger3dVm) || (weapon === "evil_dagger" && (this.evilDaggerVm || this.dagger3dVm))   // update 74; update 79: the plain dagger has the dagger's shape, the evil one its own
+          || (weapon === "silver_dagger" && (this.holyDaggerVm || this.dagger3dVm)) || (weapon === "silver_dagger_plain" && this.dagger3dVm) || (weapon === "evil_dagger" && (this.evilDaggerVm || this.dagger3dVm))   // update 74; update 79: the plain dagger has the dagger's shape, the evil one its own
           || (weapon === "monial_dagger" && (this.monialDaggerVm || this.dagger3dVm))   // update 75
           || (weapon === "trex_dagger" && (this.trexDagger3dVm || this.trexDaggerVm))
           || (weapon === "imp_dagger" && (this.impDagger3dVm || this.trexDagger3dVm || this.trexDaggerVm))
@@ -299,7 +300,7 @@ export class Player {
         : sel && sel.id === "spear" ? (this.spear3dVm || this.spearVm)
         : sel && sel.id === "et_spear" ? (this.etSpear3dVm || this.spearVm)
         : sel && sel.id === "crossbow" ? this.crossbowVm : null;
-    for (const vm of [this.knifeVm, this.knife3dVm, this.machete3dVm, this.axe3dVm, this.dagger3dVm, this.trexDaggerVm, this.trexDagger3dVm, this.impDagger3dVm, this.etDagger3dVm, this.etSword3dVm, this.etSpear3dVm, this.spearVm, this.crossbowVm, this.monialDaggerVm, this.spear3dVm, this.evilDaggerVm]) {
+    for (const vm of [this.knifeVm, this.knife3dVm, this.machete3dVm, this.axe3dVm, this.dagger3dVm, this.trexDaggerVm, this.trexDagger3dVm, this.impDagger3dVm, this.etDagger3dVm, this.etSword3dVm, this.etSpear3dVm, this.spearVm, this.crossbowVm, this.monialDaggerVm, this.spear3dVm, this.evilDaggerVm, this.holyDaggerVm]) {
       if (vm) vm.visible = vm === showVm;
     }
     if (this.eggVm) this.eggVm.visible = !!game.carriedEgg;

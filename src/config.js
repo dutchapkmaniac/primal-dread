@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=79";
+export const ASSET_V = "?v=80";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -12,7 +12,7 @@ export const CFG = {
 
   world: {
     boundaryR: 402,          // the old circle — still the frame the rings hang on
-    square: 1109,   // update 55: a tenth larger — the mine of floor -1 ran past the old edge
+    square: 1331,   // update 55: a tenth larger — the mine of floor -1 ran past the old edge
     extraApples: 20,           // update 39: twenty more apple trees, in the emptiest forest left            // update 38: +10% — ring9 grows the frontier (916 before)
     oldBoundaryR: 150,       // the original map stays untouched inside this
     fieldR: 52,              // open field radius around the ruin
@@ -161,6 +161,10 @@ export const CFG = {
   ring9: {
     treeMinR: 910, treeMaxR: 1002, treeCount: 1100, grassCount: 800,
   },
+  // ---- update 80: the square grew a fifth (1109 -> 1331 m) - the seventh expansion band, forest to the new edge ----
+  ring10: {
+    treeMinR: 1002, treeMaxR: 1200, treeCount: 1400, grassCount: 900, chestCount: 12,
+  },
   // 15 extra treasure chests scattered across the WHOLE map [x, z]
   extraChests: [
     [350, 40], [-340, 120], [180, -320], [-260, -270], [60, 370],
@@ -301,6 +305,7 @@ export const CFG = {
     enrageFrac: 0.3, enrageSpeedMult: 1.25,
     respawn: 180,                         // update 38: a slain hunter is back 3 REAL minutes later
     stuckTime: 180,                       // update 79: three minutes on one spot (stuck at a lake) and the hunter is set down somewhere new
+    blockedRetarget: 2,                   // update 80: a wanderer that cannot move for two seconds (the volcano's foot, a trunk) picks another way
     drops: [],                            // update 38: Elisia eats what she kills — only a tooth may be left...
     toothChance: 0.1,                     // ...one time in ten
   },
@@ -490,7 +495,7 @@ export const CFG = {
     mistFadeOut: 10,       // update 38: seconds for her mist to fade once she is gone
     // update 38: the fight is a matter of luck, decided when a hunter closes in. She wins one
     // T-Rex fight in two, one Imperator fight in four; never a fourth T-Rex, never a second Imperator.
-    fight: { winRex: 0.5, winImp: 0.25, maxKills: 3, maxImpKills: 1, regenTime: 300, eatTime: 5, eatGrow: 1.5 },
+    fight: { winRex: 0.5, winRex2: 0.35, maxKills: 2, regenTime: 300, eatTime: 5, eatGrow: 2.0, eatGrow2: 1.5 },   // update 80: the first meal doubles her, the second adds half; she can beat a second hunter one time in three, never a third (an Imperator counts the same)
     trexBite: 60,          // a T-Rex bite on her
     clawTrex: 45,          // her claws on a T-Rex
     trexHelpR: 45,         // a T-Rex this close to the dark form turns on her
@@ -504,7 +509,7 @@ export const CFG = {
     edgePad: 260, oldSquare: 763,          // update 38: the sand runs 260 m past the edge into the mist (no 'ocean'); the desert's u36 extent for the chest split
     // the river, traced from the user's sketch and scaled to the bigger map: it enters at the
     // west edge (z ~ +355) and leaves at the south edge (x ~ -45); the desert is its south-west bank
-    river: { halfW: 11, beach: 5, waterY: 0.25, bedY: -1.3,
+    river: { halfW: 11, beach: 5, waterY: -0.32, bedY: -1.3,
       // update 37: the same course scaled ×1.2 with the map
       // update 38: ×1.1 again with the map
       // update 39: the user's red line — the same course ×1.353 (longer, same shape), entering the west
@@ -600,6 +605,7 @@ export const CFG = {
   },
   // Duco the Malinois: an NPC body, never a target
   dog: { height: 0.62, speed: 1.6, followSpeed: 2.7, followDist: 2.4, leash: 16 },
+  climbFallDmg: 0.15,   // update 80: letting go of the anchors in the cliff band drops you to its foot for 15% of your health
   climbAnchorsNeeded: 2,     // hold two, select them, and the cliff opens
   wildChickens: {  // roaming chickens outside the pen, all across the map
     count: 6,
@@ -658,7 +664,7 @@ export const CFG = {
     et_planter: 1.25, et_miner: 3.1, et_doctor: 3.1, et_hospbed: 1.5,   // update 55
     et_medcab: 2.5, et_goldchest: 1.0, et_counter: 1.2, et_pickrack: 1.7, et_emstatue: 1.5, et_gemcase: 1.45,   // update 57
     et_pickaxe: 0.24,
-    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_furnace: 1.35, et_silverore: 1.2, hf_farmer: 1.78, hf_wife: 1.68, hf_explorer: 1.8, hf_witch: 2.05, hf_warrior: 2.1, hf_historian: 1.7, hf_lady: 1.75, hf_fountain: 4.2, hf_fountain2: 4.2, hf_lantern: 0.55, hf_starflower: 0.95, hf_magicmush: 0.85, hf_voidbloom: 0.75, hf_infial: 1.1, hf_moonrock: 1.3, hf_lamppost: 3.2, hf_interior: 1.5, hf_pedestal: 1.7, hf_rottenbasket: 0.3, hf_rottencrate: 0.62, hf_minelantern: 0.62, hf_emberleaf: 0.8, hf_evildagger: 0.5, hf_spear: 1.7, duco2: 0.93, hf_staff: 1.75, hf_dagger: 0.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
+    et_witch: 1.72, et_hadro: 4.6, et_fishcrate: 1.0, et_woodpile: 1.5, et_herbstall: 3.8, et_barrel: 1.1, et_furnace: 1.35, et_silverore: 1.2, hf_farmer: 1.78, hf_wife: 1.68, hf_explorer: 1.8, hf_witch: 2.05, hf_warrior: 2.1, hf_historian: 1.7, hf_lady: 1.75, hf_fountain: 4.2, hf_fountain2: 4.2, hf_lantern: 0.55, hf_starflower: 0.95, hf_magicmush: 0.85, hf_voidbloom: 0.75, hf_infial: 1.1, hf_moonrock: 1.3, hf_lamppost: 3.2, hf_interior: 1.5, hf_pedestal: 1.7, hf_rottenbasket: 0.3, hf_rottencrate: 0.62, hf_minelantern: 0.62, hf_emberleaf: 0.8, hf_evildagger: 0.5, hf_holydagger: 0.5, hf_spear: 1.7, duco2: 0.93, hf_staff: 1.75, hf_dagger: 0.5, et_rock1: 1.3, et_rock2: 1.3, et_rock3: 0.35, et_vein1: 1.0, et_vein2: 0.4, et_vein3: 1.2,   // update 59: the mine's stones and its three vein shapes   // update 58: the hospital's cabinet, the house's chest, the mine shop   // update 39: the Eternials (3.10 m men, 2.80 m women) and the legend's statue
     k_potrack: 1.1, k_hutch: 2.0, k_basket: 0.3, k_shelf: 0.6, k_herbs: 0.7,
     b_basin: 0.88, b_towel: 0.45, b_cabinet: 0.75, b_mirror: 0.9, hall_lamp: 0.8 },
   modelYaw: { et_door: Math.PI / 2, et_fence: Math.PI / 2, et_vaultdoor: Math.PI / 2,   // update 42: these scans are thin along x — turned so the face looks along z
@@ -704,7 +710,7 @@ export const CFG = {
   held: {
     knife3d:   { s: 0.40, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] },
     hf_dagger: { s: 0.48, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] },   // update 75
-    hf_evildagger: { s: 0.48, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] },   // update 79: the evil dagger as its icon
+    hf_evildagger: { s: 0.48, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] }, hf_holydagger: { s: 0.48, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] },   // update 79: the evil dagger as its icon
     hf_spear:  { s: 1.7, pos: [0.30, -0.26, -0.72], rot: [0.35, -1.75, 0.25] },   // update 79: the bound spear, wood and iron
     hf_staff:  { s: 1.5, pos: [0.36, -0.62, -0.72], rot: [0.08, -0.2, 0.12] },
     machete3d: { s: 0.85, pos: [0.32, -0.32, -0.72], rot: [0.12, -0.3, 0] },
@@ -830,7 +836,7 @@ export const CFG = {
     useR: 4,                                     // stand this close to investigate / use one
     whiteScale: 0.78,                            // the cellar is low
     // the model's frame after normalizeModel (5.2 m tall, feet at 0, medallion face toward +z)
-    geo: { ringY: 2.86, ringR: 1.26, medY: 4.7, medR: 0.37, medZF: -0.25, medZB: -1.29, bowlX: 2.48, bowlY: 2.18, bowlZ: 0.27, swirlZ: -1.5 },   // update 38: measured — the ring's top sits BEHIND the pillars (z -1.29..-0.25), the bowls' rims at y 2.18
+    geo: { ringY: 2.86, ringR: 1.26, medY: 4.7, medR: 0.37, medZF: -0.25, medZB: -1.29, bowlX: 2.48, bowlY: 2.18, bowlZ: 0.27, swirlZ: -0.77 },   // update 38: measured — the ring's top sits BEHIND the pillars (z -1.29..-0.25), the bowls' rims at y 2.18
     // the temple's cellar: the room under the ground floor, the stairs in the north-west corner
     // (top at x1, y 0 — dropping westward to x0, y), the white portal facing the stairs
     basement: { x0: -11.5, x1: 11.5, z0: -6.6, z1: 6.6, y: -4.4, stairs: { x0: -11.3, x1: -4.4, z0: -6.4, z1: -4.5 },

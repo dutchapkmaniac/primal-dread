@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=79";
-import { inFarm, inPasture } from "./farm.js?v=79";
-import { STR } from "../strings.js?v=79";
-import { icons } from "./items.js?v=79";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=79";
+import { CFG } from "./config.js?v=80";
+import { inFarm, inPasture } from "./farm.js?v=80";
+import { STR } from "../strings.js?v=80";
+import { icons } from "./items.js?v=80";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=80";
 
 // Creatures. Rigged GLBs (T-Rex, werewolf, chicken) play real walk/run clips;
 // the pig gets a procedural quadruped gait. The T-Rex cannot be killed.
@@ -15,6 +15,8 @@ function normalizeYaw(a) {
   return a;
 }
 
+// update 80: the beasts the safe rooms keep out (Elisia alone walks where she likes)
+const HOSTILE = new Set(["werewolf", "trex", "mother", "spino", "spinobaby", "trike", "remotus", "altai", "croc", "meganeura", "alio"]);
 export class Creature {
   constructor(type, asset, x, z, ctx, opts = {}) {
     this.type = type;
@@ -94,6 +96,14 @@ export class Creature {
     return Math.hypot(p.pos.x - this.pos.x, p.pos.z - this.pos.z);
   }
 
+  // update 80: the sight line against every occluder was the dearest thing a hunter did each frame; far from you it is
+  // asked every fourth frame (staggered), within twelve metres every frame as before
+  losCached(w, p) {
+    if (this._losK === undefined) this._losK = Math.floor(Math.random() * 4);
+    this._losK++;
+    if (this._los === undefined || (this._losK & 3) === 0 || this.distToPlayer() < 12) this._los = w.losBlocked(this.pos.x, this.pos.z, p.pos.x, p.pos.z);
+    return this._los;
+  }
   moveToward(tx, tz, speed, dt, turnRate = 3.4) {
     const dx = tx - this.pos.x, dz = tz - this.pos.z;
     const d = Math.hypot(dx, dz);
@@ -122,6 +132,8 @@ export class Creature {
     // update 79: no beast walks into the silver mine (its own wolves and the goats excepted), and no hunter climbs the
     // volcano unless it is chasing you up there - the Imperator never
     if (w.dungeon && !this.caveWolf && this.type !== "goat" && w.inDungeon(x, z) && !w.inDungeon(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
+    // update 80: the start temple and the lighthouse are safe rooms - no hunter, wolf or beast sets foot in them
+    if (HOSTILE.has(this.type) && !this.chain && ((w.inRuin(x, z) && !w.inRuin(this.pos.x, this.pos.z)) || (w.inLighthouse(x, z) && !w.inLighthouse(this.pos.x, this.pos.z)))) return { x: this.pos.x, z: this.pos.z };
     if (this.type === "trex" && !this.chain && w.inMountain(x, z) && !w.inMountain(this.pos.x, this.pos.z) && (this.imperator || this.state !== "chase")) return { x: this.pos.x, z: this.pos.z };
     // update 42: the werewolves never set foot in Eternius — the mountain, the castle, the bridge
     if (this.type === "werewolf" && !this.caveWolf && w.city && w.city.inZone(x, z) && !w.city.inZone(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
@@ -609,6 +621,10 @@ export class Creature {
   }
 
   update(dt, game) {
+    // update 80: a beast that finds itself inside the temple or the lighthouse (a wolf that got in before the walls held)
+    // is set down outside the nearest wall at once
+    if (HOSTILE.has(this.type) && !this.dead) { const w0 = game.world; if (w0.inRuin(this.pos.x, this.pos.z)) { const R = CFG.ruin; const ex = R.halfX + 2.5 - Math.abs(this.pos.x), ez = R.halfZ + 2.5 - Math.abs(this.pos.z); if (ex < ez) this.pos.x = Math.sign(this.pos.x || 1) * (R.halfX + 2.5); else this.pos.z = Math.sign(this.pos.z || 1) * (R.halfZ + 2.5); this.target = null; }
+      else if (w0.inLighthouse(this.pos.x, this.pos.z)) { const L = CFG.lighthouse, ax = this.pos.x - L.x, az = this.pos.z - L.z, dd = Math.hypot(ax, az) || 1; this.pos.x = L.x + ax / dd * (L.r + 2.5); this.pos.z = L.z + az / dd * (L.r + 2.5); this.target = null; } }
     this.stateT += dt;
     this.phase += dt;
     if (this.dead) {
@@ -885,7 +901,7 @@ export class Creature {
     // blocked by boulders and thick trees (noise is not; sound carries).
     // Inside the camp fence you're beneath their interest — unless the
     // hunt already started before you slipped in.
-    const losClear = !w.losBlocked(this.pos.x, this.pos.z, p.pos.x, p.pos.z);
+    const losClear = !this.losCached(w, p);
     const campShield = w.inCamp(p.pos.x, p.pos.z) && this.state !== "chase" && this.state !== "window";
     // update 43: the chained beast only minds you INSIDE its circle — its chain grew, its temper did not
     const chainOK = !this.chain || Math.hypot(p.pos.x - this.chain.x, p.pos.z - this.chain.z) < this.chain.r + 1.5;
@@ -956,7 +972,13 @@ export class Creature {
         }
       } else this.elevT = 0;
       // an enraged, bleeding hunter runs a quarter faster — it wants this OVER
-      this.moveToward(p.pos.x, p.pos.z, this.cfg.chaseSpeed * (this.enraged ? CFG.trexHunt.enrageSpeedMult : 1), dt);
+      // update 80: a chaser held up by a trunk (it could see you and stood pushing at the tree) sidesteps round it
+      if (this.sideT > 0) { this.sideT -= dt; this.moveToward(this.sideX, this.sideZ, this.cfg.chaseSpeed, dt); }
+      else {
+        this.moveToward(p.pos.x, p.pos.z, this.cfg.chaseSpeed * (this.enraged ? CFG.trexHunt.enrageSpeedMult : 1), dt);
+        this.chaseStuckT = this.speed < this.cfg.chaseSpeed * 0.25 && d > this.cfg.biteRange + 1.5 ? (this.chaseStuckT || 0) + dt : 0;
+        if (this.chaseStuckT > 1.0) { this.chaseStuckT = 0; const side = game.rng() < 0.5 ? 1 : -1, a = this.yaw + side * Math.PI / 2, dd = Math.max(5, this.cfg.height * 0.9); this.sideX = this.pos.x + Math.sin(a) * dd; this.sideZ = this.pos.z + Math.cos(a) * dd; this.sideT = 1.1; }
+      }
       this.atkT -= dt;
       // a ground bite can only reach a player on the ground — or up a TREE
       if (d < this.cfg.biteRange + (treed ? 1.5 : 0) && this.atkT <= 0 && !playerSafe && (p.pos.y < 2.6 || treed)) {
@@ -1020,6 +1042,10 @@ export class Creature {
     if (this.moveToward(this.target[0], this.target[1], this.cfg.speed, dt)) {
       this.target = null; this.state = "idle"; this.stateT = 0;
     }
+    // update 80: a wanderer that cannot move (the volcano's foot, a trunk, a wall) gives its target up after two seconds,
+    // steps aside and picks another way - a hunter never stands pushing at the same spot
+    this.blockT = this.speed < 0.25 ? (this.blockT || 0) + dt : 0;
+    if (this.blockT > (CFG.trexHunt.blockedRetarget || 2)) { this.blockT = 0; this.target = null; this.state = "idle"; this.stateT = 1.5; const a = this.yaw + Math.PI * (0.5 + game.rng()); this.pos.x += Math.sin(a) * 0.5; this.pos.z += Math.cos(a) * 0.5; }
   }
 
   engage(game, d) {
@@ -1045,7 +1071,7 @@ export class Creature {
     const RV = CFG.ruins;
     const d = this.distToPlayer();
     const playerSafe = w.isSafe(p.pos.x, p.pos.z, p.pos.y);
-    const losClear = !w.losBlocked(this.pos.x, this.pos.z, p.pos.x, p.pos.z);
+    const losClear = !this.losCached(w, p);
     // heavy clawed steps
     const walking = this.speed > 0.2;
     if (walking) {
@@ -1175,7 +1201,7 @@ export class Creature {
       return;
     }
     const playerSafe = w.isSafe(p.pos.x, p.pos.z, p.pos.y);
-    const losClear = !w.losBlocked(this.pos.x, this.pos.z, p.pos.x, p.pos.z);
+    const losClear = !this.losCached(w, p);
     // her eyes are poor — but any other T-Rex spotting you gives you away.
     // And on an EMPTY FIELD (no trees, no boulders near either of you), she
     // simply sees you. Same open field, no cover: you are already dead.

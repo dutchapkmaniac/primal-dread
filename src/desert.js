@@ -16,12 +16,12 @@
 // and the map painting. The two Alioramus live in entities.js and only ask
 // this module where the desert is.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=79";
-import { cityFlatten, cityLakeDip } from "./eternius.js?v=79";   // update 39
-import { STR } from "../strings.js?v=79";
+import { CFG } from "./config.js?v=80";
+import { cityFlatten, cityLakeDip } from "./eternius.js?v=80";   // update 39
+import { STR } from "../strings.js?v=80";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { ClipAnimator } from "./skeletal.js?v=79";
+import { ClipAnimator } from "./skeletal.js?v=80";
 
 const D = () => CFG.desert;
 
@@ -41,6 +41,16 @@ function splinePoints(ctrl, per = 8) {
   return out;
 }
 
+// update 80: the river's cross-section, by distance from its centre line - the flat bed, a bank rising to the forest floor,
+// shared by the soil mesh below and the forest hills (forest.js makeHills dips the ground to it, so the water lies IN the
+// ground instead of floating over the grass)
+export function riverProfileY(d) {
+  const R = D().river, HW = R.halfW;
+  if (d <= HW - 1.2) return R.bedY;
+  if (d <= HW + 1.6) { const u = (d - (HW - 1.2)) / 2.8, k = u * u * (3 - 2 * u); return R.bedY + (-0.12 - R.bedY) * k; }
+  const e = HW + R.beach + 1.5; if (d >= e) return 0;
+  const u = (d - (HW + 1.6)) / (e - (HW + 1.6)); return -0.12 * (1 - u);
+}
 export class Desert {
   constructor(world) {
     this.world = world;
@@ -265,7 +275,18 @@ export class Desert {
       return m;
     };
     const HW = C.river.halfW;
-    ribbon(HW + 0.6, HW + 0.6, C.river.bedY, new THREE.MeshStandardMaterial({ color: 0x3e5a58, roughness: 1 }));   // update 37: a paler bed shows through as turquoise
+    // update 80: the river bed and the forest bank are ONE soil surface following riverProfileY - mud under the water,
+    // a bank climbing to the forest floor (the old flat bed floated over the grass, and the grass showed through the water)
+    { const offs = []; for (let o = -(HW + C.river.beach + 1.5); o <= HW + 1.0; o += 1.0) offs.push(o); if (offs[offs.length - 1] < HW + 1.0) offs.push(HW + 1.0);
+      const M = offs.length, g = new THREE.BufferGeometry(), v = [], uv = [], idx = [];
+      for (let i = 0; i < this.pts.length; i++) {
+        const sg = this.seg[Math.min(i, this.seg.length - 1)], nx2 = -sg.tz, nz2 = sg.tx, [px, pz] = this.pts[i], u = (i < this.seg.length ? sg.s0 : this.length) / 8;
+        for (let j = 0; j < M; j++) { const o = offs[j]; v.push(px + nx2 * o, riverProfileY(Math.abs(o)) + 0.04, pz + nz2 * o); uv.push(u, o / 8); }
+        if (i) for (let j = 0; j < M - 1; j++) { const a = (i - 1) * M + j, b = a + 1, c = i * M + j, d = c + 1; idx.push(a, b, c, b, d, c); }
+      }
+      g.setAttribute("position", new THREE.Float32BufferAttribute(v, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+      const soilMat = w.mat("t_soil", 1, 1, 0x4a3d2e); soilMat.side = THREE.DoubleSide;
+      const soil = new THREE.Mesh(g, soilMat); soil.receiveShadow = true; scene.add(soil); }
     // update 37: water that reads as water — the flowing texture, its normal map, a pale tint over the dark bed
     const waterMat = new THREE.MeshStandardMaterial({ color: 0x9fc6ce, transparent: true, opacity: 0.8, roughness: 0.08, metalness: 0.12, emissive: 0x0c2a32 });
     if (assets.tex.t_water) {
@@ -280,8 +301,7 @@ export class Desert {
     }
     this.water = ribbon(HW, HW, C.river.waterY, waterMat, 0, 10);
     // the forest bank: a strip of river sand on the far side (the desert side IS sand) — update 37: its own texture
-    const bankId = assets.tex.t_riversand ? "t_riversand" : "t_beach";
-    ribbon(HW - 0.5, HW + C.river.beach, 0.03, w.mat(bankId, 1, 1, 0x9a8a68), -1, 5);
+    // (update 80: the forest-bank sand strip is gone - the soil surface above is the bank now)
     // --- the bridges (update 37): arched plank decks that rise in the middle, solid
     // plank rails along both sides (you step on only at the ends), piers up to the deck
     const plankMat = w.mat("t_woodplank", 1, 6, 0x6e5636);

@@ -5,9 +5,9 @@
 // turns it into the silver dagger (holy water) or the EVIL DAGGER (unholy water) that makes every werewolf a friend to talk
 // to and feed.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=79";
-import { ItemDrop } from "./entities.js?v=79";
-import { STR } from "../strings.js?v=79";
+import { CFG } from "./config.js?v=80";
+import { ItemDrop } from "./entities.js?v=80";
+import { STR } from "../strings.js?v=80";
 
 const V = () => CFG.volcano;
 

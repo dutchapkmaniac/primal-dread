@@ -1,26 +1,26 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=79";
-import { STR } from "../strings.js?v=79";
+import { CFG, ASSET_V } from "./config.js?v=80";
+import { STR } from "../strings.js?v=80";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=79";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=79";
-import { Forest } from "./forest.js?v=79";   // update 69
-import { Potions } from "./potions.js?v=79";   // update 73
-import { Volcano } from "./volcano.js?v=79";   // update 74
-import { HiddenForest } from "./hidden.js?v=79";   // update 75
-import { ClipAnimator } from "./skeletal.js?v=79";
-import { AudioMan } from "./audio.js?v=79";
-import { UI } from "./ui.js?v=79";
-import { World } from "./world.js?v=79";
-import { Player } from "./player.js?v=79";
-import { Creature, ItemDrop } from "./entities.js?v=79";
-import { GameMap } from "./map.js?v=79";
-import { FarmGame } from "./farmgame.js?v=79";
-import { ElisiaSystem } from "./elisia.js?v=79";   // update 35
-import { DesertSystem } from "./desert.js?v=79";
-import { PortalSystem } from "./portals.js?v=79";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=79";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=80";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=80";
+import { Forest } from "./forest.js?v=80";   // update 69
+import { Potions } from "./potions.js?v=80";   // update 73
+import { Volcano } from "./volcano.js?v=80";   // update 74
+import { HiddenForest } from "./hidden.js?v=80";   // update 75
+import { ClipAnimator } from "./skeletal.js?v=80";
+import { AudioMan } from "./audio.js?v=80";
+import { UI } from "./ui.js?v=80";
+import { World } from "./world.js?v=80";
+import { Player } from "./player.js?v=80";
+import { Creature, ItemDrop } from "./entities.js?v=80";
+import { GameMap } from "./map.js?v=80";
+import { FarmGame } from "./farmgame.js?v=80";
+import { ElisiaSystem } from "./elisia.js?v=80";   // update 35
+import { DesertSystem } from "./desert.js?v=80";
+import { PortalSystem } from "./portals.js?v=80";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=80";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -99,7 +99,7 @@ const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_va
   "imperator", "trexdagger3d", "impdagger3d",   // update 38
   "et_male", "et_female", "et_guardspear", "et_guardsword", "et_king", "et_statue", "et_magician",
   "et_fountain", "et_bigtree", "et_boat", "et_prisoner", "et_minecart", "et_emerald",
-  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_herbstall", "et_barrel", "et_furnace", "et_silverore", "hf_farmer", "hf_wife", "hf_explorer", "hf_witch", "hf_warrior", "hf_historian", "hf_lady", "hf_fountain", "hf_lantern", "hf_staff", "hf_dagger", "hf_starflower", "hf_magicmush", "hf_voidbloom", "hf_infial", "hf_moonrock", "hf_fountain2", "hf_lamppost", "hf_interior", "hf_pedestal", "hf_rottenbasket", "hf_rottencrate", "hf_minelantern", "hf_emberleaf", "hf_evildagger", "hf_spear", "duco2", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
+  "et_planter", "et_miner", "et_doctor", "et_hospbed", "et_medcab", "et_goldchest", "et_counter", "et_pickrack", "et_emstatue", "et_gemcase", "et_pickaxe", "et_rock1", "et_rock2", "et_rock3", "et_vein1", "et_vein2", "et_vein3", "et_hadro", "et_fishcrate", "et_woodpile", "et_herbstall", "et_barrel", "et_furnace", "et_silverore", "hf_farmer", "hf_wife", "hf_explorer", "hf_witch", "hf_warrior", "hf_historian", "hf_lady", "hf_fountain", "hf_lantern", "hf_staff", "hf_dagger", "hf_starflower", "hf_magicmush", "hf_voidbloom", "hf_infial", "hf_moonrock", "hf_fountain2", "hf_lamppost", "hf_interior", "hf_pedestal", "hf_rottenbasket", "hf_rottencrate", "hf_minelantern", "hf_emberleaf", "hf_evildagger", "hf_spear", "duco2", "hf_holydagger", "et_witch"];   // update 57; update 58; update 59   // update 39: the Eternials; update 49: the sorcerer; update 50/55: floor -1
 
 // scale + ground + material hygiene for generated GLBs
 function normalizeModel(root, targetH, yaw = 0) {
@@ -931,6 +931,19 @@ class Game {
       l.color.copy(v.color); l.distance = v.distance; l.decay = v.decay; l.intensity = v.intensity * P.fade;
     }
   }
+  // update 80: in a fight with the dark Elisia there is NO shelter - her magic drags you out of any safe zone, back to
+  // the last open ground you stood on, until she or you fall
+  updateElisiaForce(dt) {
+    const p = this.player, w = this.world, E = this.elisia; const ev = E && E.evilTarget ? E.evilTarget() : null;
+    const el = document.getElementById("redForce");
+    const safe = w.isSafe(p.pos.x, p.pos.z, p.pos.y);
+    if (!safe) this.lastOpen = { x: p.pos.x, z: p.pos.z, y: p.pos.y };
+    if (!ev || p.dead || !safe || !this.lastOpen) { if (el && el.style.opacity !== "0") el.style.opacity = "0"; return; }
+    const L = this.lastOpen, dx = L.x - p.pos.x, dz = L.z - p.pos.z, d = Math.hypot(dx, dz) || 1, st = Math.min(d, 7 * dt);
+    p.pos.x += dx / d * st; p.pos.z += dz / d * st; if (p.pos.y < L.y - 0.5) p.pos.y = L.y - 0.5; p.vel.x = dx / d * 4; p.vel.z = dz / d * 4;
+    if (el) el.style.opacity = "1"; this.ui.shake(0.12);
+    if (!this.forceT || this.time - this.forceT > 6) { this.forceT = this.time; this.ui.toast(STR.elisiaForce); }
+  }
   enforceClimb() {
     const M = CFG.mountain, p = this.player;
     // THE dungeon-entry bug (three reports): the summit "world's-end" wall
@@ -949,20 +962,19 @@ class Game {
         const anchors = p.inv.slots.reduce((n, s) => n + (s && s.id === "climbing_anchor" ? s.count : 0), 0);
         const ok = sel && sel.id === "climbing_anchor" && anchors >= CFG.climbAnchorsNeeded;
         if (!ok) {
-          // shove back to whichever rim they came from
-          const back = (this._climbSide || "low") === "low" ? M.cliffLo + 0.5 : M.cliffHi - 0.5;
+          // update 80: without the anchors in hand you FALL - to the foot of the cliff, whichever rim you came from, for
+          // a share of your health. (The old shove back to the HIGH rim, probed from your own height, could set you
+          // down under the mountain's skin among floating trees.) Bumping into the band from below only warns.
+          const deep = this._climbSide === "high" || d < M.cliffLo - 2.5;
+          const back = M.cliffLo + 0.8;
           const k = back / (d || 1);
           p.pos.x = M.cx + dx * k;
           p.pos.z = M.cz + dz * k;
-          p.pos.y = this.world.groundHeight(p.pos.x, p.pos.z, p.pos.y);
+          p.pos.y = Math.max(this.world.mountainH(p.pos.x, p.pos.z), this.world.groundHeight(p.pos.x, p.pos.z, 999));
           p.vel.set(0, 0, 0);
-          // going UP still demands anchors, loudly. Going DOWN stays quiet —
-          // the standing "slide down [F]" prompt at the edge says it all.
-          if (this._climbSide !== "high" && (this._climbToastT || 0) < this.time) {
-            this.ui.toast(STR.climbNeed);
-            this.audio.sDeny();
-            this._climbToastT = this.time + 5;
-          }
+          if (deep) { p.damage(Math.ceil(100 * (CFG.climbFallDmg || 0.15)), "fall", null); this.ui.toast(STR.climbFall); this.ui.shake(0.7); this._climbToastT = this.time + 5; }
+          else if ((this._climbToastT || 0) < this.time) { this.ui.toast(STR.climbNeed); this.audio.sDeny(); this._climbToastT = this.time + 5; }
+          this._climbSide = "low";
         }
       } else {
         this._climbSide = d >= M.cliffLo ? "low" : "high";
@@ -1162,7 +1174,9 @@ class Game {
     if (this.volcano) this.volcano.update(dt);   // update 74
     if (this.hidden) this.hidden.update(dt);   // update 75
     this.updateExpansion(dt);
-    for (const c of this.creatures) c.update(dt, this);
+    // update 80: creatures far from you (160 m) tick every other frame with a doubled step - the same motion, half the work
+    this._creTick = (this._creTick || 0) + 1;
+    { const px = this.player.pos.x, pz = this.player.pos.z, cs = this.creatures; for (let i = 0; i < cs.length; i++) { const c = cs[i]; const far = !c.dead && c.state !== "chase" && c.state !== "foe" && (Math.abs(c.pos.x - px) > 160 || Math.abs(c.pos.z - pz) > 160); if (far && ((this._creTick + i) & 1)) continue; c.update(far ? dt * 2 : dt, this); } }
     for (const w of this.wolves) w.update(dt, this);
     for (const d of this.drops) d.update(dt);
     // player-dropped items live 10 minutes, then the forest reclaims them
@@ -1181,6 +1195,7 @@ class Game {
     this.city.update(dt);     // update 39
     this.updateLightPool(dt);   // update 41
     this.updateHunt();
+    this.updateElisiaForce(dt);   // update 80
     // 20Hz is plenty for proximity prompts — profiling showed this scan was
     // the main thread's top allocator (~45 label strings/frame). A pending
     // F-press still processes IMMEDIATELY (input.interact latches until read).

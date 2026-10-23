@@ -14,10 +14,10 @@
 // the dark form; this module holds everything that is hers alone: the daily
 // placement, her state machine, the mist, the kiss cinematic and the fireballs.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=79";
-import { STR } from "../strings.js?v=79";
-import { Creature } from "./entities.js?v=79";
-import { ClipAnimator } from "./skeletal.js?v=79";
+import { CFG } from "./config.js?v=80";
+import { STR } from "../strings.js?v=80";
+import { Creature } from "./entities.js?v=80";
+import { ClipAnimator } from "./skeletal.js?v=80";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const E = () => CFG.elisia;
@@ -193,9 +193,10 @@ export class ElisiaSystem {
       // bars tell the story and the end follows the roll.
       const F = C.fight;
       if (!this.fight || this.fight.foe !== foe) {
-        const imp = !!foe.imperator;
-        let pWin = imp ? F.winImp : F.winRex;
-        if (this.kills >= F.maxKills || (imp && this.impKills >= F.maxImpKills)) pWin = 0;
+        // update 80: the first hunter she meets she beats one time in two, the second one time in three, a third never -
+        // whatever the mix of T-Rex and Imperator (the Imperator is eaten and grown on by the same rule)
+        let pWin = this.kills === 0 ? F.winRex : this.kills === 1 ? F.winRex2 : 0;
+        if (this.kills >= F.maxKills) pWin = 0;
         const win = g.rng() < pWin;
         this.fight = { foe, win, clawMult: win ? 1.05 + g.rng() * 0.25 : 0.45 + g.rng() * 0.15 };
         foe.fightBiteMult = win ? 0.4 + g.rng() * 0.15 : 1.0 + g.rng() * 0.25;
@@ -214,7 +215,7 @@ export class ElisiaSystem {
           this.kills++; if (foe.imperator) this.impKills++;
           this.fight = null; g.huntFoe = null;
           // the meal: five seconds over the corpse, a laugh, and she grows by half
-          c.state = "eat"; c.stateT = 0; c.eatFrom = c.body.scale.x; c.eatTo = c.body.scale.x * F.eatGrow; c.eatFoe = foe;
+          c.state = "eat"; c.stateT = 0; c.eatFrom = c.body.scale.x; c.eatTo = c.body.scale.x * (this.kills === 1 ? F.eatGrow : F.eatGrow2); c.eatFoe = foe;   // update 80: the first meal doubles her, the second adds half
           g.ui.toast(STR.elisiaFeeds);
           g.audio.play("elisiaLaughBig", { vol: 1 });
           g.ui.shake(1.0);

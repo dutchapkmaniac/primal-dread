@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=79";
-import { STR } from "../strings.js?v=79";
+import { CFG, ASSET_V } from "./config.js?v=80";
+import { STR } from "../strings.js?v=80";
 
 // Icon sheet: 4x4 grid, 13 icons, generated on a blue key background.
 // Sliced + chroma-keyed at load time into per-item canvases.
@@ -58,7 +58,7 @@ export async function loadIcons() {
   }
   // standalone generated icons (added after the original sheet)
   await Promise.all([
-    ["silver_dagger", "./assets/ui_dagger.png"], ["torch", "./assets/ui_torch.png"], ["wine", "./assets/ui_wine.png"],
+    ["silver_dagger", "./assets/ui_holydagger.png"], ["torch", "./assets/ui_torch.png"], ["wine", "./assets/ui_wine.png"],
     ["croc_skin", "./assets/ui_crocskin.png"], ["spear", "./assets/ui_spear.png"],
     ["raw_trex", "./assets/ui_rawtrex.png"], ["cooked_trex", "./assets/ui_cookedtrex.png"],
     ["trex_tooth", "./assets/ui_tooth.png"], ["fur_cloak", "./assets/ui_furcloak.png"],

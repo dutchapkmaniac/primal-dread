@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=79";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=80";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=79";
-import { Desert } from "./desert.js?v=79";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=79";
+import { CFG } from "./config.js?v=80";
+import { Desert } from "./desert.js?v=80";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=80";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,8 +11,8 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=79";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=79";
-import { pointInPoly, hiddenPathDist } from "./hidden.js?v=79";   // update 75   // update 69: the forest's mild hills
+import { makeHills } from "./forest.js?v=80";
+import { pointInPoly, hiddenPathDist } from "./hidden.js?v=80";   // update 75   // update 69: the forest's mild hills
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;
@@ -229,7 +229,7 @@ export class World {
       let ang = Math.atan2(ldx, ldz); // 0 at the door (+z side), winding up
       while (ang < 0) ang += Math.PI * 2;
       for (let n = 0; n <= L.revs; n++) {
-        const h = ((ang + Math.PI * 2 * n) / (Math.PI * 2)) * k;
+        const h = Math.ceil((ang + Math.PI * 2 * n) / (Math.PI * 2 / 20) - 1e-6) * (k / 20);   // update 80: the treads are steps, not a ramp
         // the stair head is clamped flush so the hatch drop is one small step
         if (h <= L.top + 0.4 && ldd > 1.0) cands.push(Math.min(h, L.top));
       }
@@ -392,6 +392,13 @@ export class World {
         const x = Math.cos(a) * r, z = Math.sin(a) * r;
         if (ok(x, z, 28, this.ring8Chests) && !this.ring8Apples.some(([px, pz]) => Math.hypot(px - x, pz - z) < 10)) this.ring8Chests.push([x, z]);
       }
+      // update 80: a dozen more chests out in the seventh band (the same list, the same builder)
+      { const R10 = CFG.ring10; let n10 = 0, g10 = 0;
+        while (n10 < (R10.chestCount || 0) && g10++ < 500000) {
+          const a = this.rng() * Math.PI * 2, r = R10.treeMinR + 8 + this.rng() * (R10.treeMaxR - R10.treeMinR - 16);
+          const x = Math.cos(a) * r, z = Math.sin(a) * r;
+          if (ok(x, z, 28, this.ring8Chests)) { this.ring8Chests.push([x, z]); n10++; }
+        } }
     }
     // update 39: twenty more apple trees — each one goes to the emptiest stretch of forest left
     {
@@ -686,16 +693,23 @@ export class World {
     const stepGeos = [];
     const k = L.top / L.revs;
     const nSteps = L.revs * 20;
-    for (let i = 0; i <= nSteps; i++) {
-      const ang = (i / 20) * Math.PI * 2;
-      const h = (ang / (Math.PI * 2)) * k;
-      const g = new THREE.BoxGeometry(2.6, 0.14, 1.15);
-      g.rotateY(-ang);
-      const px = L.x + Math.sin(ang) * 2.05;
-      const pz = L.z + Math.cos(ang) * 2.05;
-      g.translate(px, Math.max(0.07, h), pz);
-      stepGeos.push(g);
-    }
+    // update 80: PROPER stairs - every step is a solid wedge round the column with a riser face under its tread (the old
+    // stair was loose planks hovering on the helix); groundHeight climbs the same wedges, one tread at a time
+    { const stepAng = Math.PI * 2 / 20, rise = k / 20, rIn = 0.52, rOut = 2.75;
+      for (let i = 0; i < nSteps; i++) {
+        const a0 = i * stepAng, a1 = (i + 1) * stepAng, top = rise * (i + 1);
+        const sh = new THREE.Shape(); const N = 4;
+        for (let q = 0; q <= N; q++) { const a = a0 + (a1 - a0) * q / N; const x = Math.sin(a) * rOut, y = -Math.cos(a) * rOut; if (q === 0) sh.moveTo(x, y); else sh.lineTo(x, y); }
+        for (let q = N; q >= 0; q--) { const a = a0 + (a1 - a0) * q / N; sh.lineTo(Math.sin(a) * rIn, -Math.cos(a) * rIn); }
+        sh.closePath();
+        const g = new THREE.ExtrudeGeometry(sh, { depth: rise + 0.02, bevelEnabled: false });
+        g.rotateX(-Math.PI / 2); g.translate(L.x, top - rise - 0.02, L.z);
+        stepGeos.push(g);
+        // the rail: a post every third step on the outer edge, a rail between the posts
+        if (i % 3 === 0) { const a = (a0 + a1) / 2; const post = new THREE.CylinderGeometry(0.045, 0.05, 1.0, 6); post.translate(L.x + Math.sin(a) * (rOut - 0.12), top + 0.5, L.z + Math.cos(a) * (rOut - 0.12)); stepGeos.push(post.toNonIndexed());
+          const ab = a + 3 * stepAng, topB = rise * (i + 4); const x0 = L.x + Math.sin(a) * (rOut - 0.12), z0 = L.z + Math.cos(a) * (rOut - 0.12), x1 = L.x + Math.sin(ab) * (rOut - 0.12), z1 = L.z + Math.cos(ab) * (rOut - 0.12);
+          const len = Math.hypot(x1 - x0, z1 - z0, topB - top); const rail = new THREE.BoxGeometry(0.07, 0.07, len); const m = new THREE.Matrix4().lookAt(new THREE.Vector3(x0, top + 1.0, z0), new THREE.Vector3(x1, topB + 1.0, z1), new THREE.Vector3(0, 1, 0)); rail.applyMatrix4(m); rail.translate((x0 + x1) / 2, top + 1.0 + (topB - top) / 2, (z0 + z1) / 2); stepGeos.push(rail.toNonIndexed()); }   // (the wedges are unindexed - merge wants all alike)
+      } }
     this.scene.add(new THREE.Mesh(mergeGeometries(stepGeos), stepMat));
     // top DECK: a ROUND platform matching the tower, with only the hatch
     // hole cut out of it — a circle shape with a rectangular hole, extruded.
@@ -1593,18 +1607,26 @@ export class World {
     const darkRock = this.mat("t_minefloor", 4, 4, 0x4a3a2a);   // update 74: the mine's soil floor
     const mineRock = this.mat("t_minerock", 3, 2, 0x3a3028); mineRock.fog = false; darkRock.fog = false;   // update 74: the emerald mine's rock on the walls and the vault; no fog inside (fogged far walls read as daylight openings)
     // craggy wall builder: short rotated rock boxes stepped along a line
+    // update 80: the mouth of the mine is STONE - grey rock on every piece within the first thirty metres (the brown
+    // mine rock read as wood beams round the arch), and the liner behind every wall run is ONE strip, not a row of
+    // boxes: no slit between two boxes can show the sky again
+    const entRock = this.mat("t_rock", 3, 2, 0x6e716a); entRock.fog = false;
     const wallRun = (s0, t0, s1, t1, gapFn, hMul = 1) => {
       const len = Math.hypot(s1 - s0, t1 - t0);
       const n = Math.max(1, Math.round(len / 2.7));
+      const nearMouth = (s0 + s1) / 2 < 28;
+      { const steps = Math.max(2, Math.ceil((len + 3) / 0.5)), v = [], idx = [], uv = [], yb = caveY - 0.4, yt = caveY + 10 * hMul - 0.4; let prev = -1, row = 0;
+        for (let i = 0; i <= steps; i++) { const kk = -1.5 / len + (len + 3) / len * i / steps; let sS = s0 + (s1 - s0) * kk, tS = t0 + (t1 - t0) * kk; if (sS < -0.3 && t0 === t1 && Math.abs(t0) > 3) sS = -0.3;
+          if (gapFn && gapFn(sS, tS)) { prev = -1; continue; } const q = L(sS, tS); v.push(q.x, yb, q.z, q.x, yt, q.z); uv.push(i * 0.5 / 4, 0, i * 0.5 / 4, 10 * hMul / 4); if (prev >= 0) { const a = prev * 2, b = row * 2; idx.push(a, b, a + 1, b, b + 1, a + 1); } prev = row; row++; }
+        if (idx.length) { const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(v, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals(); const mat = (nearMouth ? entRock : mineRock).clone(); mat.side = THREE.DoubleSide; this.scene.add(new THREE.Mesh(g, mat)); } }
       for (let i = 0; i <= n; i++) {
         const k = i / n;
         const s = s0 + (s1 - s0) * k, t = t0 + (t1 - t0) * k;
         if (gapFn && gapFn(s, t)) continue;
         const p = L(s + (rng() - 0.5) * 0.8, t + (rng() - 0.5) * 0.9);
         const bh = (5.6 + rng() * 1.6) * hMul;
-        const b = new THREE.Mesh(new THREE.BoxGeometry(3.0 + rng() * 1.4, bh, 1.6 + rng() * 0.9), mineRock);
+        const b = new THREE.Mesh(new THREE.BoxGeometry(3.0 + rng() * 1.4, bh, 1.6 + rng() * 0.9), s < 28 ? entRock : mineRock);
         b.position.set(p.x, caveY + bh * 0.46 + rng() * 0.5, p.z);
-        { const q = L(s, t), ln = new THREE.Mesh(new THREE.BoxGeometry(len / n + 2.6, 10 * hMul, 1.6), mineRock); ln.position.set(q.x, caveY + 4.6 * hMul, q.z); ln.rotation.y = -Math.PI / 4 + Math.atan2(t1 - t0, s1 - s0); this.scene.add(ln); }   // update 74: a contiguous liner - no gap shows the sky
         b.rotation.y = -Math.PI / 4 + Math.atan2(t1 - t0, s1 - s0) + (rng() - 0.5) * 0.55;
         b.rotation.z = (rng() - 0.5) * 0.14;   // tilted slabs, not fitted panels
         this.scene.add(b);
@@ -1662,7 +1684,7 @@ export class World {
       const mid = [(a0 + a1) / 2, (b0 + b1) / 2];
       const len = Math.hypot(a1 - a0, b1 - b0) + 4.5;
       const rot = Math.atan2(b1 - b0, a1 - a0);
-      const roof = slab(mid[0], mid[1], len, HW * 2 + 5, caveY + 5.9, 1.4, mineRock);
+      const roof = slab(mid[0], mid[1], len, HW * 2 + 5, caveY + 5.9, 1.4, mid[0] < 28 ? entRock : mineRock);   // update 80: the mouth's roof strip is grey stone too
       roof.rotation.y = -Math.PI / 4 + rot;
       const floor = slab(mid[0], mid[1], len, HW * 2 + 5, caveY - 0.31, 0.6, darkRock);
       floor.rotation.y = -Math.PI / 4 + rot;
@@ -1732,6 +1754,12 @@ export class World {
       arch.position.set(ap.x, caveY - 0.35, ap.z);
       arch.rotation.y = Math.PI / 4;   // opening faces out, down the shelf
       this.scene.add(arch);
+    }
+    // update 80: stone jambs between the arch's legs and the tunnel walls - the last slivers of sky at the mouth
+    for (const side of [1, -1]) {
+      const jp = L(1.4, side * (HW + 2.7));
+      const jb = new THREE.Mesh(new THREE.BoxGeometry(3.4, 9.5, 3.8), entRock); jb.position.set(jp.x, caveY + 4.2, jp.z); jb.rotation.y = -Math.PI / 4; this.scene.add(jb);
+      this.addBox(jp.x - 1.9, jp.x + 1.9, caveY, caveY + 9, jp.z - 1.9, jp.z + 1.9);
     }
     // the arch's legs are solid rock — walk THROUGH the opening, not the legs.
     // The leg offsets stay matched to the arch MODEL (the mouth is a 7 m
@@ -1862,8 +1890,10 @@ export class World {
       closedBox: Object.assign({}, this.boxes[this.boxes.length - 1]),
     };
     const hroof = new THREE.Mesh(new THREE.BoxGeometry(hw + 0.9, 0.18, hd + 0.9), plank);
-    hroof.position.set(H.x, hy + hh + 0.1, H.z);
-    hroof.rotation.z = 0.06;
+    hroof.position.set(H.x, hy + hh + 0.08, H.z);
+    // update 80: the roof lies flat on the walls and an eave band of the wall's wood closes the join all round - the old
+    // tilted plank left a slit of daylight above one wall
+    for (const [cx, cz, sx, sz] of [[0, -hd / 2, hw + 0.6, 0.5], [0, hd / 2, hw + 0.6, 0.5], [-hw / 2, 0, 0.5, hd + 0.6], [hw / 2, 0, 0.5, hd + 0.6]]) { const eb = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.55, sz), wood); eb.position.set(H.x + cx, hy + hh - 0.1, H.z + cz); this.scene.add(eb); }
     this.scene.add(hroof);
     const hfloor = new THREE.Mesh(new THREE.BoxGeometry(hw, 0.14, hd), plank);
     hfloor.position.set(H.x, hy + 0.02, H.z);
@@ -2988,6 +3018,21 @@ export class World {
       if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
       positions.push([x, z, treeScale(), rng() * Math.PI * 2]);
     }
+    // update 80: the seventh expansion band (the square grew a fifth) — ring10
+    const R10 = CFG.ring10;
+    let guard10 = 0;
+    const r10Start = positions.length;
+    while (positions.length - r10Start < R10.treeCount && guard10++ < 300000) {
+      const x = (rng() * 2 - 1) * R10.treeMaxR;
+      const z = (rng() * 2 - 1) * R10.treeMaxR;
+      const r = Math.hypot(x, z);
+      if (r < R10.treeMinR || r > R10.treeMaxR) continue;
+      if (this.inMountain(x, z)) continue;
+      if (this.inNewLandmark(x, z)) continue;
+      if (this.desert.inDesert(x, z) || this.desert.riverDist(x, z) < 20) continue;
+      if (positions.some(([px, pz]) => Math.hypot(x - px, z - pz) < W.treeSpacing)) continue;
+      positions.push([x, z, treeScale(), rng() * Math.PI * 2]);
+    }
     // update 36: the desert and the river hold no forest — every earlier band is filtered too
     for (let i = positions.length - 1; i >= 0; i--) {
       const [px, pz] = positions[i];
@@ -3154,8 +3199,8 @@ export class World {
     const single = new THREE.PlaneGeometry(0.62, 0.42);
     single.translate(0, 0.21, 0);
     const cross = mergeGeometries([single, single.clone().rotateY(Math.PI / 2)]);
-    const grassTotal = CFG.world.grassCount + CFG.newArea.grassCount + CFG.ring2.grassCount + CFG.ring3.grassCount + CFG.ring4.grassCount + CFG.ring5.grassCount + CFG.ring6.grassCount + CFG.ring7.grassCount + CFG.ring8.grassCount + CFG.ring9.grassCount;
-    const GR = CFG.ring9.treeMaxR - 2;   // the grass disc hugs the outermost band (update 38: ring9)
+    const grassTotal = CFG.world.grassCount + CFG.newArea.grassCount + CFG.ring2.grassCount + CFG.ring3.grassCount + CFG.ring4.grassCount + CFG.ring5.grassCount + CFG.ring6.grassCount + CFG.ring7.grassCount + CFG.ring8.grassCount + CFG.ring9.grassCount + CFG.ring10.grassCount;
+    const GR = CFG.ring10.treeMaxR - 2;   // the grass disc hugs the outermost band (update 80: ring10)
     const inst = new THREE.InstancedMesh(cross, tuftMat, grassTotal);
     inst.frustumCulled = false;
     const dummy = new THREE.Object3D();
@@ -3509,8 +3554,26 @@ export class World {
   // and the live bodies in softBodies ARE the creatures — a cow was colliding
   // with itself every frame and being thrown 1.2 m sideways (update 32's
   // "crazy fast, circling" herd). Live bodies stop the PLAYER only.
-  collide(x, z, r, y = 0, h = 1.7, skipSoft = false) {
+  // update 80: the colliders live in 24 m cells (rebuilt when a box is added); a box's x/z never change after it is added
+  // (doors and hatches toggle their Y only), so the cell lists stay true. Boxes wider than a few cells go in one list
+  boxGrid() {
+    if (this._bg && this._bgN === this.boxes.length) return this._bg;
+    const C = 24, m = new Map(), big = [];
     for (const b of this.boxes) {
+      const gx0 = Math.floor(b.minX / C), gx1 = Math.floor(b.maxX / C), gz0 = Math.floor(b.minZ / C), gz1 = Math.floor(b.maxZ / C);
+      if (!(gx1 >= gx0 && gz1 >= gz0) || (gx1 - gx0 + 1) * (gz1 - gz0 + 1) > 64) { big.push(b); continue; }
+      for (let gx = gx0; gx <= gx1; gx++) for (let gz = gz0; gz <= gz1; gz++) { const k = gx * 100003 + gz; let a = m.get(k); if (!a) { a = []; m.set(k, a); } a.push(b); }
+    }
+    this._bg = { m, big, C }; this._bgN = this.boxes.length; return this._bg;
+  }
+  boxesNear(x, z, r) {
+    const G = this.boxGrid(), C = G.C, out = G.big.length ? G.big.slice() : [];
+    const gx0 = Math.floor((x - r - 0.6) / C), gx1 = Math.floor((x + r + 0.6) / C), gz0 = Math.floor((z - r - 0.6) / C), gz1 = Math.floor((z + r + 0.6) / C);
+    for (let gx = gx0; gx <= gx1; gx++) for (let gz = gz0; gz <= gz1; gz++) { const a = G.m.get(gx * 100003 + gz); if (a) for (const b of a) out.push(b); }
+    return out;
+  }
+  collide(x, z, r, y = 0, h = 1.7, skipSoft = false) {
+    for (const b of this.boxesNear(x, z, r)) {
       if (y + h < b.minY || y > b.maxY) continue;
       if (b.maxY <= y + 0.55) continue; // low enough to step onto (floor edges)
       const cx = Math.max(b.minX, Math.min(x, b.maxX));

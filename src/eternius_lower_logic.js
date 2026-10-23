@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=79";
-import { STR } from "../strings.js?v=79";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=79";
+import { CFG } from "./config.js?v=80";
+import { STR } from "../strings.js?v=80";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=80";
 
 // ============================================================================
 // update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat
@@ -168,7 +168,7 @@ export function lowerUpdate(city, dt) {
   // update 65: once, when the floor's colliders exist: an apple that lies inside something (a planter, a bench, a trunk) is
   // nudged outward from its trunk until the player could stand on it
   if (city.groundApples && !city.groundApplesChecked && city.g && city.g.player) { city.groundApplesChecked = true; const yy = LW().y.park + 0.1; for (const tr of city.groundApples) for (const sl of tr.slots) { const dx = sl.a - tr.ta, dz = sl.b - tr.tb, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L; for (let k = 0; k < 6; k++) { const [x, z] = cityWorld(sl.a, sl.b); const r = city.collide(x, z, 0.5, yy); if (Math.hypot(r.x - x, r.z - z) < 0.05) break; sl.a += ux * 1.2; sl.b += uz * 1.2; sl.mesh.position.set(sl.b, sl.mesh.position.y, sl.a); } } }
-  if (city.groundApples) for (const tr of city.groundApples) { if (!tr.slots.some((sl) => sl.taken)) continue; if (t - tr.lastT < 120) continue; const sl = tr.slots.find((x) => x.taken); sl.taken = false; sl.gold = Math.random() < 0.01; sl.mesh.material = sl.gold ? city.groundAppleMats.gold : city.groundAppleMats.green; sl.mesh.scale.setScalar(1); tr.lastT = t; }   // update 64: one apple back every two minutes under a tree that lost some
+  if (city.groundApples) for (const tr of city.groundApples) { if (!tr.slots.some((sl) => sl.taken)) continue; if (t - tr.lastT < 120) continue; const sl = tr.slots.find((x) => x.taken); sl.taken = false; sl.gold = Math.random() < 0.05; sl.mesh.material = sl.gold ? city.groundAppleMats.gold : city.groundAppleMats.green; sl.mesh.scale.setScalar(1); tr.lastT = t; }   // update 64: one apple back every two minutes under a tree that lost some
   if (city.gemPulse) { city.gemPulse.mat.emissiveIntensity = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(t * 2.1)); city.gemPulse.mesh.rotation.y += 0.004; }   // update 58: the shop's crystal breathes light
 }
 // ---------------- the boat ride ----------------
