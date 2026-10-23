@@ -56,6 +56,10 @@ export class Desert {
     this.world = world;
     const C = D();
     this.pts = splinePoints(C.river.points);
+    // update 80: the river was traced for the 1109 m square; now that the square is 1331 m its two ends are carried on
+    // in their own directions to 60 m past the new edge, so the sand (its south-west bank) fills the whole corner again
+    { const E = CFG.world.square + 60; const ext = (a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; let t = 1e9; if (dx < 0) t = Math.min(t, (-E - b[0]) / dx); if (dx > 0) t = Math.min(t, (E - b[0]) / dx); if (dz < 0) t = Math.min(t, (-E - b[1]) / dz); if (dz > 0) t = Math.min(t, (E - b[1]) / dz); return t > 0 && t < 1e8 ? [b[0] + dx * t, b[1] + dz * t] : null; };
+      const P = this.pts; const h = ext(P[1], P[0]); if (h && Math.hypot(h[0] - P[0][0], h[1] - P[0][1]) > 1) P.unshift(h); const t2 = ext(P[P.length - 2], P[P.length - 1]); if (t2 && Math.hypot(t2[0] - P[P.length - 1][0], t2[1] - P[P.length - 1][1]) > 1) P.push(t2); }
     // per-segment tangents + cumulative length, for the nearest-point search
     this.seg = [];
     let acc = 0;
