@@ -11,12 +11,12 @@
 // hundred, one in fifty with the fossil pickaxe); sand mounds are dug with the spade (bones, a Majungasaurus tooth, the
 // same fossil roll).
 import * as THREE from "three";
-import { CFG } from "./config.js?v=83";
-import { STR } from "../strings.js?v=83";
-import { pickWeighted } from "./rng.js?v=83";
-import { Inventory } from "./items.js?v=83";
-import { skullInside, skullH, skullCell, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=83";
-import { ClipAnimator } from "./skeletal.js?v=83";
+import { CFG } from "./config.js?v=84";
+import { STR } from "../strings.js?v=84";
+import { pickWeighted } from "./rng.js?v=84";
+import { Inventory } from "./items.js?v=84";
+import { skullInside, skullH, skullCell, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=84";
+import { ClipAnimator } from "./skeletal.js?v=84";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const K = () => CFG.skull;
@@ -167,7 +167,7 @@ export class SkullValley {
       const [x, z] = sp, yaw = this.rng() * Math.PI * 2, m = this.place(kind[0], x, z, yaw, mul); if (!m) return;
       m.position.y = this.w.groundHeight(x, z, 999) - this.rng() * sinkMax - H * 0.06;
       m.rotation.x = (this.rng() - 0.5) * 0.18; m.rotation.z = (this.rng() - 0.5) * 0.18;
-      this.bones.push({ x, z, kind: kind[0], h: H, y: m.position.y });
+      this.bones.push({ x, z, kind: kind[0], h: H, y: m.position.y, mesh: m });
       if (kind[0] === "sv_skull" && H > 4) this.w.addTree(x, z, H * 0.45, "bone");   // a skull is solid; ribs you walk between
     };
     for (let i = 0; i < N.giant; i++) { const k = pick(); put(k, k[2][0] + this.rng() * (k[2][1] - k[2][0]), 30, 1.6); }
@@ -181,7 +181,7 @@ export class SkullValley {
       const [x, z] = sp, mul = 0.5 + this.rng() * this.rng() * 2.8, m = b.model.clone();
       m.traverse((o) => { if (o.isMesh) o.material = this.darkMat; }); m.scale.multiplyScalar(mul); m.rotation.y = this.rng() * 6.28; m.rotation.z = (this.rng() - 0.5) * 0.3;
       m.position.set(x, this.w.groundHeight(x, z, 999) - 0.25 * mul, z); this.g.scene.add(m);
-      this.rocks.push({ x, z, r: 0.9 * mul }); if (mul > 0.9) this.w.addTree(x, z, 0.85 * mul);
+      this.rocks.push({ x, z, r: 0.9 * mul, mesh: m }); if (mul > 0.9) this.w.addTree(x, z, 0.85 * mul);
     }
   }
   // a random sand spot on the valley floor, clear of the cliffs, the landmarks and the camp
@@ -483,6 +483,9 @@ export class SkullValley {
     this.t += dt;
     if (g.dayNum !== this.day) { this.day = g.dayNum; for (const s of this.stones) if (s.left <= 0 && g.dayNum > s.emptyDay) { s.left = 1; if (s.mesh && s.scale0) s.mesh.scale.copy(s.scale0); } for (const d of this.digs) d.mesh.scale.y = 1; for (const d of this.dens) if (d.taken && g.dayNum >= d.giftDay + K2.giftRefillDays) d.taken = false; }
     this.updateHolds(dt);
+    // bones and boulders beyond the fog are not drawn (the frustum alone leaves hundreds of scans in the draw list)
+    this.cullT = (this.cullT || 0) - dt;
+    if (this.cullT <= 0) { this.cullT = 0.3; const cam = g.camera.position, far = (g.scene.fog ? g.scene.fog.far : 400) + 20, f2 = far * far; for (const o of this.bones) if (o.mesh) o.mesh.visible = (o.x - cam.x) ** 2 + (o.z - cam.z) ** 2 < f2 + o.h * o.h; for (const o of this.rocks) if (o.mesh) o.mesh.visible = (o.x - cam.x) ** 2 + (o.z - cam.z) ** 2 < f2; }
     if (this.whistleT > 0) this.whistleT -= dt;
     if (g.dizzyT > 0) g.dizzyT -= dt;
     // the amulet re-arms once the hunter that would have killed you has lost you (no chase within 60 m for four seconds)
@@ -502,21 +505,37 @@ export class SkullValley {
   cull(cullEnt) { if (this.hendrik) cullEnt(this.hendrik.body); }
 
   // ---------------- the map ----------------
+  // the valley's map layer is baked ONCE per kind (mini / full) into an offscreen canvas at 2 m per pixel: painting it live
+  // sampled the heightfield thousands of times per minimap frame (300 ms every 120 ms = the whole game at 3 fps)
   paint(c, tx, ty, s, mini) {
+    const S = K(), P = S.poly, B = this.bounds(), key = mini ? "mini" : "full";
+    this.mapCache = this.mapCache || {};
+    if (!this.mapCache[key]) {
+      const mpp = 2, cv = document.createElement("canvas"); cv.width = Math.ceil((B.x1 - B.x0) / mpp); cv.height = Math.ceil((B.z1 - B.z0) / mpp);
+      const cc = cv.getContext("2d"); this.paintInto(cc, (x) => (x - B.x0) / mpp, (z) => (z - B.z0) / mpp, 1 / mpp, mini);
+      this.mapCache[key] = cv;
+    }
+    c.save(); c.beginPath(); P.forEach(([x, z], i) => i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z))); c.closePath(); c.clip();
+    c.drawImage(this.mapCache[key], tx(B.x0), ty(B.z0), (B.x1 - B.x0) * s, (B.z1 - B.z0) * s);
+    c.restore();
+    c.strokeStyle = mini ? "rgba(40,42,40,.9)" : "#2c2e2b"; c.lineWidth = Math.max(1.5, 3 * s); c.lineJoin = "round";
+    c.beginPath(); for (let i = 0; i <= S.edgeN; i++) { const [x, z] = P[i]; i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z)); } c.stroke();
+  }
+  paintInto(c, tx, ty, s, mini) {
     const S = K(), P = S.poly, B = this.bounds();
     c.save(); c.beginPath(); P.forEach(([x, z], i) => i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z))); c.closePath(); c.clip();
     c.fillStyle = mini ? "rgba(222,216,202,.85)" : "#ded8c8"; c.fillRect(tx(B.x0) - 2, ty(B.z0) - 2, (B.x1 - B.x0) * s + 4, (B.z1 - B.z0) * s + 4);
     // the rock: every cell with cliff under it, grey, darker the higher; then hatch strokes on the slopes
-    const G = mini ? 16 : 10;
+    const G = mini ? 6 : 4;
     for (let z = B.z0; z < B.z1; z += G) for (let x = B.x0; x < B.x1; x += G) {
       const h = skullH(x + G / 2, z + G / 2); if (h < 1.5) continue;
-      const k = Math.min(1, h / 36); c.fillStyle = "rgb(" + Math.round(120 - 50 * k) + "," + Math.round(122 - 50 * k) + "," + Math.round(118 - 46 * k) + ")";
+      const k = Math.min(1, h / 36); c.fillStyle = "rgb(" + Math.round(158 - 70 * k) + "," + Math.round(158 - 70 * k) + "," + Math.round(152 - 66 * k) + ")";
       c.fillRect(tx(x), ty(z), G * s + 0.6, G * s + 0.6);
     }
     if (!mini) {
       let seed = 99; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-      c.strokeStyle = "#2f312d"; c.lineWidth = 1;
-      for (let k = 0; k < 900; k++) { const x = B.x0 + rnd() * (B.x1 - B.x0), z = B.z0 + rnd() * (B.z1 - B.z0); const h = skullH(x, z); if (h < 6 || !this.inside(x, z)) continue; const px = tx(x), py = ty(z), l = 2 + rnd() * 3 + h * 0.06; c.beginPath(); c.moveTo(px - l, py + l * 0.55); c.lineTo(px, py - l * 0.65); c.lineTo(px + l, py + l * 0.55); c.stroke(); }
+      c.strokeStyle = "rgba(40,42,38,.75)"; c.lineWidth = 1;
+      for (let k = 0; k < 1400; k++) { const x = B.x0 + rnd() * (B.x1 - B.x0), z = B.z0 + rnd() * (B.z1 - B.z0); const h = skullH(x, z); if (h < 6 || !this.inside(x, z)) continue; const px = tx(x), py = ty(z), l = 2 + rnd() * 3 + h * 0.06; c.beginPath(); c.moveTo(px - l, py + l * 0.55); c.lineTo(px, py - l * 0.65); c.lineTo(px + l, py + l * 0.55); c.stroke(); }
       c.fillStyle = "rgba(120,110,92,.45)";
       for (let k = 0; k < 500; k++) { const x = B.x0 + rnd() * (B.x1 - B.x0), z = B.z0 + rnd() * (B.z1 - B.z0); if (!this.inside(x, z) || skullH(x, z) > 0.5) continue; c.fillRect(tx(x), ty(z), 1.2, 1.2); }
       // the tunnels: dark gaps through the rock
@@ -534,9 +553,6 @@ export class SkullValley {
       }
     }
     c.restore();
-    // the cliff line along the red line
-    c.strokeStyle = mini ? "rgba(40,42,40,.9)" : "#2c2e2b"; c.lineWidth = Math.max(1.5, 3 * s); c.lineJoin = "round";
-    c.beginPath(); for (let i = 0; i <= S.edgeN; i++) { const [x, z] = P[i]; i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z)); } c.stroke();
   }
   paintGlyphs(c, tx, ty, s, disc) {
     const S = K(), bone = "#efe9da", ink = "#3a3430";

@@ -1,27 +1,27 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=83";
-import { STR } from "../strings.js?v=83";
+import { CFG, ASSET_V } from "./config.js?v=84";
+import { STR } from "../strings.js?v=84";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=83";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=83";
-import { Forest } from "./forest.js?v=83";   // update 69
-import { Potions } from "./potions.js?v=83";   // update 73
-import { Volcano } from "./volcano.js?v=83";   // update 74
-import { HiddenForest } from "./hidden.js?v=83";
-import { SkullValley } from "./skull.js?v=83";   // update 81   // update 75
-import { ClipAnimator } from "./skeletal.js?v=83";
-import { AudioMan } from "./audio.js?v=83";
-import { UI } from "./ui.js?v=83";
-import { World } from "./world.js?v=83";
-import { Player } from "./player.js?v=83";
-import { Creature, ItemDrop } from "./entities.js?v=83";
-import { GameMap } from "./map.js?v=83";
-import { FarmGame } from "./farmgame.js?v=83";
-import { ElisiaSystem } from "./elisia.js?v=83";   // update 35
-import { DesertSystem } from "./desert.js?v=83";
-import { PortalSystem } from "./portals.js?v=83";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=83";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=84";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=84";
+import { Forest } from "./forest.js?v=84";   // update 69
+import { Potions } from "./potions.js?v=84";   // update 73
+import { Volcano } from "./volcano.js?v=84";   // update 74
+import { HiddenForest } from "./hidden.js?v=84";
+import { SkullValley } from "./skull.js?v=84";   // update 81   // update 75
+import { ClipAnimator } from "./skeletal.js?v=84";
+import { AudioMan } from "./audio.js?v=84";
+import { UI } from "./ui.js?v=84";
+import { World } from "./world.js?v=84";
+import { Player } from "./player.js?v=84";
+import { Creature, ItemDrop } from "./entities.js?v=84";
+import { GameMap } from "./map.js?v=84";
+import { FarmGame } from "./farmgame.js?v=84";
+import { ElisiaSystem } from "./elisia.js?v=84";   // update 35
+import { DesertSystem } from "./desert.js?v=84";
+import { PortalSystem } from "./portals.js?v=84";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=84";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",

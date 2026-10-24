@@ -2,7 +2,7 @@
 // (who may cross the line), map.js and skull.js (the valley itself). Nothing here imports the world, so nothing cycles.
 // The valley is a wasteland of rock: the cliff ridge along the user's red line, a mountain wall along the map's edge,
 // the drawn ridges, and a seeded field of rocky hills between them, with tunnels bored through the biggest.
-import { CFG } from "./config.js?v=83";
+import { CFG } from "./config.js?v=84";
 
 export function pointInPoly(poly, x, z) {
   let inside = false;
@@ -53,6 +53,16 @@ export function skullHills() {
   }
   HILLS = out; return out;
 }
+// the hills bucketed on a 60 m grid: a height query loops only the hills that reach its cell
+let HGRID = null;
+function hillGrid() {
+  if (HGRID) return HGRID;
+  const b = skullBounds(), C = 60, x0 = b.x0 - 80, z0 = b.z0 - 80, nx = Math.ceil((b.x1 + 80 - x0) / C) + 1, nz = Math.ceil((b.z1 + 80 - z0) / C) + 1;
+  const cells = new Array(nx * nz); for (let i = 0; i < cells.length; i++) cells[i] = [];
+  skullHills().forEach((h) => { const R = h[2] * 1.4; const i0 = Math.max(0, Math.floor((h[0] - R - x0) / C)), i1 = Math.min(nx - 1, Math.floor((h[0] + R - x0) / C)), j0 = Math.max(0, Math.floor((h[1] - R - z0) / C)), j1 = Math.min(nz - 1, Math.floor((h[1] + R - z0) / C)); for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) cells[j * nx + i].push(h); });
+  HGRID = { x0, z0, C, nx, nz, cells }; return HGRID;
+}
+function hillsNear(x, z) { const G = hillGrid(); const i = Math.floor((x - G.x0) / G.C), j = Math.floor((z - G.z0) / G.C); if (i < 0 || j < 0 || i >= G.nx || j >= G.nz) return []; return G.cells[j * G.nx + i]; }
 // the tunnels: the drawn four, plus one bored through each of the biggest hills
 export function skullTunnels() {
   if (TUNNELS) return TUNNELS;
@@ -84,13 +94,13 @@ export function skullH(x, z) {
     ridge(ax, az, bx, bz, S.edgeRidge.h, S.edgeRidge.w);
   }
   for (const line of S.ridges) for (let i = 0; i < line.length - 1; i++) ridge(line[i][0], line[i][1], line[i + 1][0], line[i + 1][1], S.ridgeH, S.ridgeW);
-  for (const [hx, hz, r, H, a] of skullHills()) {   // the hills: a stretched bump, broken by the jag
+  for (const [hx, hz, r, H, a] of hillsNear(x, z)) {   // the hills: a stretched bump, broken by the jag
     const dx = x - hx, dz = z - hz; if (Math.abs(dx) > r * 1.4 || Math.abs(dz) > r * 1.4) continue;
     const u = dx * Math.cos(a) + dz * Math.sin(a), v = -dx * Math.sin(a) + dz * Math.cos(a);
     const d = Math.hypot(u / 1.35, v) / r; if (d >= 1) continue;
     h = Math.max(h, H * jag * smooth((1 - d) / 0.7));
   }
-  h *= skullFlat(x, z);
+  if (h > 0) h *= skullFlat(x, z);
   // the mountain wall along the map's edge (the valley's south and east sides), never levelled
   if (S.edgeWall) { for (let i = S.edgeN; i < S.edgeN + 2; i++) { const d = segDist(x, z, P[i][0], P[i][1], P[i + 1][0], P[i + 1][1]); if (d < S.edgeWall.w) h = Math.max(h, S.edgeWall.h * (0.85 + 0.15 * jag) * smooth((1 - d / S.edgeWall.w) / 0.6)); } }
   if (h > 0 && tunnelDist(x, z) < S.tunnelHw) return 0;   // the tunnels are cut through the rock
