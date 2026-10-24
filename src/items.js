@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=87";
-import { STR } from "../strings.js?v=87";
+import { CFG, ASSET_V } from "./config.js?v=88";
+import { STR } from "../strings.js?v=88";
 
 // Icon sheet: 4x4 grid, 13 icons, generated on a blue key background.
 // Sliced + chroma-keyed at load time into per-item canvases.

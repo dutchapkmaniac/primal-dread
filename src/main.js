@@ -1,28 +1,28 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=87";
-import { STR } from "../strings.js?v=87";
+import { CFG, ASSET_V } from "./config.js?v=88";
+import { STR } from "../strings.js?v=88";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=87";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=87";
-import { Forest } from "./forest.js?v=87";   // update 69
-import { Potions } from "./potions.js?v=87";   // update 73
-import { Volcano } from "./volcano.js?v=87";   // update 74
-import { HiddenForest } from "./hidden.js?v=87";
-import { SkullValley } from "./skull.js?v=87";   // update 81
-import { BoneTunnel } from "./bonetunnel.js?v=87";   // update 82   // update 75
-import { ClipAnimator } from "./skeletal.js?v=87";
-import { AudioMan } from "./audio.js?v=87";
-import { UI } from "./ui.js?v=87";
-import { World } from "./world.js?v=87";
-import { Player } from "./player.js?v=87";
-import { Creature, ItemDrop } from "./entities.js?v=87";
-import { GameMap } from "./map.js?v=87";
-import { FarmGame } from "./farmgame.js?v=87";
-import { ElisiaSystem } from "./elisia.js?v=87";   // update 35
-import { DesertSystem } from "./desert.js?v=87";
-import { PortalSystem } from "./portals.js?v=87";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=87";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=88";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=88";
+import { Forest } from "./forest.js?v=88";   // update 69
+import { Potions } from "./potions.js?v=88";   // update 73
+import { Volcano } from "./volcano.js?v=88";   // update 74
+import { HiddenForest } from "./hidden.js?v=88";
+import { SkullValley } from "./skull.js?v=88";   // update 81
+import { BoneTunnel } from "./bonetunnel.js?v=88";   // update 82   // update 75
+import { ClipAnimator } from "./skeletal.js?v=88";
+import { AudioMan } from "./audio.js?v=88";
+import { UI } from "./ui.js?v=88";
+import { World } from "./world.js?v=88";
+import { Player } from "./player.js?v=88";
+import { Creature, ItemDrop } from "./entities.js?v=88";
+import { GameMap } from "./map.js?v=88";
+import { FarmGame } from "./farmgame.js?v=88";
+import { ElisiaSystem } from "./elisia.js?v=88";   // update 35
+import { DesertSystem } from "./desert.js?v=88";
+import { PortalSystem } from "./portals.js?v=88";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=88";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -70,7 +70,7 @@ const verbFor = (label) => {
 };
 
 const GLB_IDS = ["majunga", "theri", "pachy", "hendrik", "sv_tent", "sv_chest", "sv_skull", "sv_ribcage", "sv_spine", "sv_skeleton",   // update 81: Skull Valley
-  "bonementor", "prisoner_m1", "prisoner_m2", "prisoner_f1", "prisoner_f2", "sv_mouthcave", "sv_skullcliff", "sv_bonearch", "sv_amberlantern", "sv_bonespear", "sv_garlic", "sv_ribcage_lo", "sv_skullmouth", "sv_boneportal",   // update 82: the Bone Mentor's tunnel; update 85: the lo-poly ribs, the skull mouth
+  "bonementor", "prisoner_m1", "prisoner_m2", "prisoner_f1", "prisoner_f2", "sv_mouthcave", "sv_skullcliff", "sv_bonearch", "sv_amberlantern", "sv_bonespear", "sv_garlic", "sv_ribcage_lo", "sv_skullmouth", "sv_boneportal", "sv_skull_lo", "sv_spine_lo",   // update 82: the Bone Mentor's tunnel; update 85: the lo-poly ribs, the skull mouth
   "trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_vaultdoor", "et_censer", "et_bench", "et_altar", "werewolf", "pig", "chicken", "tree", "appletree", "chest", "statue",
   "bedroll", "hutbed", "kitchen", "bill", "storagechest", "boulder",
   "door", "table", "chair", "lantern", "croc", "dinoegg", "metaldoor", "beaconlamp",
@@ -1266,6 +1266,7 @@ class Game {
     const inMt = !!(this.city && this.city.inMountain(this.player.pos.x, this.player.pos.z, this.player.pos.y));
     const boneK = this.bone ? this.bone.envK(this.player, k) : null;   // update 82: the tunnel is black, then lantern-dim
     this.world.updateEnv(nvg ? 0.08 : boneK !== null ? boneK : inDun ? 0.55 : inMt ? k * 0.8 : k, (inMt || boneK !== null) && !nvg);
+    if (boneK !== null && !nvg) this.bone.applyFog(this.scene);   /* update 88: darkness, not mist, inside the tunnel */
     if (this.elisia) this.elisia.applyMist(dt);   // update 35: her mist sits on top of the day's fog
     this.ui.nightVig(nvg ? 0 : (boneK !== null ? boneK : inDun ? 0.55 : inMt ? k * 0.4 : k) * 0.7);
     this.ui.nvgOverlay(nvg, cloakSee && !((sel && sel.id === "goggles") || (this.potions && this.potions.fx.nightvision > 0)) ? "amber" : "green");

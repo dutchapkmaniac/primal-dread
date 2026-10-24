@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=87";
+export const ASSET_V = "?v=88";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -633,7 +633,7 @@ export const CFG = {
   modelScale: { et_door: 4.0, et_fence: 1.8, et_collar: 1.0, et_vaultdoor: 6.0, et_censer: 1.4, et_bench: 2.4, et_altar: 13.5,   // update 43: fences a third taller, the giants' bench, the altar   // update 42 (Higgsfield text-to-3D)
     et_bed: 2.0, et_lamppost: 4.6, et_torchbearer: 5.2, et_chainpost: 3.6, et_ceilinglamp: 1.8, et_throne: 4.2, et_gate: 10,   // update 40
     etdagger3d: 0.95, etsword3d: 1.6, etspear3d: 2.6,   // update 40: the generated weapons (upright scans; turned to lie along -x in buildEternialWeapons)
-    trex: 5.4, trexgreen: 5.4, werewolf: 1.9, majunga: 5.4, theri: 7.0, pachy: 2.6, hendrik: 1.75, sv_tent: 4.2, sv_chest: 1.0, sv_skull: 28, sv_ribcage: 24, sv_ribcage_lo: 24, sv_skullmouth: 34, sv_boneportal: 30, sv_spine: 9, sv_skeleton: 12, bonementor: 6.0, prisoner_m1: 5.5, prisoner_m2: 5.4, prisoner_f1: 6.3, prisoner_f2: 5.1, sv_mouthcave: 16, sv_skullcliff: 34, sv_bonearch: 18, sv_amberlantern: 0.5, sv_bonespear: 2.4, sv_garlic: 1.6, /* update 81: Skull Valley */ pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
+    trex: 5.4, trexgreen: 5.4, werewolf: 1.9, majunga: 5.4, theri: 7.0, pachy: 2.6, hendrik: 1.75, sv_tent: 4.2, sv_chest: 1.0, sv_skull: 28, sv_skull_lo: 28, sv_spine_lo: 9, sv_ribcage: 24, sv_ribcage_lo: 24, sv_skullmouth: 34, sv_boneportal: 30, sv_spine: 9, sv_skeleton: 12, bonementor: 6.0, prisoner_m1: 5.5, prisoner_m2: 5.4, prisoner_f1: 6.3, prisoner_f2: 5.1, sv_mouthcave: 16, sv_skullcliff: 34, sv_bonearch: 18, sv_amberlantern: 0.5, sv_bonespear: 2.4, sv_garlic: 1.6, /* update 81: Skull Valley */ pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
     bedroll: 0.45, hutbed: 0.95, kitchen: 1.5, bill: 1.75, storagechest: 0.8, boulder: 1.9,
     door: 2.05, table: 0.9, chair: 1.05, lantern: 0.5, croc: 0.72, dinoegg: 1.15,
     metaldoor: 2.3, beaconlamp: 2.4,
@@ -680,7 +680,7 @@ export const CFG = {
     bedroll: 0, hutbed: 0, kitchen: 0, bill: 0, storagechest: 0, boulder: 0,
     door: 0, table: 0, chair: 0, lantern: 0, croc: 0, dinoegg: 0,
     spino: Math.PI,    // the image_to_3d rebuild came out tail-first
-    majunga: Math.PI, theri: Math.PI, pachy: Math.PI, hendrik: 0, sv_tent: 0, sv_chest: 0, sv_skull: 0, sv_ribcage: 0, sv_spine: 0, sv_skeleton: 0,   // update 81
+    majunga: Math.PI, theri: Math.PI, pachy: Math.PI, hendrik: 0, sv_tent: 0, sv_chest: 0, sv_skull: 0, sv_skull_lo: 0, sv_spine_lo: 0, sv_ribcage: 0, sv_spine: 0, sv_skeleton: 0,   // update 81
     bonementor: 0, prisoner_m1: 0, prisoner_m2: 0, prisoner_f1: 0, prisoner_f2: 0, sv_mouthcave: 0, sv_skullcliff: 0, sv_ribcage_lo: 0, sv_skullmouth: 0, sv_boneportal: 0, sv_bonearch: 0, sv_amberlantern: 0, sv_bonespear: 0, sv_garlic: 0,   // update 82
     goat: Math.PI,     // same flip, same cure
     trike: Math.PI,    // image_to_3d flips them all
@@ -877,7 +877,7 @@ export const CFG = {
     skullCave: { x: 900, z: 960, yaw: -0.6, clearR: 70, climbR: 22 },
     // the way to the eye-socket shelter, as fractions of the skull's box (x across, y up, z along its length): the mouth,
     // up through the bone, to the eye. The last three stretches are the narrow ones no hunter fits through.
-    eye: { path: [[0, 0.03, 0.46], [0, 0.07, 0.28], [-0.03, 0.17, 0.08], [-0.08, 0.3, -0.04], [-0.12, 0.4, 0.0], [-0.15, 0.46, 0.08], [-0.15, 0.47, 0.14], [-0.15, 0.47, 0.2]], hw: 3.2, narrowHw: 1.4, platR: 3.0 }   /* update 87: in through the mouth, a dungeon climb inside the rock, the room BEHIND the opened left eye socket (fx -0.15, fy 0.47, fz 0.2) */   /* update 86: through the mouth of the skull rock, up to its LEFT eye socket (measured on the scan: fx -0.15, fy 0.52, socket floor fz 0.22) */,   // no stretch steeper than ~25 degrees: you can walk it
+    eye: { path: [[0, 0.03, 0.46], [0, 0.07, 0.28], [-0.03, 0.17, 0.08], [-0.08, 0.3, -0.04], [-0.12, 0.4, 0.0], [-0.15, 0.44, 0.1], [-0.15, 0.44, 0.18], [-0.15, 0.44, 0.26]], hw: 3.2, narrowHw: 1.4, platR: 5.5 }   /* update 87: in through the mouth, a dungeon climb inside the rock, the room BEHIND the opened left eye socket (fx -0.15, fy 0.47, fz 0.2) */   /* update 86: through the mouth of the skull rock, up to its LEFT eye socket (measured on the scan: fx -0.15, fy 0.52, socket floor fz 0.22) */,   // no stretch steeper than ~25 degrees: you can walk it
     ribcage: { x: 560, z: 1080, yaw: 0.9 }, spine: { x: 1120, z: 740, yaw: 0.4 }, skeleton: { x: 800, z: 1230, yaw: 2.4 },
     camp: { x: 300, z: 1110, yaw: 2.2, r: 9 },
     dens: [{ x: 960, z: 1250, yaw: 2.6 }, { x: 1200, z: 480, yaw: -2.2 }, { x: 640, z: 860, yaw: 0.8 }], denScale: 0.3, denR: 14, denSafeR: 12,

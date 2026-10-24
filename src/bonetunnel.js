@@ -7,12 +7,13 @@
 // mouth; lose him there or behind the arches and the lanterns go back to orange. Past him: the amber mine and the great
 // chest, once a day. Giant garlic bread lies at the mouth (he likes it).
 import * as THREE from "three";
-import { CFG } from "./config.js?v=87";
-import { STR } from "../strings.js?v=87";
-import { pickWeighted } from "./rng.js?v=87";
-import { ClipAnimator } from "./skeletal.js?v=87";
-import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=87";   /* update 85: a living driver for rest-pose Meshy rigs */
+import { CFG } from "./config.js?v=88";
+import { STR } from "../strings.js?v=88";
+import { pickWeighted } from "./rng.js?v=88";
+import { ClipAnimator } from "./skeletal.js?v=88";
+import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=88";   /* update 85: a living driver for rest-pose Meshy rigs */
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
+const BLACK = new THREE.Color(0x000000);
 
 const B = () => CFG.bone;
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -26,8 +27,10 @@ export class BoneTunnel {
     this.lanterns = []; this.prisoners = []; this.amber = []; this.spears = []; this.hands = null; this.wall = null;
     this.alert = 0; this.chestDay = -1; this.breadDay = -1; this.mining = null; this.talkedF1 = false;
     this.buildPath();
+    this.chainMat = new THREE.MeshStandardMaterial({ color: 0x5a4a38, roughness: 0.9, metalness: 0.4 });
     this.buildTube();
     this.buildLanterns();
+    this.buildBoneWalls();
     this.buildPrisoners();
     this.buildMentor();
     this.buildDeep();
@@ -57,8 +60,8 @@ export class BoneTunnel {
   // ---------------- the tube: a floor ribbon, rock walls, a roof of ribs, colliders ----------------
   buildTube() {
     const C = B(), w = this.w, hw = C.halfW, H = C.height, N = this.pts.length;
-    const bone = w.mat("t_bonesand", 1, 1, 0xd8d2c4); bone.side = THREE.DoubleSide;
-    const rock = w.mat("t_darkcliff", 1, 1, 0x3b3c3e); rock.side = THREE.DoubleSide; if (rock.normalScale) rock.normalScale.set(0.5, 0.5);
+    const bone = w.mat("t_bonesand", 1, 1, 0xb4ac9e); bone.side = THREE.DoubleSide;   /* update 88: a dimmer sand, pale bone walls - no more black walls against a bright floor */
+    const rock = w.mat("t_darkcliff", 1, 1, 0xb8ae9e); rock.side = THREE.DoubleSide; if (rock.normalScale) rock.normalScale.set(0.6, 0.6);
     const floorV = [], floorUV = [], floorI = [], wallV = [], wallUV = [], wallI = [];
     for (let i = 0; i < N; i++) {
       const p = this.pts[i], t = this.tan[i], nx = -t.z, nz = t.x, u = i * this.step;
@@ -105,12 +108,32 @@ export class BoneTunnel {
     for (let s = C.darkLen; s < this.length - 10; s += C.lanternEvery) {
       for (const side of [1, -1]) {
         const i = Math.min(this.pts.length - 1, Math.round(s / this.step)), p = this.pts[i], t = this.tan[i], nx = -t.z, nz = t.x;
-        const x = p.x + nx * (hw - 0.6) * side, z = p.z + nz * (hw - 0.6) * side, y = p.y + 4.0;
-        if (lan) { const m = lan.model.clone(); m.position.set(x, y - 0.5, z); m.scale.multiplyScalar(1.3); this.group.add(m); }
-        const l = new THREE.PointLight(C.lanternColor, 4.2, 32, 1.6); l.position.set(x, y, z); this.group.add(l);
+        const x = p.x + nx * (hw - 1.4) * side, z = p.z + nz * (hw - 1.4) * side, y = p.y + 5.2;
+        if (lan) { const m = lan.model.clone(); m.position.set(x, y - 1.2, z); m.scale.multiplyScalar(3.4); this.group.add(m); const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, C.height - 5.6, 5), this.chainMat); ch.position.set(x, y + 0.4 + (C.height - 5.6) / 2, z); this.group.add(ch); }   /* update 88: a 1.7 m lantern on a chain from the vault */
+        const l = new THREE.PointLight(C.lanternColor, 6.5, 42, 1.5); l.position.set(x, y, z); this.group.add(l);
         this.lanterns.push({ light: l, s, x, z });
       }
       s += 0;
+    }
+  }
+  // ---------------- update 88: the architecture - stacked skulls and vertebra chains along the walls, chains from the vault in the hall ----------------
+  buildBoneWalls() {
+    const C = B(), A = this.g.assets.glb, hw = C.halfW, N = this.pts.length, sk = A.sv_skull_lo || A.sv_skull, sp = A.sv_spine_lo || A.sv_spine; if (!sk || !sp) return;
+    let seed = 7; const rng = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    if (!this.ribs) this.ribs = [];
+    const hall = (s) => s > 205 && s < 350;
+    for (let s = C.darkLen + 4; s < this.length - 8; s += hall(s) ? 4.5 : 9) {
+      for (const side of [1, -1]) {
+        const i = Math.min(N - 1, Math.round(s / this.step)), p = this.pts[i], t = this.tan[i], nx = -t.z, nz = t.x, yaw = Math.atan2(t.x, t.z);
+        const x = p.x + nx * (hw - 1.3) * side, z = p.z + nz * (hw - 1.3) * side;
+        if (rng() < 0.6) {   // a stack of skulls, two or three high, facing the way
+          const n = 2 + (rng() < 0.5 ? 1 : 0);
+          for (let k = 0; k < n; k++) { const m = sk.model.clone(); const sc = (2.3 + rng() * 1.1) / 28; m.scale.multiplyScalar(sc); m.position.set(x + (rng() - 0.5) * 0.6, p.y + k * 2.5, z + (rng() - 0.5) * 0.6); m.rotation.y = Math.atan2(-nx * side, -nz * side) + (rng() - 0.5) * 1.4; this.group.add(m); this.ribs.push({ m, s }); }
+        } else {   // a chain of vertebrae along the wall's foot
+          const m = sp.model.clone(); const sc = (5 + rng() * 3) / 9; m.scale.multiplyScalar(sc); m.position.set(x, p.y, z); m.rotation.y = yaw + (rng() - 0.5) * 0.4; this.group.add(m); this.ribs.push({ m, s });
+        }
+      }
+      if (hall(s)) { const i = Math.min(N - 1, Math.round(s / this.step)), p = this.pts[i], t = this.tan[i], nx = -t.z, nz = t.x; for (let k = 0; k < 2; k++) { const lat = (rng() - 0.5) * (hw * 2 - 6), len = 3 + rng() * 6; const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, len, 5), this.chainMat); ch.position.set(p.x + nx * lat + t.x * (rng() - 0.5) * 4, p.y + C.height - len / 2, p.z + nz * lat + t.z * (rng() - 0.5) * 4); this.group.add(ch); this.ribs.push({ m: ch, s }); } }   // chains from the vault
     }
   }
   // ---------------- the prisoners: four giants chained to the walls where the lanterns are ----------------
@@ -158,6 +181,8 @@ export class BoneTunnel {
   spawnBread() { if (this.breadDay === this.g.dayNum) return; this.breadDay = this.g.dayNum; const b = this.breadSpot; if (!this.g.drops.some((d) => d.id === "garlic_bread" && Math.hypot(d.pos ? d.pos.x - b.x : 0, d.pos ? d.pos.z - b.z : 0) < 6)) this.g.spawnDrop("garlic_bread", 1, b.x, b.z, b.y); }
 
   // ---------------- safety and the darkness: the first stretch is black, the rest lantern-lit ----------------
+  // update 88: the fog inside is darkness - black and close - not the valley's mist; applied after world.updateEnv each frame
+  applyFog(scene) { const p = this.g.player; if (!scene.fog || !this.inside(p.pos.x, p.pos.z, 1)) return; const q = this.where(p.pos.x, p.pos.z); if (q.s < 3) return; const t = Math.min(1, (q.s - 3) / 24), dark = q.s < B().darkLen, near = dark ? 2 : 9, far = dark ? 24 : 80; scene.fog.color.lerp(BLACK, t); scene.fog.near += (near - scene.fog.near) * t; scene.fog.far += (far - scene.fog.far) * t; if (scene.background && scene.background.isColor) scene.background.lerp(BLACK, t); }
   envK(p, dayK = 0) { if (!this.inside(p.pos.x, p.pos.z, 1)) return null; const q = this.where(p.pos.x, p.pos.z); const dark = q.s < B().darkLen ? 1.0 : B().litK; const t = Math.max(0, Math.min(1, (q.s - 3) / 24)); return dayK + (dark - dayK) * t; }   /* update 85: the day's light reaches 3 m in and dies over the next 24 */
   isSafe() { return false; }
 

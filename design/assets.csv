@@ -329,3 +329,5 @@ ui_greycloak,icon,assets/ui_greycloak.png,Higgsfield nano_banana_pro sheet C 202
 ui_garlicbread,icon,assets/ui_garlicbread.png,Higgsfield nano_banana_pro sheet C 2026-10-24 (2 cr), keyed in python (work/u82/key_icons.py),"update 86: item only on a transparent background"
 sv_boneportal,model,assets/models/sv_boneportal.glb,Higgsfield nano_banana_pro picture 66d75fcc (2 cr) + image_to_3d textured (user picture 2: stacked vertebra arches) 2026-10-24,"update 86: the 30 m portal of the Bone Mentor's tunnel"
 sv_skullcliff,model,assets/models/sv_skullcliff.glb,the v82 scan with its left eye socket opened into the hollow (work/u82 carve; original in work/u82/sv_skullcliff_orig.glb) 2026-10-24,"update 87: the Great Skull; the shelter room sits behind the opened eye"
+sv_skull_lo,model,assets/models/sv_skull_lo.glb,tools/glb_decimate.py of sv_skull to 4000 tris 2026-10-24,"update 88: the stacked skulls along the Bone Mentor's tunnel walls"
+sv_spine_lo,model,assets/models/sv_spine_lo.glb,tools/glb_decimate.py of sv_spine to 4000 tris 2026-10-24,"update 88: vertebra chains along the tunnel walls"
