@@ -11,14 +11,14 @@
 // hundred, one in fifty with the fossil pickaxe); sand mounds are dug with the spade (bones, a Majungasaurus tooth, the
 // same fossil roll).
 import * as THREE from "three";
-import { CFG } from "./config.js?v=88";
-import { STR } from "../strings.js?v=88";
-import { pickWeighted } from "./rng.js?v=88";
-import { iconUrl } from "./items.js?v=88";
-import { Inventory } from "./items.js?v=88";
-import { skullInside, skullH, skullCell, skullNode, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=88";
-import { ClipAnimator } from "./skeletal.js?v=88";
-import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=88";   /* update 85 */
+import { CFG } from "./config.js?v=89";
+import { STR } from "../strings.js?v=89";
+import { pickWeighted } from "./rng.js?v=89";
+import { iconUrl } from "./items.js?v=89";
+import { Inventory } from "./items.js?v=89";
+import { skullInside, skullH, skullCell, skullNode, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=89";
+import { ClipAnimator } from "./skeletal.js?v=89";
+import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=89";   /* update 85 */
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const K = () => CFG.skull;
@@ -141,6 +141,7 @@ export class SkullValley {
     this.place("sv_spine", S.spine.x, S.spine.z, S.spine.yaw);
     this.place("sv_skeleton", S.skeleton.x, S.skeleton.z, S.skeleton.yaw);
     this.bones = []; this.rocks = [];
+    this.buildRibHall();
     this.buildBones();
     this.buildRocks();
   }
@@ -178,6 +179,30 @@ export class SkullValley {
     };
     for (let i = 0; i < N.giant; i++) { const k = pick(); put(k, k[2][0] + this.rng() * (k[2][1] - k[2][0]), 30, 1.6); }
     for (let i = 0; i < N.medium; i++) { const k = pick(); put(k, (k[2][0] + this.rng() * (k[2][1] - k[2][0])) * 0.22, 9, 0.5); }
+  }
+  // ---------------- update 89: the drowned ribs - a giant's cage arching over a still pool, the sun in shafts through the bones ----------------
+  buildRibHall() {
+    const S = K(), R = S.ribHall; if (!R) return; const A = this.g.assets.glb, scene = this.g.scene, w = this.w;
+    const cage = A.sv_ribcage_lo || A.sv_ribcage, skull = A.sv_skull, spine = A.sv_spine, rubble = A.sv_skull_lo || A.sv_skull; if (!cage) return;   /* the one skull and the tail at full detail: the 4k copies read as blobs at this size */
+    const dx = Math.sin(R.yaw), dz = Math.cos(R.yaw), gy = w.groundHeight(R.x, R.z, 999);
+    // the pool: a dark bed and still water a hand above the sand (no digging: the valley's floor is a heightfield)
+    const pg = new THREE.Group(); pg.position.set(R.x, gy, R.z); pg.rotation.y = R.yaw; scene.add(pg);
+    const bed = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshStandardMaterial({ color: 0x24201c, roughness: 1 })); bed.rotation.x = -Math.PI / 2; bed.scale.set(R.poolR[1], R.poolR[0], 1); bed.position.y = 0.04; pg.add(bed);
+    const wm = new THREE.MeshStandardMaterial({ color: 0x8fb6be, transparent: true, opacity: 0.74, roughness: 0.08, metalness: 0.1, emissive: 0x0a2228 });
+    const tw = this.g.assets.tex && this.g.assets.tex.t_water; if (tw) { const t = tw.clone(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(7, 4); t.needsUpdate = true; wm.map = t; wm.color.setHex(0xd8dede); }
+    const water = new THREE.Mesh(new THREE.CircleGeometry(1, 48), wm); water.rotation.x = -Math.PI / 2; water.scale.set(R.poolR[1] - 1.5, R.poolR[0] - 1.5, 1); water.position.y = 0.34; pg.add(water); this.ribPool = water;
+    // the cage: two of the great rib cages end to end, the spine along the way, the ribs' feet in the water
+    const bb = new THREE.Box3().setFromObject(cage.model), sz = bb.getSize(new THREE.Vector3()), sc = R.w / sz.x, L = sz.z * sc, Hc = sz.y * sc;
+    for (let k = 0; k < R.cages; k++) { const t = (k - (R.cages - 1) / 2) * L * 0.92; const m = cage.model.clone(); m.scale.multiplyScalar(sc); m.position.set(R.x + dx * t, gy - 0.5, R.z + dz * t); m.rotation.y = R.yaw; scene.add(m); this.bones.push({ x: m.position.x, z: m.position.z, kind: "sv_ribcage", h: Hc, y: m.position.y, mesh: m }); }
+    if (skull) { const t = (R.cages / 2) * L * 0.92 + 7, m = skull.model.clone(); m.scale.multiplyScalar(0.5); m.position.set(R.x + dx * t, gy - 0.6, R.z + dz * t); m.rotation.y = R.yaw + 0.25; m.rotation.z = 0.12; scene.add(m); this.bones.push({ x: m.position.x, z: m.position.z, kind: "sv_skull", h: 14, y: m.position.y, mesh: m }); w.addTree(m.position.x, m.position.z, 6, "bone"); }
+    if (spine) { const t = -(R.cages / 2) * L * 0.92 - 10, m = spine.model.clone(); m.scale.multiplyScalar(2.6); m.position.set(R.x + dx * t, gy - 0.3, R.z + dz * t); m.rotation.y = R.yaw + Math.PI + 0.3; scene.add(m); this.bones.push({ x: m.position.x, z: m.position.z, kind: "sv_spine", h: 6, y: m.position.y, mesh: m }); }
+    // bone rubble round the pool's rim
+    if (rubble) for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2 + 0.2; const lx = Math.cos(a) * (R.poolR[1] + 3), lz = Math.sin(a) * (R.poolR[0] + 3); const m = rubble.model.clone(); m.scale.multiplyScalar(0.09 + (i % 3) * 0.03); const px = R.x + dx * lz - dz * lx, pz = R.z + dz * lz + dx * lx; m.position.set(px, w.groundHeight(px, pz, 999) - 0.3, pz); m.rotation.y = a + 1.2 + i; m.rotation.z = 0.15; scene.add(m); this.bones.push({ x: px, z: pz, kind: "sv_skull", h: 3, y: m.position.y, mesh: m }); }   /* small skulls round the rim */
+    // the sun in shafts: crossed additive planes hanging along the sun's line from the ribs down to the water
+    const sun = new THREE.Vector3(40, 70, 20).normalize(), sm = new THREE.MeshBasicMaterial({ color: 0xffe6b0, transparent: true, opacity: 0.05, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), sun); this.shafts = [];
+    for (let i = 0; i < R.shafts; i++) { const t = (i / (R.shafts - 1) - 0.5) * L * 0.92 * R.cages * 0.9, lat = Math.sin(i * 2.3) * 6; for (let c = 0; c < 2; c++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1.6, Hc * 0.8), sm); m.quaternion.copy(q); m.rotateY(c * Math.PI / 2 + R.yaw); m.position.set(R.x + dx * t - dz * lat + sun.x * Hc * 0.12, gy + Hc * 0.36, R.z + dz * t + dx * lat + sun.z * Hc * 0.12); scene.add(m); this.shafts.push(m); } }
+    if (!CFG.locations.some((l) => l.id === "ribhall")) CFG.locations.push({ id: "ribhall", x: R.x, z: R.z, r: 40 });
   }
   // ---------------- the boulders ----------------
   buildRocks() {
@@ -501,6 +526,7 @@ export class SkullValley {
     this.t += dt;
     if (g.dayNum !== this.day) { this.day = g.dayNum; for (const s of this.stones) if (s.left <= 0 && g.dayNum > s.emptyDay) { s.left = 1; if (s.mesh && s.scale0) s.mesh.scale.copy(s.scale0); } for (const d of this.digs) d.mesh.scale.y = 1; for (const d of this.dens) if (d.taken && g.dayNum >= d.giftDay + K2.giftRefillDays) d.taken = false; }
     this.updateHolds(dt);
+    if (this.shafts) { const k = Math.max(0, 1 - (this.w.nightK || 0) * 1.4); for (const m of this.shafts) m.visible = k > 0.05; if (this.shafts.length) this.shafts[0].material.opacity = 0.05 * k; }   /* update 89: no sun, no shafts */
     // bones and boulders beyond the fog are not drawn (the frustum alone leaves hundreds of scans in the draw list)
     this.cullT = (this.cullT || 0) - dt;
     if (this.cullT <= 0) { this.cullT = 0.3; const cam = g.camera.position, far = (g.scene.fog ? g.scene.fog.far : 400) + 20, f2 = far * far; for (const o of this.bones) if (o.mesh) o.mesh.visible = (o.x - cam.x) ** 2 + (o.z - cam.z) ** 2 < f2 + o.h * o.h; for (const o of this.rocks) if (o.mesh) o.mesh.visible = (o.x - cam.x) ** 2 + (o.z - cam.z) ** 2 < f2; }

@@ -7,11 +7,11 @@
 // mouth; lose him there or behind the arches and the lanterns go back to orange. Past him: the amber mine and the great
 // chest, once a day. Giant garlic bread lies at the mouth (he likes it).
 import * as THREE from "three";
-import { CFG } from "./config.js?v=88";
-import { STR } from "../strings.js?v=88";
-import { pickWeighted } from "./rng.js?v=88";
-import { ClipAnimator } from "./skeletal.js?v=88";
-import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=88";   /* update 85: a living driver for rest-pose Meshy rigs */
+import { CFG } from "./config.js?v=89";
+import { STR } from "../strings.js?v=89";
+import { pickWeighted } from "./rng.js?v=89";
+import { ClipAnimator } from "./skeletal.js?v=89";
+import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=89";   /* update 85: a living driver for rest-pose Meshy rigs */
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 const BLACK = new THREE.Color(0x000000);
 
@@ -109,7 +109,7 @@ export class BoneTunnel {
       for (const side of [1, -1]) {
         const i = Math.min(this.pts.length - 1, Math.round(s / this.step)), p = this.pts[i], t = this.tan[i], nx = -t.z, nz = t.x;
         const x = p.x + nx * (hw - 1.4) * side, z = p.z + nz * (hw - 1.4) * side, y = p.y + 5.2;
-        if (lan) { const m = lan.model.clone(); m.position.set(x, y - 1.2, z); m.scale.multiplyScalar(3.4); this.group.add(m); const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, C.height - 5.6, 5), this.chainMat); ch.position.set(x, y + 0.4 + (C.height - 5.6) / 2, z); this.group.add(ch); }   /* update 88: a 1.7 m lantern on a chain from the vault */
+        if (lan) { const m = lan.model.clone(); m.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.emissive = new THREE.Color(0xff7a18); o.material.emissiveIntensity = 0.9; } }); m.position.set(x, y - 1.2, z); m.scale.multiplyScalar(3.4); this.group.add(m); const core = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd080 })); core.position.set(x, y - 0.2, z); this.group.add(core);   /* update 89: the lantern itself glows, with a flame core */ const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, C.height - 5.6, 5), this.chainMat); ch.position.set(x, y + 0.4 + (C.height - 5.6) / 2, z); this.group.add(ch); }   /* update 88: a 1.7 m lantern on a chain from the vault */
         const l = new THREE.PointLight(C.lanternColor, 6.5, 42, 1.5); l.position.set(x, y, z); this.group.add(l);
         this.lanterns.push({ light: l, s, x, z });
       }
@@ -126,11 +126,9 @@ export class BoneTunnel {
       for (const side of [1, -1]) {
         const i = Math.min(N - 1, Math.round(s / this.step)), p = this.pts[i], t = this.tan[i], nx = -t.z, nz = t.x, yaw = Math.atan2(t.x, t.z);
         const x = p.x + nx * (hw - 1.3) * side, z = p.z + nz * (hw - 1.3) * side;
-        if (rng() < 0.6) {   // a stack of skulls, two or three high, facing the way
+        {   // a stack of skulls, two or three high, facing the way (update 89: the vertebra chains read as a blobby mess - skulls only)
           const n = 2 + (rng() < 0.5 ? 1 : 0);
           for (let k = 0; k < n; k++) { const m = sk.model.clone(); const sc = (2.3 + rng() * 1.1) / 28; m.scale.multiplyScalar(sc); m.position.set(x + (rng() - 0.5) * 0.6, p.y + k * 2.5, z + (rng() - 0.5) * 0.6); m.rotation.y = Math.atan2(-nx * side, -nz * side) + (rng() - 0.5) * 1.4; this.group.add(m); this.ribs.push({ m, s }); }
-        } else {   // a chain of vertebrae along the wall's foot
-          const m = sp.model.clone(); const sc = (5 + rng() * 3) / 9; m.scale.multiplyScalar(sc); m.position.set(x, p.y, z); m.rotation.y = yaw + (rng() - 0.5) * 0.4; this.group.add(m); this.ribs.push({ m, s });
         }
       }
       if (hall(s)) { const i = Math.min(N - 1, Math.round(s / this.step)), p = this.pts[i], t = this.tan[i], nx = -t.z, nz = t.x; for (let k = 0; k < 2; k++) { const lat = (rng() - 0.5) * (hw * 2 - 6), len = 3 + rng() * 6; const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, len, 5), this.chainMat); ch.position.set(p.x + nx * lat + t.x * (rng() - 0.5) * 4, p.y + C.height - len / 2, p.z + nz * lat + t.z * (rng() - 0.5) * 4); this.group.add(ch); this.ribs.push({ m: ch, s }); } }   // chains from the vault

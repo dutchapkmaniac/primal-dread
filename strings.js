@@ -553,6 +553,7 @@ export const STR = {
     eternius: "Eternius City",   // update 39
     skullvalley: "Skull Valley", hendrik: "Hendrik's Camp", skullcave: "The Great Skull", eyeshelter: "Eye-Socket Shelter",   // update 81
     bonetunnel: "The Bone Mentor's Tunnel",   // update 82
+    ribhall: "The Drowned Ribs",   // update 89
   },
   // update 81 (prompt 40): SKULL VALLEY
   skull: {
