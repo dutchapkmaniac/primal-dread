@@ -2,7 +2,7 @@
 // (who may cross the line), map.js and skull.js (the valley itself). Nothing here imports the world, so nothing cycles.
 // The valley is a wasteland of rock: the cliff ridge along the user's red line, a mountain wall along the map's edge,
 // the drawn ridges, and a seeded field of rocky hills between them, with tunnels bored through the biggest.
-import { CFG } from "./config.js?v=85";
+import { CFG } from "./config.js?v=86";
 
 // update 85: the first 60 m of the Bone Mentor's tunnel lie in the wall's rising foot. Where the rock's surface would cut
 // through the tube (lower than its roof) it is pushed a metre under the tube's floor instead - inside the skull mouth that
@@ -14,7 +14,7 @@ function boneMouthCut(x, z, h) {
     const [ax, az, ay] = P[i], [bx, bz, by] = P[i + 1], dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz) || 1;
     const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (L * L)));
     const px = ax + dx * t, pz = az + dz * t, lat = Math.hypot(x - px, z - pz), sl = s0 + t * L;
-    if (lat < hw && sl > 1 && sl < 60) { const fy = ay + (by - ay) * t; if (h < fy + H + 2) return Math.min(h, fy - 1); }
+    if (lat < hw && sl > -9 && sl < 60) { const fy = ay + (by - ay) * t; if (h < fy + H + 2) return Math.min(h, fy - 0.12); }   /* update 86: from 9 m before the portal's front, a hand under the floor */
     s0 += L;
   }
   return h;

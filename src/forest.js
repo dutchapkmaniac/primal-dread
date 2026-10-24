@@ -1,12 +1,12 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=85";
-import { STR } from "../strings.js?v=85";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=85";
+import { CFG } from "./config.js?v=86";
+import { STR } from "../strings.js?v=86";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=86";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { Creature, ItemDrop } from "./entities.js?v=85";
-import { hiddenLakeR } from "./hidden.js?v=85";
-import { riverProfileY } from "./desert.js?v=85";   // update 80   // update 79: the hidden lake is a bowl in the hills
-import { iconUrl } from "./items.js?v=85";
+import { Creature, ItemDrop } from "./entities.js?v=86";
+import { hiddenLakeR } from "./hidden.js?v=86";
+import { riverProfileY } from "./desert.js?v=86";   // update 80   // update 79: the hidden lake is a bowl in the hills
+import { iconUrl } from "./items.js?v=86";
 
 // ============================================================================
 // update 69 (prompt37, update 1): the forest dressed up. Mild hills (makeHills, used by World.groundHeight and the forest

@@ -11,14 +11,14 @@
 // hundred, one in fifty with the fossil pickaxe); sand mounds are dug with the spade (bones, a Majungasaurus tooth, the
 // same fossil roll).
 import * as THREE from "three";
-import { CFG } from "./config.js?v=85";
-import { STR } from "../strings.js?v=85";
-import { pickWeighted } from "./rng.js?v=85";
-import { iconUrl } from "./items.js?v=85";
-import { Inventory } from "./items.js?v=85";
-import { skullInside, skullH, skullCell, skullNode, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=85";
-import { ClipAnimator } from "./skeletal.js?v=85";
-import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=85";   /* update 85 */
+import { CFG } from "./config.js?v=86";
+import { STR } from "../strings.js?v=86";
+import { pickWeighted } from "./rng.js?v=86";
+import { iconUrl } from "./items.js?v=86";
+import { Inventory } from "./items.js?v=86";
+import { skullInside, skullH, skullCell, skullNode, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=86";
+import { ClipAnimator } from "./skeletal.js?v=86";
+import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=86";   /* update 85 */
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const K = () => CFG.skull;
@@ -131,7 +131,7 @@ export class SkullValley {
   // ---------------- the giant bones ----------------
   buildLandmarks() {
     const S = K();
-    this.skullMesh = this.place("sv_skull", S.skullCave.x, S.skullCave.z, S.skullCave.yaw);
+    this.skullMesh = this.place(this.g.assets.glb.sv_skullcliff ? "sv_skullcliff" : "sv_skull", S.skullCave.x, S.skullCave.z, S.skullCave.yaw);   /* update 86: the Great Skull is the carved skull-face rock (the user's pick), set against a hill; the shelter sits in its left eye socket */
     if (this.skullMesh) { let tex = null; this.skullMesh.traverse((o) => { if (!tex && o.isMesh && o.material && o.material.map) tex = o.material.map; }); if (tex) { const t2 = tex.clone(); t2.wrapS = t2.wrapT = THREE.RepeatWrapping; t2.repeat.set(0.6, 0.6); t2.needsUpdate = true; this.boneMat.map = t2; this.boneMat.color.set(0xffffff); this.boneMat.needsUpdate = true; const bg = this.w.desert && this.w.desert.boneBridge; if (bg) bg.traverse((o) => { if (o.isMesh) o.material = this.boneMat; }); } }   // update 82: the bone bridge is bone too
     if (this.skullMesh) {   // its LOCAL box (the fractions of the way to the eye are in the skull's own frame): measured unturned, then turned back
       const m = this.skullMesh, yaw = m.rotation.y; m.rotation.y = 0; m.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(m); m.rotation.y = yaw; m.updateMatrixWorld(true);

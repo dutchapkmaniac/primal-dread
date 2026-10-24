@@ -1,28 +1,28 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=85";
-import { STR } from "../strings.js?v=85";
+import { CFG, ASSET_V } from "./config.js?v=86";
+import { STR } from "../strings.js?v=86";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=85";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=85";
-import { Forest } from "./forest.js?v=85";   // update 69
-import { Potions } from "./potions.js?v=85";   // update 73
-import { Volcano } from "./volcano.js?v=85";   // update 74
-import { HiddenForest } from "./hidden.js?v=85";
-import { SkullValley } from "./skull.js?v=85";   // update 81
-import { BoneTunnel } from "./bonetunnel.js?v=85";   // update 82   // update 75
-import { ClipAnimator } from "./skeletal.js?v=85";
-import { AudioMan } from "./audio.js?v=85";
-import { UI } from "./ui.js?v=85";
-import { World } from "./world.js?v=85";
-import { Player } from "./player.js?v=85";
-import { Creature, ItemDrop } from "./entities.js?v=85";
-import { GameMap } from "./map.js?v=85";
-import { FarmGame } from "./farmgame.js?v=85";
-import { ElisiaSystem } from "./elisia.js?v=85";   // update 35
-import { DesertSystem } from "./desert.js?v=85";
-import { PortalSystem } from "./portals.js?v=85";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=85";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=86";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=86";
+import { Forest } from "./forest.js?v=86";   // update 69
+import { Potions } from "./potions.js?v=86";   // update 73
+import { Volcano } from "./volcano.js?v=86";   // update 74
+import { HiddenForest } from "./hidden.js?v=86";
+import { SkullValley } from "./skull.js?v=86";   // update 81
+import { BoneTunnel } from "./bonetunnel.js?v=86";   // update 82   // update 75
+import { ClipAnimator } from "./skeletal.js?v=86";
+import { AudioMan } from "./audio.js?v=86";
+import { UI } from "./ui.js?v=86";
+import { World } from "./world.js?v=86";
+import { Player } from "./player.js?v=86";
+import { Creature, ItemDrop } from "./entities.js?v=86";
+import { GameMap } from "./map.js?v=86";
+import { FarmGame } from "./farmgame.js?v=86";
+import { ElisiaSystem } from "./elisia.js?v=86";   // update 35
+import { DesertSystem } from "./desert.js?v=86";
+import { PortalSystem } from "./portals.js?v=86";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=86";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -70,7 +70,7 @@ const verbFor = (label) => {
 };
 
 const GLB_IDS = ["majunga", "theri", "pachy", "hendrik", "sv_tent", "sv_chest", "sv_skull", "sv_ribcage", "sv_spine", "sv_skeleton",   // update 81: Skull Valley
-  "bonementor", "prisoner_m1", "prisoner_m2", "prisoner_f1", "prisoner_f2", "sv_mouthcave", "sv_skullcliff", "sv_bonearch", "sv_amberlantern", "sv_bonespear", "sv_garlic", "sv_ribcage_lo", "sv_skullmouth",   // update 82: the Bone Mentor's tunnel; update 85: the lo-poly ribs, the skull mouth
+  "bonementor", "prisoner_m1", "prisoner_m2", "prisoner_f1", "prisoner_f2", "sv_mouthcave", "sv_skullcliff", "sv_bonearch", "sv_amberlantern", "sv_bonespear", "sv_garlic", "sv_ribcage_lo", "sv_skullmouth", "sv_boneportal",   // update 82: the Bone Mentor's tunnel; update 85: the lo-poly ribs, the skull mouth
   "trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_vaultdoor", "et_censer", "et_bench", "et_altar", "werewolf", "pig", "chicken", "tree", "appletree", "chest", "statue",
   "bedroll", "hutbed", "kitchen", "bill", "storagechest", "boulder",
   "door", "table", "chair", "lantern", "croc", "dinoegg", "metaldoor", "beaconlamp",

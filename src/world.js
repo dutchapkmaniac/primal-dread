@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=85";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=86";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=85";
-import { Desert } from "./desert.js?v=85";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=85";
+import { CFG } from "./config.js?v=86";
+import { Desert } from "./desert.js?v=86";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=86";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,9 +11,9 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=85";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=85";
-import { pointInPoly, hiddenPathDist } from "./hidden.js?v=85";   // update 75   // update 69: the forest's mild hills
-import { skullInside, skullH, skullCell, skullGround } from "./skull_shape.js?v=85";   // update 81: Skull Valley's floor and cliffs
+import { makeHills } from "./forest.js?v=86";
+import { pointInPoly, hiddenPathDist } from "./hidden.js?v=86";   // update 75   // update 69: the forest's mild hills
+import { skullInside, skullH, skullCell, skullGround } from "./skull_shape.js?v=86";   // update 81: Skull Valley's floor and cliffs
 
 export class World {
   constructor(scene, assets, rng) {

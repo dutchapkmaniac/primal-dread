@@ -7,11 +7,11 @@
 // mouth; lose him there or behind the arches and the lanterns go back to orange. Past him: the amber mine and the great
 // chest, once a day. Giant garlic bread lies at the mouth (he likes it).
 import * as THREE from "three";
-import { CFG } from "./config.js?v=85";
-import { STR } from "../strings.js?v=85";
-import { pickWeighted } from "./rng.js?v=85";
-import { ClipAnimator } from "./skeletal.js?v=85";
-import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=85";   /* update 85: a living driver for rest-pose Meshy rigs */
+import { CFG } from "./config.js?v=86";
+import { STR } from "../strings.js?v=86";
+import { pickWeighted } from "./rng.js?v=86";
+import { ClipAnimator } from "./skeletal.js?v=86";
+import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=86";   /* update 85: a living driver for rest-pose Meshy rigs */
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const B = () => CFG.bone;
@@ -82,7 +82,7 @@ export class BoneTunnel {
     mk(roofV, roofUV, roofI, rock);
     const rib = this.g.assets.glb.sv_ribcage_lo || this.g.assets.glb.sv_ribcage; this.ribs = [];   /* update 85: the 7k-tri copy, 26 of them */
     if (rib) {
-      const bb = new THREE.Box3().setFromObject(rib.model), sz = bb.getSize(new THREE.Vector3()), mul = (hw * 2 + 3) / sz.x;
+      const bb = new THREE.Box3().setFromObject(rib.model), sz = bb.getSize(new THREE.Vector3()), mul = (hw * 2 + 5) / sz.x;
       for (let s = 9; s < this.length - 6; s += C.ribEvery) {
         const i = Math.min(N - 1, Math.round(s / this.step)), p = this.pts[i], t = this.tan[i];
         const m = rib.model.clone(); m.scale.multiplyScalar(mul); m.position.set(p.x, p.y - 0.6, p.z); m.rotation.y = Math.atan2(t.x, t.z); this.group.add(m); this.ribs.push({ m, s });   /* update 85: the spine runs ALONG the way, the ribs vault over it (the old +PI/2 stood them across it like a comb) */
@@ -90,12 +90,14 @@ export class BoneTunnel {
     }
     // the mouth: the bone arch (its own scan) and, until you are close, a black veil over the dark beyond it
     const arch = this.g.assets.glb.sv_bonearch, p0 = this.pts[0], t0 = this.tan[0];
-    if (arch) { const m = arch.model.clone(); const bb = new THREE.Box3().setFromObject(m), sz = bb.getSize(new THREE.Vector3()); m.scale.multiplyScalar((hw * 2 + 6) / sz.x); const i8 = Math.min(N - 1, Math.round(8 / this.step)), p8 = this.pts[i8], t8 = this.tan[i8]; m.position.set(p8.x, p8.y - 0.2, p8.z); m.rotation.y = Math.atan2(t8.x, t8.z); this.group.add(m); }   /* update 85: 8 m in, seen through the skull's teeth */
-    // update 85: the mouth is a skull carved in the wall's foot - the way runs in through its teeth. sv_skullmouth is the cliff
-    // scan with the corridor cut out of it, drawn front-faces-only: from inside you see the tube, never the block's belly
-    const sm = this.g.assets.glb.sv_skullmouth;
-    if (sm) { const m = sm.model.clone(); m.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.side = THREE.FrontSide; } }); const bb = new THREE.Box3().setFromObject(m), sz = bb.getSize(new THREE.Vector3()); const i16 = Math.min(N - 1, Math.round(16 / this.step)), pc = this.pts[i16]; m.position.set(pc.x, 0, pc.z); m.rotation.y = Math.atan2(t0.x, t0.z) + Math.PI; this.group.add(m); this.mouthRock = m;
-      const W = sz.x / 2, D = sz.z / 2; w.addBox(pc.x - D, pc.x + D, -2, 40, pc.z + 8.5, pc.z + W); w.addBox(pc.x - D, pc.x + D, -2, 40, pc.z - W, pc.z - 8.5); }   /* its cheeks are solid; the first stretch runs along +x */
+    if (arch && !this.g.assets.glb.sv_boneportal) { const m = arch.model.clone(); const bb = new THREE.Box3().setFromObject(m), sz = bb.getSize(new THREE.Vector3()); m.scale.multiplyScalar((hw * 2 + 6) / sz.x); const i8 = Math.min(N - 1, Math.round(8 / this.step)), p8 = this.pts[i8], t8 = this.tan[i8]; m.position.set(p8.x, p8.y - 0.2, p8.z); m.rotation.y = Math.atan2(t8.x, t8.z); this.group.add(m); }   /* update 85: 8 m in, seen through the skull's teeth */
+    // update 86: the mouth is the stacked-vertebrae portal (sv_boneportal, the scan of the user's picture) set in a sheer
+    // hill (CFG.skull.fixedHills) that rises steeply right behind it and swallows its back half; the way inside is cut through its rings.
+    // The skull rock of v85 went to the Great Skull. Inside, past the portal, it is black.
+    const i2 = Math.min(N - 1, Math.round(2 / this.step)), pm = this.pts[i2], tm = this.tan[i2], mouthYaw = Math.atan2(tm.x, tm.z);
+    const portal = this.g.assets.glb.sv_boneportal;
+    if (portal) { const m = portal.model.clone(); const bb = new THREE.Box3().setFromObject(m), sz = bb.getSize(new THREE.Vector3()); const k = C.portalH / sz.y; m.scale.multiplyScalar(k); const depth = sz.z * k, wide = sz.x * k; m.position.set(pm.x + tm.x * (depth / 2 - 8), pm.y - 0.3, pm.z + tm.z * (depth / 2 - 8)); m.rotation.y = mouthYaw + Math.PI; this.group.add(m); this.portal = m;
+      for (const side of [1, -1]) w.addBox(pm.x - 8, pm.x + 24, -2, 46, pm.z + (side > 0 ? hw + 1.5 : -wide / 2), pm.z + (side > 0 ? wide / 2 : -(hw + 1.5))); }   /* its rings are solid beside the way; the first stretch runs along +x; the hill (CFG.skull.fixedHills) swallows its back half */
     { const i = Math.min(N - 1, Math.round(16 / this.step)), p = this.pts[i], t = this.tan[i]; const veil = new THREE.Mesh(new THREE.PlaneGeometry(hw * 2 + 6, H + 4), new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, fog: false })); veil.position.set(p.x, p.y + H / 2, p.z); veil.rotation.y = Math.atan2(t.x, t.z); this.group.add(veil); this.veil = veil; }
   }
   buildLanterns() {
@@ -103,7 +105,7 @@ export class BoneTunnel {
     for (let s = C.darkLen; s < this.length - 10; s += C.lanternEvery) {
       for (const side of [1, -1]) {
         const i = Math.min(this.pts.length - 1, Math.round(s / this.step)), p = this.pts[i], t = this.tan[i], nx = -t.z, nz = t.x;
-        const x = p.x + nx * (hw - 0.6) * side, z = p.z + nz * (hw - 0.6) * side, y = p.y + 3.2;
+        const x = p.x + nx * (hw - 0.6) * side, z = p.z + nz * (hw - 0.6) * side, y = p.y + 4.0;
         if (lan) { const m = lan.model.clone(); m.position.set(x, y - 0.5, z); m.scale.multiplyScalar(1.3); this.group.add(m); }
         const l = new THREE.PointLight(C.lanternColor, 4.2, 32, 1.6); l.position.set(x, y, z); this.group.add(l);
         this.lanterns.push({ light: l, s, x, z });

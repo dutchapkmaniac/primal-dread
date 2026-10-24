@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=85";
-import { inFarm, inPasture } from "./farm.js?v=85";
-import { STR } from "../strings.js?v=85";
-import { icons } from "./items.js?v=85";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=85";
+import { CFG } from "./config.js?v=86";
+import { inFarm, inPasture } from "./farm.js?v=86";
+import { STR } from "../strings.js?v=86";
+import { icons } from "./items.js?v=86";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=86";
 
 // Creatures. Rigged GLBs (T-Rex, werewolf, chicken) play real walk/run clips;
 // the pig gets a procedural quadruped gait. The T-Rex cannot be killed.
@@ -16,7 +16,7 @@ function normalizeYaw(a) {
 }
 
 // update 80: the beasts the safe rooms keep out (Elisia alone walks where she likes)
-import { skullInside } from "./skull_shape.js?v=85";   // update 81
+import { skullInside } from "./skull_shape.js?v=86";   // update 81
 const HOSTILE = new Set(["werewolf", "trex", "mother", "spino", "spinobaby", "trike", "remotus", "altai", "croc", "meganeura", "alio", "pachy", "theri"]);
 export class Creature {
   constructor(type, asset, x, z, ctx, opts = {}) {
