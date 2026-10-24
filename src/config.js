@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=81";
+export const ASSET_V = "?v=82";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -280,7 +280,8 @@ export const CFG = {
     { id: "wolf_bag", cost: { thread: 1, wolf_fur: 3 }, needs: "needle" },
     { id: "arrow", count: 10, cost: { knife: 2, branch: 2, feather: 3 }, scroll: "arrows" },
     { id: "silver_arrow", count: 10, cost: { silver_dust: 1, knife: 2, branch: 2, feather: 3 }, scroll: "silver_arrows" },
-    { id: "bowl", cost: { branch: 2 }, needs: "knife" },   // update 29: two branches whittled into a bowl (the knife stays)
+    { id: "bowl", cost: { branch: 2 }, needs: "knife" },
+    { id: "spade", cost: { knife: 1, branch: 1, rope: 1 } },   // update 81: a blade lashed flat to a branch   // update 29: two branches whittled into a bowl (the knife stays)
     { id: "trex_dagger", cost: { trex_tooth: 1, branch: 1 } },   // update 38: a tooth lashed to a branch
     { id: "imp_dagger", cost: { imp_tooth: 1, branch: 1 } },
     { id: "wooden_staff", cost: { branch: 4 }, needs: "knife" },   // update 75: the Monial staff's three parts
@@ -404,6 +405,7 @@ export const CFG = {
     chocolate:     { hu: 15 },           // a survivor's sweet ration (update 27)
     // update 29: Dirk's farm
     cooked_beef:   { hu: 20 },           // update 30: cooked from raw_beef at a furnace or campfire
+    cooked_pachy:  { hu: 24, hp: 6 },    // update 81: the dome-head's meat, cooked
     blueberries:   { hu: 5 },            // a snack on their own — five of them crown a bowl of yogurt
     bowl_yogurt_blueberries: { hu: 20, hp: 20, special: "appleEnergy", returns: "bowl" }, // the bowl comes back
   },
@@ -414,10 +416,11 @@ export const CFG = {
   cookTime: 2.5,
   cookMap: { moonfish: "cooked_moonfish", raw_meganeura: "cooked_meganeura", raw_pork: "cooked_pork", raw_chicken: "cooked_chicken", egg: "cooked_eggs", raw_wolf: "cooked_wolf", raw_fish: "cooked_fish", raw_trex: "cooked_trex", raw_goat: "cooked_goat",
     bowl_milk: "bowl_yogurt",            // update 29: milk sets into yogurt (needs a lemon + the scroll, see cookExtra)
-    raw_beef: "cooked_beef" },           // update 30: a cow's meat comes raw
+    raw_beef: "cooked_beef",           // update 30: a cow's meat comes raw
+    raw_pachy: "cooked_pachy" },       // update 81: Pachy meat
   // the campfire has no pan — meat only, no eggs
-  cookedMeat: ["cooked_pork", "cooked_chicken", "cooked_wolf", "cooked_fish", "cooked_trex", "cooked_goat", "cooked_beef"],   // update 36: what an altai steals
-  campfireCooks: ["raw_pork", "raw_chicken", "raw_wolf", "raw_fish", "raw_trex", "raw_goat", "bowl_milk", "raw_beef"],
+  cookedMeat: ["cooked_pork", "cooked_chicken", "cooked_wolf", "cooked_fish", "cooked_trex", "cooked_goat", "cooked_beef", "cooked_pachy"],   // update 36: what an altai steals
+  campfireCooks: ["raw_pork", "raw_chicken", "raw_wolf", "raw_fish", "raw_trex", "raw_goat", "bowl_milk", "raw_beef", "raw_pachy"],
   // update 29: two-ingredient cooks — the raw item plus a SECOND item from the
   // pack, and only once the matching scroll has been studied
   cookExtra: { bowl_milk: { needs: "lemon", scroll: "yogurt" } },
@@ -515,8 +518,8 @@ export const CFG = {
       // update 39: the user's red line — the same course ×1.353 (longer, same shape), entering the west
       // edge at z ~276 and leaving the south edge at x ~248; the ends run on past the edge into the mist
       points: [[-1180, 153], [-1128, 190], [-894, 358], [-786, 416], [-643, 464], [-556, 493], [-481, 543], [-410, 587], [-364, 620],
-        [-266, 657], [-194, 692], [-122, 763], [-24, 817], [68, 861], [147, 922], [219, 977], [308, 1072], [360, 1128]] },
-    bridges: [[-834, 405], [-364, 620], [68, 861], [197, 954]],   // update 39: moved with the river
+        [-266, 657], [-194, 692], [-122, 763], [-24, 817], [68, 861], [90, 975], [185, 1120], [250, 1240], [290, 1340]] },   // update 81: the tail bends south along the user's blue line - Skull Valley lies east of it
+    bridges: [[-834, 405], [-364, 620], [68, 861], [185, 1120]],   // update 39: moved with the river; update 81: the fourth is the BONE BRIDGE into Skull Valley
     // update 37: arched decks (arch = the rise in the middle) with solid rails railT thick — enter only from the ends
     bridge: { halfWidth: 1.8, overhang: 7, deckY: 0.6, arch: 1.3, railT: 0.5, endY: 0.03 },   // update 38: endY — both ends meet the ground
     tent: { fromBridge: 32, along: 6, zoneR: 5 },        // Idris's tent: on the desert bank of the MIDDLE bridge
@@ -626,7 +629,7 @@ export const CFG = {
   modelScale: { et_door: 4.0, et_fence: 1.8, et_collar: 1.0, et_vaultdoor: 6.0, et_censer: 1.4, et_bench: 2.4, et_altar: 13.5,   // update 43: fences a third taller, the giants' bench, the altar   // update 42 (Higgsfield text-to-3D)
     et_bed: 2.0, et_lamppost: 4.6, et_torchbearer: 5.2, et_chainpost: 3.6, et_ceilinglamp: 1.8, et_throne: 4.2, et_gate: 10,   // update 40
     etdagger3d: 0.95, etsword3d: 1.6, etspear3d: 2.6,   // update 40: the generated weapons (upright scans; turned to lie along -x in buildEternialWeapons)
-    trex: 5.4, trexgreen: 5.4, werewolf: 1.9, pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
+    trex: 5.4, trexgreen: 5.4, werewolf: 1.9, majunga: 5.4, theri: 7.0, pachy: 2.6, hendrik: 1.75, sv_tent: 4.2, sv_chest: 1.0, sv_skull: 28, sv_ribcage: 24, sv_spine: 9, sv_skeleton: 12, /* update 81: Skull Valley */ pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
     bedroll: 0.45, hutbed: 0.95, kitchen: 1.5, bill: 1.75, storagechest: 0.8, boulder: 1.9,
     door: 2.05, table: 0.9, chair: 1.05, lantern: 0.5, croc: 0.72, dinoegg: 1.15,
     metaldoor: 2.3, beaconlamp: 2.4,
@@ -673,6 +676,7 @@ export const CFG = {
     bedroll: 0, hutbed: 0, kitchen: 0, bill: 0, storagechest: 0, boulder: 0,
     door: 0, table: 0, chair: 0, lantern: 0, croc: 0, dinoegg: 0,
     spino: Math.PI,    // the image_to_3d rebuild came out tail-first
+    majunga: Math.PI, theri: Math.PI, pachy: Math.PI, hendrik: 0, sv_tent: 0, sv_chest: 0, sv_skull: 0, sv_ribcage: 0, sv_spine: 0, sv_skeleton: 0,   // update 81
     goat: Math.PI,     // same flip, same cure
     trike: Math.PI,    // image_to_3d flips them all
     cow: 0, dog: 0, dirk: 0,    // update 29 (sam_3_3d lifts keep the photo's facing)
@@ -799,7 +803,7 @@ export const CFG = {
         sells: ["hammer", "rope", "torch", "tinderbox", "bandage", "needle", "thread", "arrow", "leather_gloves"],   // update 63: the knife, the axe and the bowl moved to the resource stall   // update 40: no climbing anchor
         buys: { knife: 3, hammer: 4, axe: 10, rope: 1, torch: 1, tinderbox: 2, bandage: 1, needle: 1, thread: 1, arrow: 1, pestle: 4, spear: 6, bowl: 1, crossbow: 40 } },
       { id: "rare", name: "Sethra's rarities", kind: "female", r: 44, th: 18, color: 0x3a2a6a, wares: 0xc9a227, blurb: "rareBlurb", lines: "rareLines", rare: true, sells: [],
-        buys: { emerald: 30, golden_apple: 100, silver_dagger: 100, silver_dagger_plain: 40, holy_water: 250, unholy_water: 250, trex_dagger: 25, imp_dagger: 500, fossil: 750, gold_statuette: 2500, trex_tooth: 15, imp_tooth: 60, unholy_tiara: 300, silver_bar: 40, croc_skin: 20, wolf_fur: 8, goat_horn: 6, wolf_tooth: 6 } },
+        buys: { emerald: 30, golden_apple: 100, silver_dagger: 100, silver_dagger_plain: 40, holy_water: 250, unholy_water: 250, trex_dagger: 25, imp_dagger: 500, fossil: 750, fossil_dickinsonia: 750, fossil_trilobite: 750, fossil_anomalocaris: 750, fossil_eurypterid: 750, fossil_dunkleosteus: 750, fossil_ammonite: 750, fossil_eoraptor: 750, fossil_archaeopteryx: 750, fossil_velociraptor: 750, fossil_megalodon: 750, pachy_skull: 400, majunga_tooth: 20, gold_statuette: 2500, trex_tooth: 15, imp_tooth: 60, unholy_tiara: 300, silver_bar: 40, croc_skin: 20, wolf_fur: 8, goat_horn: 6, wolf_tooth: 6 } },
       { id: "smith", name: "Ankhu the smith", kind: "male", r: 44, th: 52, color: 0x6a2a1a, wares: 0xd9ad2e, blurb: "smithBlurb", lines: "smithLines",
         sells: ["et_dagger", "et_sword", "et_spear"], buys: { et_dagger: 75, et_sword: 250, et_spear: 175 } },   // update 40: dearer
       // update 63: the fishing stall (five fish of each kind a day; bait and the rod always) and the resource stall (wood, the axe, the bowl, the knife)
@@ -843,6 +847,51 @@ export const CFG = {
       portal: [3.0, 0.5], portalYaw: -Math.PI / 2 },
     // fixed landing spots for places whose marker is not a place to stand (the rest are searched)
     arrivals: { temple: [0, -12], hut: [-22, -116], witch: [379.7, -445.3] },   // update 70: you arrive before the witch's door
+  },
+
+  // ---- update 81 (prompt 40): SKULL VALLEY ----
+  // The south-east corner beyond the river's last bend. poly = the valley floor (the user's red line is its north-west
+  // edge, edgeN segments of it carry the cliff ridge; the rest follows the river). World z grows south.
+  skull: {
+    poly: [[82, 868], [215, 1012], [420, 800], [800, 592], [1100, 382], [1345, 200], [1345, 1345], [302, 1345], [262, 1240], [197, 1120], [104, 975]],
+    edgeN: 5, edgeStart: 42, edgeRidge: { h: 15, w: 26 },
+    ridges: [[[470, 1240], [640, 1180], [760, 1090]], [[980, 1180], [1120, 1030], [1210, 880]], [[560, 760], [690, 700], [840, 690]], [[1000, 520], [1180, 560], [1290, 660]], [[520, 980], [600, 900]]],
+    ridgeH: 11, ridgeW: 20,
+    tunnels: [[[640, 1215], [640, 1145]], [[1085, 1055], [1155, 1005]], [[690, 735], [690, 665]], [[1180, 595], [1180, 525]]],
+    tunnelHw: 4, tunnelH: 6.5,
+    floorColor: 0xe9e4d6,
+    skullCave: { x: 900, z: 960, yaw: -0.6, clearR: 70, climbR: 22 },
+    // the way to the eye-socket shelter, as fractions of the skull's box (x across, y up, z along its length): the mouth,
+    // up through the bone, to the eye. The last three stretches are the narrow ones no hunter fits through.
+    eye: { path: [[0, 0.03, 0.52], [0, 0.08, 0.32], [-0.05, 0.22, 0.14], [-0.14, 0.3, 0.0], [-0.18, 0.38, 0.1], [-0.26, 0.44, 0.22], [-0.3, 0.48, 0.16], [-0.47, 0.6, 0.18]], hw: 3.2, narrowHw: 1.4, platR: 4.2 },   // no stretch steeper than ~25 degrees: you can walk it
+    ribcage: { x: 560, z: 1080, yaw: 0.9 }, spine: { x: 1120, z: 740, yaw: 0.4 }, skeleton: { x: 800, z: 1230, yaw: 2.4 },
+    camp: { x: 300, z: 1110, yaw: 2.2, r: 9 },
+    dens: [{ x: 960, z: 1250, yaw: 2.6 }, { x: 1200, z: 480, yaw: -2.2 }, { x: 640, z: 860, yaw: 0.8 }], denScale: 0.3, denR: 14, denSafeR: 12,
+    chestCount: 14, digCount: 14, stoneCount: 20, majungaCount: 8,
+    pachyHerds: [[760, 980], [1050, 820], [600, 1170], [1230, 1200]], pachyPerHerd: 3,
+    bumpChance: 1 / 3, bumpStun: 2, bumpPush: 9, bumpRecover: [2, 3],
+    rattleChance: 0.2, rattleR: 60,
+    veinChance: 0.35, fossilChance: 1 / 100, fossilChancePick: 1 / 50, mineTime: 2.4, digTime: 2.6,
+    digLoot: [["bone", 10, 1], ["majunga_tooth", 3, 1], ["fossil_vein", 4, 1], ["rope", 2, 1]],
+    giftRefillDays: 3, pickTradeVeins: 5, pickPerDay: 5, spadeVeins: 3,
+    amuletHp: 5, amuletSources: ["trex", "mother", "spino", "spinobaby", "croc", "alio", "pachy", "theri", "trike"],
+    whistleCd: 20, whistleAhead: 30, whistleR: 60,
+    howl: [40, 90],
+  },
+  majunga: { height: 5.4 },
+  pachy: {
+    height: 2.6, speed: 2.2, chaseSpeed: 7.5, hp: 150, sightR: 24, loseDist: 45, loseTime: 4, homeR: 26,
+    ram: { dmg: 25, knock: 9, dizzy: 3, cd: 3.5, chargeSpeed: 9, hitR: 2.6, flankD: 12 },
+    blockStand: 5.5, blockR: 18,
+    weapons: ["et_dagger", "et_sword", "et_spear", "silver_dagger"],
+    drops: [["raw_pachy", 2]], skullChance: 1 / 256, respawn: 420, fleeR: 0, fleeSpeed: 0,
+  },
+  theri: {
+    height: 7, speed: 1.6, chaseSpeed: 6, hp: 400, chaseOut: 30,
+    claw: { dmg: 20, cd: 2.2, range: 4.6, gap: 0.3 },
+    feeds: ["apple", "green_apple", "blueberries", "branch", "aloe_vera", "golden_apple", "mystic_apple"],
+    refuses: ["raw_pork", "raw_chicken", "raw_wolf", "raw_fish", "raw_trex", "raw_goat", "raw_beef", "raw_pachy", "cooked_pork", "cooked_chicken", "cooked_wolf", "cooked_fish", "cooked_trex", "cooked_goat", "cooked_beef", "cooked_pachy", "belladonna", "infial_belladonna"],
+    drops: [], respawn: 600, fleeR: 0, fleeSpeed: 0,
   },
 
   locations: [

@@ -1,6 +1,6 @@
-import { STR } from "../strings.js?v=81";
-import { CFG } from "./config.js?v=81";
-import { iconUrl } from "./items.js?v=81";
+import { STR } from "../strings.js?v=82";
+import { CFG } from "./config.js?v=82";
+import { iconUrl } from "./items.js?v=82";
 
 const $ = (s) => document.querySelector(s);
 
@@ -386,6 +386,11 @@ export class UI {
     if (sec <= 0) { el.style.display = "none"; return; }
     el.style.display = "block";
     el.textContent = `${STR.drunkLabel} ${Math.ceil(sec)}s`;
+  }
+  setDizzy(sec) {   // update 81: a dome-head's ram
+    const el = $("#drunk"); if (!el) return;
+    if (sec <= 0) { el.style.display = "none"; return; }
+    el.style.display = "block"; el.textContent = `${STR.dizzyLabel} ${Math.ceil(sec)}s`;
   }
   shake(intensity) { this.shakeV = Math.min(2, this.shakeV + intensity); }
 

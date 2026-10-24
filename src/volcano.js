@@ -5,9 +5,9 @@
 // turns it into the silver dagger (holy water) or the EVIL DAGGER (unholy water) that makes every werewolf a friend to talk
 // to and feed.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=81";
-import { ItemDrop } from "./entities.js?v=81";
-import { STR } from "../strings.js?v=81";
+import { CFG } from "./config.js?v=82";
+import { ItemDrop } from "./entities.js?v=82";
+import { STR } from "../strings.js?v=82";
 
 const V = () => CFG.volcano;
 
@@ -99,7 +99,7 @@ export class Volcano {
   // ---------------- the silver mine ----------------
   mineStart(ore, pickId) {
     const C = V(); if (this.mining && this.mining.ore === ore) return;
-    this.mining = { ore, pick: pickId, t: 0, need: pickId === "et_pickaxe" ? C.tEternal : C.tPlain, swingT: 0 };
+    this.mining = { ore, pick: pickId, t: 0, need: pickId === "fossil_pickaxe" ? C.tPlain / 2 : pickId === "et_pickaxe" ? C.tEternal : C.tPlain, swingT: 0 };
   }
   updateMining(dt) {
     const g = this.g, p = g.player, C = V(), S = STR.volcano, M = this.mining; if (!M) return;
@@ -175,7 +175,7 @@ export class Volcano {
     }
     for (const o of w.silverOres || []) {
       if (o.left <= 0 || Math.abs(o.x - p.pos.x) > 3.4 || Math.abs(o.z - p.pos.z) > 3.4 || Math.hypot(o.x - p.pos.x, o.z - p.pos.z) > 3.4) continue;
-      const sel = p.inv.selected(), pick = sel && (sel.id === "pickaxe" || sel.id === "et_pickaxe") ? sel.id : null;
+      const sel = p.inv.selected(), pick = sel && (sel.id === "pickaxe" || sel.id === "et_pickaxe" || sel.id === "fossil_pickaxe") ? sel.id : null;
       if (pick) consider(o.x, o.z, o.y + 0.6, S.mineOre, () => this.mineStart(o, pick));
       else consider(o.x, o.z, o.y + 0.6, S.needPick, () => { g.ui.toast(S.needPick); g.audio.sDeny(); });
     }

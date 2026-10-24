@@ -1,5 +1,5 @@
-import { CFG, ASSET_V } from "./config.js?v=81";
-import { STR } from "../strings.js?v=81";
+import { CFG, ASSET_V } from "./config.js?v=82";
+import { STR } from "../strings.js?v=82";
 
 // Icon sheet: 4x4 grid, 13 icons, generated on a blue key background.
 // Sliced + chroma-keyed at load time into per-item canvases.
@@ -91,6 +91,11 @@ export async function loadIcons() {
     ["imp_tooth", "./assets/ui_imptooth.png"], ["imp_dagger", "./assets/ui_impdagger.png"],   // update 38
     // update 39: Eternius City
     ["fossil", "./assets/ui_fossil.png"], ["gold_statuette", "./assets/ui_statuette.png"], ["vault_key", "./assets/ui_vaultkey.png"],
+    // update 81: Skull Valley
+    ["raw_pachy", "./assets/ui_rawpachy.png"], ["cooked_pachy", "./assets/ui_cookedpachy.png"], ["pachy_skull", "./assets/ui_pachyskull.png"], ["fossil_vein", "./assets/ui_fossilvein.png"], ["bone", "./assets/ui_bone.png"], ["majunga_tooth", "./assets/ui_majungatooth.png"],
+    ["amber_amulet", "./assets/ui_amberamulet.png"], ["bone_whistle", "./assets/ui_bonewhistle.png"], ["fossil_pickaxe", "./assets/ui_fossilpickaxe.png"], ["collector_box", "./assets/ui_collectorbox.png"], ["spade", "./assets/ui_spade.png"],
+    ["fossil_dickinsonia", "./assets/ui_f_dickinsonia.png"], ["fossil_trilobite", "./assets/ui_f_trilobite.png"], ["fossil_anomalocaris", "./assets/ui_f_anomalocaris.png"], ["fossil_eurypterid", "./assets/ui_f_eurypterid.png"], ["fossil_dunkleosteus", "./assets/ui_f_dunkleosteus.png"],
+    ["fossil_ammonite", "./assets/ui_f_ammonite.png"], ["fossil_eoraptor", "./assets/ui_f_eoraptor.png"], ["fossil_archaeopteryx", "./assets/ui_f_archaeopteryx.png"], ["fossil_velociraptor", "./assets/ui_f_velociraptor.png"], ["fossil_megalodon", "./assets/ui_f_megalodon.png"],
     ["et_dagger", "./assets/ui_etdagger.png"], ["et_sword", "./assets/ui_etsword.png"], ["et_spear", "./assets/ui_etspear.png"],
     // update 63: the mine, the fishing stall, the deep trees
     ["pickaxe", "./assets/ui_pickaxe.png"], ["et_pickaxe", "./assets/ui_etpickaxe.png"], ["emerald", "./assets/ui_emerald.png"], ["bait", "./assets/ui_bait.png"], ["golden_apple", "./assets/ui_goldenapple.png"], ["green_apple", "./assets/ui_greenapple.png"],
@@ -166,6 +171,7 @@ function fallbackIcon(id) {
     imp_tooth: "#3a3a3c", imp_dagger: "#2c2c30",
     fossil: "#b09a78", gold_statuette: "#e0b230", vault_key: "#d9ad2e", et_dagger: "#e0b230", et_sword: "#e0b230", et_spear: "#e0b230",   // update 39
     water_bottle: "#5a3a22",
+    raw_pachy: "#8a2a34", cooked_pachy: "#6a4026", pachy_skull: "#d8d0bc", fossil_vein: "#9a8c74", bone: "#e4ddc8", majunga_tooth: "#d2c8a8", amber_amulet: "#d89020", bone_whistle: "#e8e2d0", fossil_pickaxe: "#b0a080", collector_box: "#7a5a38", spade: "#6a6a70",   // update 81
   };
   const cnv = document.createElement("canvas");
   cnv.width = cnv.height = 128;

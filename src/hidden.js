@@ -18,8 +18,8 @@
 // Mystic apples at night. The explorer sells a map for four plants: read once, the hidden area shows on the world map.
 // The lag: the 3,773 lanterns were 28,000-triangle meshes, never culled - now 1,500 triangles each in 64 m cells.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=81";
-import { STR } from "../strings.js?v=81";
+import { CFG } from "./config.js?v=82";
+import { STR } from "../strings.js?v=82";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const D2R = Math.PI / 180;
@@ -613,7 +613,7 @@ export class HiddenForest {
     if (p.kind === "void_bloom") this.voidTaken++;
     p.taken = true; p.grp.visible = false; g.audio.sPickup(); g.ui.renderHotbar(inv); g.ui.toast(`${STR.pickUp} ${STR.items[p.kind].name}`);
   }
-  mineStart(p, pickId) { if (this.mining && this.mining.p === p) return; this.mining = { p, pick: pickId, t: 0, need: pickId === "et_pickaxe" ? 2 : 4, swingT: 0 }; }
+  mineStart(p, pickId) { if (this.mining && this.mining.p === p) return; this.mining = { p, pick: pickId, t: 0, need: pickId === "fossil_pickaxe" ? 2 : pickId === "et_pickaxe" ? 2 : 4, swingT: 0 }; }
   updateMining(dt) {
     const g = this.g, p = g.player, M = this.mining; if (!M) return;
     const held = g.ui.held && g.ui.held.has("KeyF"), sel = p.inv.selected();
@@ -681,7 +681,7 @@ export class HiddenForest {
       for (const n of this.npcs) { if (Math.hypot(n.x - p.pos.x, n.z - p.pos.z) > 3.6) continue; consider(n.x, n.z, n.y + 1, `${S.talkTo} ${n.name} [${STR.interact}]`, () => this.talk(n)); }
       for (const q of this.pick) {
         if (q.taken || Math.abs(q.x - p.pos.x) > 3.4 || Math.abs(q.z - p.pos.z) > 3.4 || Math.hypot(q.x - p.pos.x, q.z - p.pos.z) > 3.4) continue;
-        if (q.kind === "moonstone") { const sel = p.inv.selected(), pick = sel && (sel.id === "pickaxe" || sel.id === "et_pickaxe") ? sel.id : null; if (pick) consider(q.x, q.z, q.y + 0.5, S.mineMoonstone, () => this.mineStart(q, pick)); else consider(q.x, q.z, q.y + 0.5, S.needPick, () => { g.ui.toast(S.needPick); g.audio.sDeny(); }); }
+        if (q.kind === "moonstone") { const sel = p.inv.selected(), pick = sel && (sel.id === "pickaxe" || sel.id === "et_pickaxe" || sel.id === "fossil_pickaxe") ? sel.id : null; if (pick) consider(q.x, q.z, q.y + 0.5, S.mineMoonstone, () => this.mineStart(q, pick)); else consider(q.x, q.z, q.y + 0.5, S.needPick, () => { g.ui.toast(S.needPick); g.audio.sDeny(); }); }
         else consider(q.x, q.z, q.y, `${STR.pickUp} ${STR.items[q.kind].name} [${STR.interact}]`, () => this.pickUp(q));
       }
       for (const m of this.mystic) { if (m.taken || Math.hypot(m.a.x - p.pos.x, m.a.z - p.pos.z) > 3.4) continue; consider(m.a.x, m.a.z, 0, `${STR.pickUp} ${STR.items.mystic_apple.name} [${STR.interact}]`, () => { if (!p.inv.add("mystic_apple", 1)) { g.ui.toast(STR.inventoryFull); g.audio.sDeny(); return; } m.taken = true; m.mesh.visible = false; g.audio.sPickup(); g.ui.renderHotbar(p.inv); }); }

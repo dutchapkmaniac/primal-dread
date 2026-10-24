@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=81";
-import { STR } from "../strings.js?v=81";
-import { Inventory } from "./items.js?v=81";
+import { CFG } from "./config.js?v=82";
+import { STR } from "../strings.js?v=82";
+import { Inventory } from "./items.js?v=82";
 
 export class Player {
   constructor(camera, ctx) {
@@ -163,6 +163,7 @@ export class Player {
   damage(amount, source, fromPos) {
     if (this.dead) return;
     if (this.ctx.potionDamage) { amount = this.ctx.potionDamage(amount, source, fromPos); if (amount <= 0) return; }   // update 73: a dodge, or thick skin
+    if (amount >= this.hp && this.ctx.amulet && this.ctx.amulet(source)) amount = Math.max(0, this.hp - CFG.skull.amuletHp);   // update 81: the Amber Amulet keeps you at 5
     this.hp = Math.max(0, this.hp - amount);
     this.ctx.audio.sHurt();
     this.ctx.ui.hurtFlash();
@@ -191,9 +192,10 @@ export class Player {
     this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch - input.look.dy * 0.0023));
     input.look.dx = input.look.dy = 0;
     // drunk: the world sways and your feet don't quite obey
-    if (game.drunkT > 0) {
-      this.yaw += Math.sin(game.time * 1.7) * 0.5 * dt;
-      this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch + Math.sin(game.time * 2.4) * 0.12 * dt));
+    if (game.drunkT > 0 || game.dizzyT > 0) {   // update 81: a dome-head's ram leaves you dizzy - the same sway, harder
+      const k = game.dizzyT > 0 ? 2.4 : 1;
+      this.yaw += Math.sin(game.time * 1.7) * 0.5 * k * dt;
+      this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch + Math.sin(game.time * 2.4) * 0.12 * k * dt));
     }
 
     // stance — carrying the T-Rex egg forbids running
@@ -211,8 +213,9 @@ export class Player {
 
     // camera-relative movement
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
-    const mx = input.move.x * cos + input.move.z * sin;
-    const mz = input.move.z * cos - input.move.x * sin;
+    const stunned = this.stunT > 0; if (stunned) this.stunT -= dt;   // update 81: the Majungasaurus's horn leaves you on the ground for two seconds
+    const mx = stunned ? 0 : input.move.x * cos + input.move.z * sin;
+    const mz = stunned ? 0 : input.move.z * cos - input.move.x * sin;
     const ml = Math.hypot(mx, mz) || 1;
     const tx = (ml > 1 ? mx / ml : mx) * speed;
     const tz = (ml > 1 ? mz / ml : mz) * speed;
@@ -437,6 +440,9 @@ export class Player {
     if (id === "monial_book") { game.hidden.readBook(); return; }   // update 75
     if (id === "monial_map") { game.hidden.readMap(); return; }   // update 77
     if (id === "pestle") { game.potions.crush(); return; }   // update 73: herbs, shells and horns; the silver dagger inside
+    if (id === "bone_whistle") { if (game.skull) game.skull.blowWhistle(); return; }   // update 81
+    if (id === "collector_box") { if (game.skull) game.skull.openBox(); return; }
+    if (id === "spade" || id === "fossil_pickaxe" || id === "fossil_vein" || id === "bone" || id === "majunga_tooth" || id === "pachy_skull" || id === "amber_amulet" || id.startsWith("fossil_")) { game.ui.toast(`${STR.items[id].name}: ${STR.items[id].desc}`); game.audio.sDeny(); return; }
     if (id === "death_compass") {
       game.ui.toast(game.lastDeathSpot ? `${STR.compassPoints}…` : STR.compassIdle);
       return;

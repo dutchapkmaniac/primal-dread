@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=81";
-import { STR } from "../strings.js?v=81";
-import { Creature } from "./entities.js?v=81";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=81";
+import { CFG } from "./config.js?v=82";
+import { STR } from "../strings.js?v=82";
+import { Creature } from "./entities.js?v=82";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=82";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";   // update 58: the miner comes rigged and animated
-import { iconUrl } from "./items.js?v=81";
-import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=81";
+import { iconUrl } from "./items.js?v=82";
+import { E, D2R, smooth, cityLocal, cityWorld, cityFlatten, cityLakeDip, lakeNorm, inLake, lakeR, lakeOutline } from "./eternius_frame.js?v=82";
 const MINER_FWD = 1;   // update 60: the miner rig's forward axis (+1 = the model faces +z, as the props do)
-import { buildCity } from "./eternius_build.js?v=81";
-import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=81";   // update 50
-import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=81";   // update 63: the hadrosaurus line
+import { buildCity } from "./eternius_build.js?v=82";
+import { lowerH, lowerInside, lowerCollide, lowerWater, lowerNpcs, lowerInteract, lowerUpdate, updateRide } from "./eternius_lower_logic.js?v=82";   // update 50
+import { buildDino, dinoInteract, dinoUpdate } from "./eternius_dino.js?v=82";   // update 63: the hadrosaurus line
 export { cityLocal, cityWorld, cityFlatten, cityLakeDip };
 
 // ============================================================================
@@ -974,7 +974,7 @@ export class EterniusCity {
   // the Eternial pick two seconds and lasts. A worked-out vein shrinks away and grows back after five minutes.
   mineStart(v, pickId) {
     const g = this.g, C = E(); if (this.mining && this.mining.v === v) return;
-    this.mining = { v, pick: pickId, t: 0, need: pickId === "et_pickaxe" ? C.mining.tEternal : C.mining.tPlain, swingT: 0 };
+    this.mining = { v, pick: pickId, t: 0, need: pickId === "fossil_pickaxe" ? C.mining.tPlain / 2 : pickId === "et_pickaxe" ? C.mining.tEternal : C.mining.tPlain, swingT: 0 };
   }
   updateMining(dt) {
     const g = this.g, C = E(), S = STR.et, p = g.player;

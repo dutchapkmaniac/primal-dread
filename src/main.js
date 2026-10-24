@@ -1,26 +1,27 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=81";
-import { STR } from "../strings.js?v=81";
+import { CFG, ASSET_V } from "./config.js?v=82";
+import { STR } from "../strings.js?v=82";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=81";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=81";
-import { Forest } from "./forest.js?v=81";   // update 69
-import { Potions } from "./potions.js?v=81";   // update 73
-import { Volcano } from "./volcano.js?v=81";   // update 74
-import { HiddenForest } from "./hidden.js?v=81";   // update 75
-import { ClipAnimator } from "./skeletal.js?v=81";
-import { AudioMan } from "./audio.js?v=81";
-import { UI } from "./ui.js?v=81";
-import { World } from "./world.js?v=81";
-import { Player } from "./player.js?v=81";
-import { Creature, ItemDrop } from "./entities.js?v=81";
-import { GameMap } from "./map.js?v=81";
-import { FarmGame } from "./farmgame.js?v=81";
-import { ElisiaSystem } from "./elisia.js?v=81";   // update 35
-import { DesertSystem } from "./desert.js?v=81";
-import { PortalSystem } from "./portals.js?v=81";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=81";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=82";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=82";
+import { Forest } from "./forest.js?v=82";   // update 69
+import { Potions } from "./potions.js?v=82";   // update 73
+import { Volcano } from "./volcano.js?v=82";   // update 74
+import { HiddenForest } from "./hidden.js?v=82";
+import { SkullValley } from "./skull.js?v=82";   // update 81   // update 75
+import { ClipAnimator } from "./skeletal.js?v=82";
+import { AudioMan } from "./audio.js?v=82";
+import { UI } from "./ui.js?v=82";
+import { World } from "./world.js?v=82";
+import { Player } from "./player.js?v=82";
+import { Creature, ItemDrop } from "./entities.js?v=82";
+import { GameMap } from "./map.js?v=82";
+import { FarmGame } from "./farmgame.js?v=82";
+import { ElisiaSystem } from "./elisia.js?v=82";   // update 35
+import { DesertSystem } from "./desert.js?v=82";
+import { PortalSystem } from "./portals.js?v=82";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=82";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -30,6 +31,7 @@ const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_in
   "t_checker", "t_whitetile", "t_mosaic", "t_cream",
   // update 36: the desert's sand
   "t_sand", "t_riversand",   // update 37: the river bank
+  "t_bonesand", "t_darkcliff",   // update 81: Skull Valley's white sand and dark cliffs
   "t_sandstone", "t_goldpanel", "t_cavern", "t_flag",
   "t_trexgreen", "t_goldlattice", "t_greencarpet", "t_mountain", "t_relief", "t_glassgreen", "t_soil", "t_minerock", "t_minefloor", "t_mosslog", "t_cleanlog", "t_mossplank", "t_cleanplank"];   // update 50: the glass ring, the park's soil; update 55: the mine   // update 44: the jackal relief on the river wall   // update 39/40: Eternius City
 // ONE word per situation for the mobile context button, resolved from the
@@ -66,7 +68,8 @@ const verbFor = (label) => {
   return STR.mobUse;
 };
 
-const GLB_IDS = ["trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_vaultdoor", "et_censer", "et_bench", "et_altar", "werewolf", "pig", "chicken", "tree", "appletree", "chest", "statue",
+const GLB_IDS = ["majunga", "theri", "pachy", "hendrik", "sv_tent", "sv_chest", "sv_skull", "sv_ribcage", "sv_spine", "sv_skeleton",   // update 81: Skull Valley
+  "trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_vaultdoor", "et_censer", "et_bench", "et_altar", "werewolf", "pig", "chicken", "tree", "appletree", "chest", "statue",
   "bedroll", "hutbed", "kitchen", "bill", "storagechest", "boulder",
   "door", "table", "chair", "lantern", "croc", "dinoegg", "metaldoor", "beaconlamp",
   "nest", "barrel", "closet", "woodchest", "trapdoor", "knife3d", "machete3d", "torch3d",
@@ -382,7 +385,8 @@ class Game {
     this.forest = new Forest(this);
     this.potions = new Potions(this);   // update 73: herblore and potions (after the forest and the desert exist)
     this.volcano = new Volcano(this);   // update 74: the crater, ember leaf, the silver mine, the furnace, the evil dagger
-    this.hidden = new HiddenForest(this);   // update 75: the hidden forest   // update 69: hills are the world's; the rest of the forest's new life lives here
+    this.hidden = new HiddenForest(this);   // update 75: the hidden forest
+    this.skull = new SkullValley(this);     // update 81: Skull Valley (its ground, bones, tunnels, camp, dens and chests)   // update 69: hills are the world's; the rest of the forest's new life lives here
     this.world.city = this.city;            // update 39: the city's floors, walls and mountain join the world's ground
     this.portals.build();                   // update 37: the portals stand once the ground exists
     this.world.fogMult = presetFx.fog;      // preset draw distance, from boot
@@ -404,6 +408,8 @@ class Game {
     ctx.player = this.player;
     this.ctx = ctx;
     ctx.potionDamage = (a, src, from) => this.potions ? this.potions.potionDamage(a, src, from) : a;   // update 73: dodges and thick skin
+    ctx.amulet = (src) => this.skull ? this.skull.amuletSave(src) : false;   // update 81: the Amber Amulet
+    this.dizzyT = 0;
     this.city.build();   // update 39: the city needs the creature context for its chained beast
     this.initLightPool();   // update 41: after everything with a lamp exists
 
@@ -432,6 +438,14 @@ class Game {
         const isImp = imps.has(i);
         this.creatures.push(new Creature("trex", (isImp && this.assets.glb.imperator) || this.assets.glb.trex, x, z, ctx, { ...o, imperator: isImp }));
       });
+    }
+    // update 81: Skull Valley's own: eight Majungasaurus (T-Rexes in every rule, held to the valley), four herds of three
+    // dome-heads, one Therizinosaurus per den
+    if (this.skull) {
+      const K = CFG.skull;
+      if (this.assets.glb.majunga) for (let i = 0; i < K.majungaCount; i++) { const [x, z] = this.skull.randomFloor(this.rng); this.creatures.push(new Creature("trex", this.assets.glb.majunga, x, z, ctx, { majunga: true })); }
+      if (this.assets.glb.pachy) K.pachyHerds.forEach((home, h) => { for (let i = 0; i < K.pachyPerHerd; i++) { const a = this.rng() * Math.PI * 2, dd = 3 + this.rng() * 8; this.creatures.push(new Creature("pachy", this.assets.glb.pachy, home[0] + Math.cos(a) * dd, home[1] + Math.sin(a) * dd, ctx, { herd: h + 1, idx: i, home })); } });
+      if (this.assets.glb.theri) this.skull.dens.forEach((den) => { const c = new Creature("theri", this.assets.glb.theri, den.x + 2, den.z + 2, ctx, { den }); den.theri = c; this.creatures.push(c); });
     }
     for (const [x, z] of CFG.pig.spawns) this.creatures.push(new Creature("pig", this.assets.glb.pig, x, z, ctx));
     // update 36: the desert's hunters — remotus along the river, altai deeper in
@@ -1173,6 +1187,8 @@ class Game {
     if (this.potions) this.potions.update(dt);   // update 73
     if (this.volcano) this.volcano.update(dt);   // update 74
     if (this.hidden) this.hidden.update(dt);   // update 75
+    if (this.skull) this.skull.update(dt);   // update 81
+    if (this.dizzyT > 0) { this.dizzyT -= dt; this.ui.setDizzy(this.dizzyT); if (this.dizzyT <= 0 && this.drunkT <= 0) this.ui.setDrunk(0); }   // update 81
     this.updateExpansion(dt);
     // update 80: creatures far from you (160 m) tick every other frame with a doubled step - the same motion, half the work
     this._creTick = (this._creTick || 0) + 1;
@@ -1741,7 +1757,7 @@ class Game {
     // update 39: the foe's bar lives exactly as long as the fight — when she dies (or feeds, or leaves) both bars go together
     const f = this.huntFoe, ec = this.elisia && this.elisia.c;
     const fightOn = !!(f && !f.dead && ec && !ec.dead && !ec.gone && this.elisia.fight && this.elisia.fight.foe === f);
-    if (fightOn && f.distToPlayer() < 90) this.ui.huntBar2(f.imperator ? STR.huntImperator : STR.huntTrex, Math.max(0, f.hp) / f.maxHp);
+    if (fightOn && f.distToPlayer() < 90) this.ui.huntBar2(f.majunga ? STR.huntMajunga : f.imperator ? STR.huntImperator : STR.huntTrex, Math.max(0, f.hp) / f.maxHp);
     else { this.ui.huntBar2(null, null); if (f && !fightOn) this.huntFoe = null; }
   }
 
@@ -2701,6 +2717,7 @@ class Game {
     if (this.potions) this.potions.interact(consider, p);   // update 73: aloe vera
     if (this.volcano) this.volcano.interact(consider, p);   // update 74: ember leaf, the ores, the furnace, the wolves
     if (this.hidden) this.hidden.interact(consider, p);   // update 75: the Monial, the night's pickings, the beds
+    if (this.skull) this.skull.interact(consider, p);   // update 81: Hendrik, the dens, the stones, the mounds, the climb
     this.ui.prompt(this.cooking ? STR.cooking : best ? best.label : this.compassLine());
     // touch devices mirror the prompt as a circular ONE-word button
     // (OPEN / SLEEP / COOK / TALK...) — visible only while in reach
@@ -2740,6 +2757,7 @@ class Game {
       return;
     }
     this.portals.chestOpened(c);   // update 37
+    if (c.bone && this.skull) this.skull.chestOpened(c);   // update 81: one bone chest in five rattles, and the valley hears it
     const gained = [];
     // update 39: the desert's chests carry Eternial coins (3-5); a fossil once in 256 chests anywhere;
     // the golden statuette once in 512 desert chests. Both are only good for selling in Eternius.
@@ -2962,7 +2980,7 @@ class Game {
   }
   emitNoise(x, z, r) {
     for (const c of this.creatures) {
-      if (c.type !== "trex") continue;
+      if (c.type !== "trex" && c.type !== "pachy") continue;   // update 81: the dome-heads hear too
       if (Math.hypot(c.pos.x - x, c.pos.z - z) < r) c.hearNoise(x, z, this);
     }
   }
@@ -3133,6 +3151,7 @@ class Game {
     for (const w of this.wolves) cullEnt(w.group);
     cullEnt(this.hansBody); cullEnt(this.emilyBody); cullEnt(this.timoBody);
     cullEnt(this.jabbBody); cullEnt(this.billBody);
+    if (this.skull) this.skull.cull(cullEnt);   // update 81
     this.farm.cull(cullEnt);
   }
 

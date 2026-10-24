@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=81";
-import { inFarm, inPasture } from "./farm.js?v=81";
-import { STR } from "../strings.js?v=81";
-import { icons } from "./items.js?v=81";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=81";
+import { CFG } from "./config.js?v=82";
+import { inFarm, inPasture } from "./farm.js?v=82";
+import { STR } from "../strings.js?v=82";
+import { icons } from "./items.js?v=82";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=82";
 
 // Creatures. Rigged GLBs (T-Rex, werewolf, chicken) play real walk/run clips;
 // the pig gets a procedural quadruped gait. The T-Rex cannot be killed.
@@ -16,7 +16,8 @@ function normalizeYaw(a) {
 }
 
 // update 80: the beasts the safe rooms keep out (Elisia alone walks where she likes)
-const HOSTILE = new Set(["werewolf", "trex", "mother", "spino", "spinobaby", "trike", "remotus", "altai", "croc", "meganeura", "alio"]);
+import { skullInside } from "./skull_shape.js?v=82";   // update 81
+const HOSTILE = new Set(["werewolf", "trex", "mother", "spino", "spinobaby", "trike", "remotus", "altai", "croc", "meganeura", "alio", "pachy", "theri"]);
 export class Creature {
   constructor(type, asset, x, z, ctx, opts = {}) {
     this.type = type;
@@ -35,6 +36,12 @@ export class Creature {
         twigNoiseR: I.twigNoiseR, noiseMult: I.noiseMult, height: CFG.trex.height * I.sizeMult };
     }
     this.roarRate = this.imperator ? CFG.imperator.roarRate : 1;
+    // update 81: the Majungasaurus - a T-Rex in every rule, on its own model, held to Skull Valley, with a horn
+    this.majunga = !!opts.majunga;
+    if (this.majunga) this.cfg = { ...CFG.trex, height: CFG.majunga.height };
+    this.herd = opts.herd || null; this.herdIdx = opts.idx || 0; this.home = opts.home || null;   // update 81: the dome-heads
+    this.den = opts.den || null;   // update 81: the Therizinosaurus keeps to its den
+    this.recoverT = 0; this.angryT = 0; this.secondT = 0;
     this.ctx = ctx;
     this.spawn = { x, z };
     this.pos = new THREE.Vector3(x, 0, z);
@@ -134,6 +141,14 @@ export class Creature {
     if (w.dungeon && !this.caveWolf && this.type !== "goat" && w.inDungeon(x, z) && !w.inDungeon(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
     // update 80: the start temple and the lighthouse are safe rooms - no hunter, wolf or beast sets foot in them
     if (HOSTILE.has(this.type) && !this.chain && ((w.inRuin(x, z) && !w.inRuin(this.pos.x, this.pos.z)) || (w.inLighthouse(x, z) && !w.inLighthouse(this.pos.x, this.pos.z)))) return { x: this.pos.x, z: this.pos.z };
+    // update 81: Skull Valley - its own beasts never leave it, the forest's hunters never enter it, and nothing hostile
+    // crosses Hendrik's tent line or fits the narrow bone tunnel to the eye
+    if (CFG.skull) {
+      const valleyBeast = this.majunga || this.type === "pachy" || this.type === "theri";
+      if (valleyBeast && !skullInside(x, z) && skullInside(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
+      if (this.type === "trex" && !this.majunga && !this.chain && skullInside(x, z) && !skullInside(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
+      if (HOSTILE.has(this.type) && w.skullZone && (w.skullZone.inTent(x, z) || w.skullZone.inNarrow(x, z))) return { x: this.pos.x, z: this.pos.z };
+    }
     if (this.type === "trex" && !this.chain && w.inMountain(x, z) && !w.inMountain(this.pos.x, this.pos.z) && (this.imperator || this.state !== "chase")) return { x: this.pos.x, z: this.pos.z };
     // update 42: the werewolves never set foot in Eternius — the mountain, the castle, the bridge
     if (this.type === "werewolf" && !this.caveWolf && w.city && w.city.inZone(x, z) && !w.city.inZone(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
@@ -330,6 +345,11 @@ export class Creature {
       }
       return [this.pos.x, this.pos.z];
     }
+    // update 81: Skull Valley's beasts pick their targets on the valley floor (the dome-heads near their herd's home,
+    // the Therizinosaurus inside its den)
+    if (this.majunga && this.ctx.world.skullZone) return this.ctx.world.skullZone.randomFloor(rng);
+    if (this.type === "pachy" && this.home) { for (let i = 0; i < 10; i++) { const a = rng() * Math.PI * 2, dd = rng() * CFG.pachy.homeR; const x = this.home[0] + Math.cos(a) * dd, z = this.home[1] + Math.sin(a) * dd; if (skullInside(x, z)) return [x, z]; } return [this.home[0], this.home[1]]; }
+    if (this.type === "theri" && this.den) { const a = rng() * Math.PI * 2, dd = 2 + rng() * (CFG.skull.denR - 5); return [this.den.x + Math.cos(a) * dd, this.den.z + Math.sin(a) * dd]; }
     if (this.type === "trex") {
       // update 38: the ten extra hunters roam anywhere OUTSIDE the old circle
       if (this.zone === "outside") return this.ctx.world.randomOutsideForest(rng, CFG.trex.extraMinR);
@@ -400,7 +420,7 @@ export class Creature {
 
   // a discrete sound reached this creature (twig crack, loud steps)
   hearNoise(x, z, game) {
-    if (this.type !== "trex" || this.dead) return;
+    if ((this.type !== "trex" && this.type !== "pachy") || this.dead) return;   // update 81: the dome-heads come to look too
     if (this.state === "chase" || this.state === "window" || this.state === "foe") return;
     this.noiseTarget = [x, z];
     if (this.state !== "investigate") {
@@ -431,6 +451,15 @@ export class Creature {
       return;
     }
     if (this.dead) return;
+    // update 81: the dome-head's skull turns every blow from the front; from the side or behind only Eternial steel or the holy dagger bites
+    if (this.type === "pachy") {
+      const p = game.player, dx = p.pos.x - this.pos.x, dz = p.pos.z - this.pos.z, dd = Math.hypot(dx, dz) || 1;
+      const front = (Math.sin(this.yaw) * dx + Math.cos(this.yaw) * dz) / dd;
+      if (front > 0.35) { game.audio.sHit(); game.ui.toast(STR.skull.pachyBlock); return; }
+      if (!CFG.pachy.weapons.includes(weapon)) { game.audio.sHit(); game.ui.toast(STR.skull.pachyImmune); return; }
+    }
+    // update 81: a blow wakes the Therizinosaurus
+    if (this.type === "theri" && this.state !== "chase") { this.state = "chase"; this.angryT = 30; this.target = null; game.audio.sGrowl(); }
     // update 35: Elisia. Her light cannot be struck; her dark form only bleeds for a
     // T-Rex's tooth — the dagger in your hand, or a live T-Rex's bite (takeBite)
     if (this.type === "elisia") {
@@ -550,8 +579,9 @@ export class Creature {
     this.state = "dead";
     this.stateT = 0;
     this.respawnT = this.type === "trex" ? CFG.trexHunt.respawn
-      : this.type === "goat" ? CFG.goat.respawn : CFG.respawnTime;
+      : this.type === "goat" ? CFG.goat.respawn : this.type === "pachy" ? CFG.pachy.respawn : this.type === "theri" ? CFG.theri.respawn : CFG.respawnTime;
     let drops = this.cfg.drops;
+    if (this.type === "pachy" && game.rng() < CFG.pachy.skullChance) drops = [...drops, ["pachy_skull", 1]];   // update 81: one dome in 256 comes off whole
     if (this.type === "chicken") {
       drops = [[game.rng() < 0.7 ? "raw_chicken" : "egg", 1]];
       // update 27: one bird in four sheds a FEATHER alongside its normal drop
@@ -649,6 +679,8 @@ export class Creature {
       case "spinobaby": this.updateBaby(dt, game); break;
       case "croc": this.updateCroc(dt, game); break;
       case "trike": this.updateTrike(dt, game); break;
+      case "pachy": this.updatePachy(dt, game); break;   // update 81
+      case "theri": this.updateTheri(dt, game); break;   // update 81
       case "werewolf": this.updateWolf(dt, game); break;
       case "cow": this.updateCow(dt, game); break;
       case "elisia": this.updateElisia(dt, game); break;   // update 35
@@ -663,7 +695,7 @@ export class Creature {
     // fresh wander spot and lives on from there
     if (this.type === "trex" && !this.chain && !this.dead) {
       if (!this.stillAt || Math.hypot(this.pos.x - this.stillAt.x, this.pos.z - this.stillAt.z) > 2.5) { this.stillAt = { x: this.pos.x, z: this.pos.z }; this.stillT = 0; }
-      else if ((this.stillT = (this.stillT || 0) + dt) > (CFG.trexHunt.stuckTime || 180)) { const t = this.pickWanderTarget(game.rng); this.spawn = { x: t[0], z: t[1] }; this.pos.set(t[0], 0, t[1]); this.stillAt = null; this.state = "wander"; this.target = null; this.loseT = 0; }
+      else if ((this.stillT = (this.stillT || 0) + dt) > (CFG.trexHunt.stuckTime || 180)) { const t = this.pickWanderTarget(game.rng); /* update 81: a Majungasaurus picks a valley spot */ this.spawn = { x: t[0], z: t[1] }; this.pos.set(t[0], 0, t[1]); this.stillAt = null; this.state = "wander"; this.target = null; this.loseT = 0; }
     }
     // update 39: the chain holds — a step past its length is pulled back
     if (this.chain) {
@@ -910,6 +942,8 @@ export class Creature {
       && ((d < noiseR && (losClear || d < noiseR * 0.5)) || (d < this.cfg.sightR * escortMult * game.player.sightMult && losClear));
 
     if (this.state === "chase") {
+      // update 81: after a horn bump the Majungasaurus stands, turning slowly back to you
+      if (this.recoverT > 0) { this.recoverT -= dt; this.speed = 0; const want = Math.atan2(p.pos.x - this.pos.x, p.pos.z - this.pos.z); this.yaw += normalizeYaw(want - this.yaw) * Math.min(1, dt * 0.9); return; }
       // player on the first floor: NEVER push through the wall — go to a
       // window and put the head through THAT (the only opening it fits)
       if (w.inReachableInterior(p.pos.x, p.pos.z, p.pos.y)) {
@@ -985,7 +1019,14 @@ export class Creature {
         this.atkT = this.cfg.biteCd;
         this.lungeT = 0.4;
         this.hasTasted = true;
-        p.damage(this.cfg.biteDmg, "trex", this.pos);
+        // update 81: one attack in three the Majungasaurus leads with its horn: the same damage, a shove, two seconds
+        // stunned - and it needs two or three seconds to turn and come after you again
+        if (this.majunga && game.rng() < CFG.skull.bumpChance) {
+          const K = CFG.skull;
+          p.damage(this.cfg.biteDmg, "trex", this.pos);
+          if (!p.dead) { const kx = p.pos.x - this.pos.x, kz = p.pos.z - this.pos.z, kd = Math.hypot(kx, kz) || 1; p.vel.x += kx / kd * K.bumpPush; p.vel.z += kz / kd * K.bumpPush; p.vel.y = Math.max(p.vel.y, 3.2); p.onGround = false; p.stunT = K.bumpStun; game.ui.toast(STR.skull.hornBump); game.ui.shake(1.6); }
+          this.recoverT = K.bumpRecover[0] + game.rng() * (K.bumpRecover[1] - K.bumpRecover[0]);
+        } else p.damage(this.cfg.biteDmg, "trex", this.pos);
       }
       return;
     }
@@ -1284,6 +1325,88 @@ export class Creature {
   }
 
   // --- Triceratops: the straight-line charger. Sidestep or be flattened. ---
+
+  // ---- update 81: the Pachycephalosaurus herd. Three to a herd: the first plants itself in your way and stamps, the
+  // others circle to your side and ram. A ram hurts, shoves, and leaves you dizzy. ----
+  updatePachy(dt, game) {
+    const p = game.player, d = this.distToPlayer(), P = CFG.pachy, R = P.ram, w = game.world;
+    const playerSafe = w.isSafe(p.pos.x, p.pos.z, p.pos.y);
+    this.atkT -= dt;
+    const inValley = skullInside(p.pos.x, p.pos.z);
+    if (this.state === "ram") {
+      this.pos.x += Math.sin(this.chargeDir) * R.chargeSpeed * dt; this.pos.z += Math.cos(this.chargeDir) * R.chargeSpeed * dt;
+      this.speed = R.chargeSpeed; this.yaw = this.chargeDir;
+      if (!skullInside(this.pos.x, this.pos.z) || (w.skullZone && w.skullZone.inTent(this.pos.x, this.pos.z))) { this.pos.x -= Math.sin(this.chargeDir) * R.chargeSpeed * dt; this.pos.z -= Math.cos(this.chargeDir) * R.chargeSpeed * dt; this.state = "chase"; this.stateT = 0; return; }
+      if (d < R.hitR && !playerSafe && this.atkT <= 0) {
+        this.atkT = R.cd;
+        p.damage(R.dmg, "pachy", this.pos);
+        if (!p.dead) { const kx = p.pos.x - this.pos.x, kz = p.pos.z - this.pos.z, kd = Math.hypot(kx, kz) || 1; p.vel.x += kx / kd * R.knock; p.vel.z += kz / kd * R.knock; game.dizzyT = Math.max(game.dizzyT || 0, R.dizzy); game.ui.toast(STR.skull.pachyRam); game.ui.shake(1.5); }
+        this.state = "chase"; this.stateT = 0; return;
+      }
+      const run = Math.hypot(this.pos.x - this.chargeFrom.x, this.pos.z - this.chargeFrom.z);
+      if (run > this.chargeLen) { this.state = "chase"; this.stateT = 0; }
+      return;
+    }
+    if (this.state === "chase") {
+      if (playerSafe || !inValley) { this.loseT += dt; } else this.loseT = d > P.loseDist ? this.loseT + dt : 0;
+      if (this.loseT > P.loseTime) { this.state = "wander"; this.target = null; this.loseT = 0; return; }
+      if (this.herdIdx === 0) {
+        // the blocker: stands between you and where you are going, and stamps
+        const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
+        const bx = p.pos.x + fx * P.blockStand, bz = p.pos.z + fz * P.blockStand;
+        const bd = Math.hypot(bx - this.pos.x, bz - this.pos.z);
+        if (bd > 1.6) this.moveToward(bx, bz, P.chaseSpeed, dt);
+        else { this.speed = 0; this.yaw += normalizeYaw(Math.atan2(p.pos.x - this.pos.x, p.pos.z - this.pos.z) - this.yaw) * Math.min(1, dt * 5); this.stampT = (this.stampT || 0) + dt; if (this.stampT > 0.9) { this.stampT = 0; game.audio.play3d("thud", d, (this.pos.x - p.pos.x) * 0.02, 40, 0.5, 1.6); if (d < 12) game.ui.shake(0.3); } }
+        // when you are already past it, it rams too
+        if (this.atkT <= 0 && d < R.flankD && d > 3 && Math.abs(normalizeYaw(Math.atan2(p.pos.x - this.pos.x, p.pos.z - this.pos.z) - this.yaw)) < 0.3 && game.rng() < dt * 0.25) this.startRam(game);
+        return;
+      }
+      // the flankers: out to your side, then straight at you
+      const side = this.herdIdx === 1 ? 1 : -1;
+      const sx = p.pos.x + Math.cos(p.yaw) * side * R.flankD, sz = p.pos.z - Math.sin(p.yaw) * side * R.flankD;
+      const sd = Math.hypot(sx - this.pos.x, sz - this.pos.z);
+      if (sd > 3.5) this.moveToward(sx, sz, P.chaseSpeed, dt);
+      else { this.speed = 0; this.yaw += normalizeYaw(Math.atan2(p.pos.x - this.pos.x, p.pos.z - this.pos.z) - this.yaw) * Math.min(1, dt * 6); if (this.atkT <= 0 && !playerSafe) this.startRam(game); }
+      return;
+    }
+    if (this.state === "investigate") {
+      const t = this.noiseTarget; if (!t || this.moveToward(t[0], t[1], P.speed * 1.6, dt) || this.stateT > 14) { this.state = "wander"; this.target = null; this.noiseTarget = null; }
+      if (d < P.sightR * p.sightMult && !playerSafe && inValley) { this.state = "chase"; this.stateT = 0; this.loseT = 0; }
+      return;
+    }
+    // grazing - until the herd sees you (one sees, all three come)
+    if (d < P.sightR * p.sightMult && !playerSafe && inValley && !this.losCached(w, p)) { this.state = "chase"; this.stateT = 0; this.loseT = 0; this.atkT = 1.2 + game.rng(); for (const o of game.creatures) if (o !== this && o.type === "pachy" && o.herd === this.herd && !o.dead && o.state !== "chase") { o.state = "chase"; o.stateT = 0; o.loseT = 0; o.atkT = 1.5 + game.rng() * 1.5; } return; }
+    if (this.state === "wander" && this.target && this.speed < 0.2) { this.blockT = (this.blockT || 0) + dt; if (this.blockT > 2) { this.target = null; this.blockT = 0; } } else this.blockT = 0;
+    this.updatePrey(dt, game);
+  }
+  startRam(game) {
+    const p = game.player, R = CFG.pachy.ram;
+    this.chargeDir = Math.atan2(p.pos.x - this.pos.x, p.pos.z - this.pos.z);
+    this.chargeFrom = { x: this.pos.x, z: this.pos.z }; this.chargeLen = Math.min(26, this.distToPlayer() + 6);
+    this.state = "ram"; this.stateT = 0;
+    game.audio.play3d("thud", this.distToPlayer(), (this.pos.x - p.pos.x) * 0.02, 40, 0.8, 1.3);
+  }
+  // ---- update 81: the Therizinosaurus. Keeps to its den; chases only when robbed or struck; every attack is two ----
+  updateTheri(dt, game) {
+    const p = game.player, d = this.distToPlayer(), T = CFG.theri, den = this.den, w = game.world;
+    const playerSafe = w.isSafe(p.pos.x, p.pos.z, p.pos.y);
+    this.atkT -= dt;
+    if (this.secondT > 0) { this.secondT -= dt; if (this.secondT <= 0 && d < T.claw.range + 1 && !playerSafe && !p.dead) p.damage(T.claw.dmg, "theri", this.pos); }
+    if (this.state === "chase") {
+      this.angryT -= dt;
+      const dd = den ? Math.hypot(p.pos.x - den.x, p.pos.z - den.z) : 0;
+      if (playerSafe || this.angryT <= 0 || (den && dd > CFG.skull.denR + T.chaseOut)) { this.state = "wander"; this.target = null; this.angryT = 0; if (d < 60) game.ui.toast(STR.skull.theriCalm); return; }
+      this.moveToward(p.pos.x, p.pos.z, T.chaseSpeed, dt);
+      if (d < T.claw.range && this.atkT <= 0 && !playerSafe) { this.atkT = T.claw.cd; this.secondT = T.claw.gap; this.lungeT = 0.3; p.damage(T.claw.dmg, "theri", this.pos); }
+      return;
+    }
+    // the warning: an unfed visitor in the den is faced, standing
+    const skz = w.skullZone, inDen = den && Math.hypot(p.pos.x - den.x, p.pos.z - den.z) < CFG.skull.denR;
+    if (inDen && skz && !skz.denFed(den)) { this.speed = 0; this.yaw += normalizeYaw(Math.atan2(p.pos.x - this.pos.x, p.pos.z - this.pos.z) - this.yaw) * Math.min(1, dt * 3); this.state = "idle"; this.stateT = 0; return; }
+    if (this.state === "idle") { if (this.stateT > 4 + game.rng() * 6) { this.state = "wander"; this.target = null; this.stateT = 0; } return; }
+    if (!this.target) this.target = this.pickWanderTarget();
+    if (this.moveToward(this.target[0], this.target[1], T.speed, dt)) { this.target = null; this.state = "idle"; this.stateT = 0; }
+  }
   updateTrike(dt, game) {
     const p = game.player;
     const d = this.distToPlayer();

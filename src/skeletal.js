@@ -125,6 +125,7 @@ PLANS.spino = {
   gait: { freq: 1.7, legAmp: 0.55, neckAmp: 0.06, tailAmp: 0.2, lift: 0.1, kneeAmp: 0.65 },
 };
 PLANS.spinobaby = PLANS.trex;
+PLANS.pachy = PLANS.trex;   // update 81: the dome-head walks like a small theropod
 // update 39: the Imperator — a T-Rex whose small arms (shrunk in the mesh) stay pinned to the body:
 // the box in front of the chest is fenced off from both the neck and the legs
 PLANS.imperator = { ...PLANS.trex, armFence: { y0: 0.14, y1: 0.7, z0: 0.6, z1: 1.0 } };   // update 80: the fence reaches the claws' tips, so the hands stay on the body instead of stretching toward the legs

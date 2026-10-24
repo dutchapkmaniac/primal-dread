@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=81";
-import { STR } from "../strings.js?v=81";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=81";
+import { CFG } from "./config.js?v=82";
+import { STR } from "../strings.js?v=82";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=82";
 
 // ============================================================================
 // update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat
@@ -154,7 +154,7 @@ export function lowerInteract(city, consider, p) {
   if (city.lowerVeins && Math.abs(p.pos.y - L.y.low) < 3) for (const v of city.lowerVeins) {
     if (!v.model || v.left <= 0 || !near(v.a, v.b, 3.6)) continue;
     const sel = p.inv.selected(), [x, z] = cityWorld(v.a, v.b), M = city.mining;
-    if (sel && (sel.id === "pickaxe" || sel.id === "et_pickaxe")) consider(x, z, p.pos.y, M && M.v === v ? `${S.mining.replace("%n", Math.round(100 * M.t / M.need))} [${STR.interact}]` : `${S.minePrompt} [${STR.interact}]`, () => city.mineStart(v, sel.id));
+    if (sel && (sel.id === "pickaxe" || sel.id === "et_pickaxe" || sel.id === "fossil_pickaxe")) consider(x, z, p.pos.y, M && M.v === v ? `${S.mining.replace("%n", Math.round(100 * M.t / M.need))} [${STR.interact}]` : `${S.minePrompt} [${STR.interact}]`, () => city.mineStart(v, sel.id));
     else consider(x, z, p.pos.y, S.needPick, () => { g.ui.toast(S.needPick); g.audio.sDeny(); });
   }
 }

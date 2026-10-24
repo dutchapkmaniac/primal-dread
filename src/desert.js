@@ -16,12 +16,12 @@
 // and the map painting. The two Alioramus live in entities.js and only ask
 // this module where the desert is.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=81";
-import { cityFlatten, cityLakeDip } from "./eternius.js?v=81";   // update 39
-import { STR } from "../strings.js?v=81";
+import { CFG } from "./config.js?v=82";
+import { cityFlatten, cityLakeDip } from "./eternius.js?v=82";   // update 39
+import { STR } from "../strings.js?v=82";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { ClipAnimator } from "./skeletal.js?v=81";
+import { ClipAnimator } from "./skeletal.js?v=82";
 
 const D = () => CFG.desert;
 
@@ -71,14 +71,14 @@ export class Desert {
     }
     this.length = acc;
     // the three bridges: the river points nearest the sketch's dashes
-    this.bridges = C.bridges.map(([bx, bz]) => {
+    this.bridges = C.bridges.map(([bx, bz], bi) => {
       let best = null, bd = 1e9;
       for (const s of this.seg) {
         const d = Math.hypot(s.ax - bx, s.az - bz);
         if (d < bd) { bd = d; best = s; }
       }
       const nx = -best.tz, nz = best.tx;        // the normal that points INTO the desert
-      return { x: best.ax, z: best.az, tx: best.tx, tz: best.tz, nx, nz, half: C.river.halfW + C.bridge.overhang, hw: C.bridge.halfWidth };
+      return { x: best.ax, z: best.az, tx: best.tx, tz: best.tz, nx, nz, half: C.river.halfW + C.bridge.overhang, hw: C.bridge.halfWidth, bone: bi === 3 };   // update 81: the fourth is the bone bridge into Skull Valley
     });
     // Idris's tent: on the desert bank of the middle bridge
     const B = this.bridges[1];
@@ -308,13 +308,17 @@ export class Desert {
     // (update 80: the forest-bank sand strip is gone - the soil surface above is the bank now)
     // --- the bridges (update 37): arched plank decks that rise in the middle, solid
     // plank rails along both sides (you step on only at the ends), piers up to the deck
-    const plankMat = w.mat("t_woodplank", 1, 6, 0x6e5636);
-    const railMat = new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 });
-    const railPlank = w.mat("t_woodplank", 3, 1, 0x6e5636);
+    const plankMat0 = w.mat("t_woodplank", 1, 6, 0x6e5636);
+    const railMat0 = new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 });
+    const railPlank0 = w.mat("t_woodplank", 3, 1, 0x6e5636);
     this.bridgeMeshes = [];
+    // update 81: the BONE BRIDGE - the same deck in pale bone, rib hoops arching over it
+    const boneMat = new THREE.MeshStandardMaterial({ color: 0xd9d2bf, roughness: 0.95 }), boneRail = new THREE.MeshStandardMaterial({ color: 0xc9c1aa, roughness: 0.9 });
     for (const b of this.bridges) {
       const g = new THREE.Group();
       const deckW = b.hw * 2, N = 16, L = b.half * 2 + 2;
+      const plankMat = b.bone ? boneMat : plankMat0, railMat = b.bone ? boneRail : railMat0, railPlank = b.bone ? boneMat : railPlank0;
+      if (b.bone) for (let k = -2; k <= 2; k++) { const pz = k * (L / 5.5), y = this.deckY(pz, b); const rib = new THREE.Mesh(new THREE.TorusGeometry(b.hw + 0.5, 0.17, 7, 18, Math.PI), boneRail); rib.position.set(0, y - 0.1, pz); rib.rotation.y = 0; g.add(rib); }
       for (let i = 0; i < N; i++) {
         const z0 = -L / 2 + (L / N) * i, z1 = z0 + L / N;
         const y0 = this.deckY(z0, b) - 0.11, y1 = this.deckY(z1, b) - 0.11;
@@ -662,6 +666,7 @@ export class DesertSystem {
     // the bridges: short brown bars across it
     c.strokeStyle = "#7a5a34"; c.lineWidth = Math.max(2, 4 * s); c.lineCap = "butt";
     for (const b of des.bridges) {
+      c.strokeStyle = b.bone ? "#efe9da" : "#7a5a34";   // update 81: the bone bridge
       c.beginPath();
       c.moveTo(tx(b.x - b.nx * b.half), ty(b.z - b.nz * b.half));
       c.lineTo(tx(b.x + b.nx * b.half), ty(b.z + b.nz * b.half));

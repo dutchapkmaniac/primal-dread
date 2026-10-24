@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=81";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=82";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=81";
-import { Desert } from "./desert.js?v=81";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=81";
+import { CFG } from "./config.js?v=82";
+import { Desert } from "./desert.js?v=82";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=82";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,8 +11,10 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=81";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=81";
-import { pointInPoly, hiddenPathDist } from "./hidden.js?v=81";   // update 75   // update 69: the forest's mild hills
+import { makeHills } from "./forest.js?v=82";
+import { pointInPoly, hiddenPathDist } from "./hidden.js?v=82";   // update 75   // update 69: the forest's mild hills
+import { skullInside, skullH, skullCell } from "./skull_shape.js?v=82";   // update 81: Skull Valley's floor and cliffs
+
 export class World {
   constructor(scene, assets, rng) {
     this.scene = scene;
@@ -107,6 +109,7 @@ export class World {
     if (CFG.witchHut && Math.hypot(x - CFG.witchHut.x, z - CFG.witchHut.z) < CFG.witchHut.size / 2 + 3.2) return true;   // update 70: the witch's hut and its doorstep
     if (this.hiddenZone && this.hiddenZone.active && this.hiddenZone.inside(x, z)) return true;   // update 75: the hidden night keeps every beast out
     if (this.city && this.city.isSafe(x, z, y)) return true;   // update 39: the city's walls (not the chained beast's reach)
+    if (this.skullZone && this.skullZone.isSafe(x, z, y)) return true;   // update 81: Hendrik's tent, the eye-socket shelter, a fed den
     return this.onHut(x, z, y);
   }
   inFarm(x, z) { return inFarm(x, z); }
@@ -202,6 +205,7 @@ export class World {
     if (this.hiddenFloor) { const hf = this.hiddenFloor(x, z, y); if (hf !== null && hf !== undefined) cands.push(hf); }   // update 75: the bridge over the hidden lake
     if (this.city) { const cm = this.city.mountainH(x, z); if (cm !== 0) cands.push(cm); }   // update 39: the city's mountain (update 70: its 0 outside is no floor either)
     this.desert.groundCand(x, z, cands);   // update 36: dunes, the oasis, the bridge decks
+    { const sh = skullH(x, z); if (sh > 0) cands.push(sh); if (this.skullFloor) { const sf = this.skullFloor(x, z, y); if (sf !== null && sf !== undefined) cands.push(sf); } }   // update 81: the valley's cliffs, the way up to the eye
     // the treetop perch (update 27): while climbing, the crown holds you
     if (this.climbSpot && Math.abs(x - this.climbSpot.x) < 1.3
         && Math.abs(z - this.climbSpot.z) < 1.3 && y > this.climbSpot.y - 2) {
@@ -494,6 +498,7 @@ export class World {
   inHidden(x, z) { return !!CFG.hidden && pointInPoly(CFG.hidden.poly, x, z); }   // update 76: inside the hidden forest's line
   inNewLandmark(x, z, pad = 6) {
     const H = CFG.lighthouse, N = CFG.nest, C = CFG.container;
+    if (CFG.skull && (skullInside(x, z) || skullH(x, z) > 0.3)) return true;   // update 81: Skull Valley holds no forest
     if (this.lakePenetration(x, z) > -(pad + CFG.lake.beach)) return true;
     if (Math.hypot(x - H.x, z - H.z) < H.r + pad + 3) return true;
     if (Math.hypot(x - N.x, z - N.z) < N.r + pad) return true;
@@ -2549,6 +2554,7 @@ export class World {
       const lists = { floor: [], grass: [] };
       for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
         const ix = cx + i, iz = cz + j, floor = inRect((ix + 0.5) * G, (iz + 0.5) * G);
+        if (skullCell(ix, iz, G)) { covered[(iz - n0) * NC + (ix - n0)] = 255; continue; }   // update 81: Skull Valley draws its own ground on these cells
         if (!floor && hill.at(ix, iz) === 0 && hill.at(ix + 1, iz) === 0 && hill.at(ix, iz + 1) === 0 && hill.at(ix + 1, iz + 1) === 0) continue;
         const a = j * W1 + i, b = (j + 1) * W1 + i, c = (j + 1) * W1 + i + 1, d = j * W1 + i + 1;
         (floor ? lists.floor : lists.grass).push(a, b, d, b, c, d); cells++; covered[(iz - n0) * NC + (ix - n0)] = 255;
@@ -3325,7 +3331,7 @@ export class World {
   refillChests(rng) {
     for (const c of this.chests) {
       c.opened = false;
-      c.snake = (rng ? rng() : this.rng()) < CFG.snakeChance;
+      c.snake = !c.bone && (rng ? rng() : this.rng()) < CFG.snakeChance;   // update 81: no beetle ever climbs out of a bone chest
     }
   }
 

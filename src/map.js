@@ -1,5 +1,6 @@
-import { CFG, ASSET_V } from "./config.js?v=81";
-import { STR } from "../strings.js?v=81";
+import { CFG, ASSET_V } from "./config.js?v=82";
+import { skullInside, skullH } from "./skull_shape.js?v=82";   // update 81
+import { STR } from "../strings.js?v=82";
 
 // Top-down expedition map: the full parchment map (pause menu) and the small
 // living minimap in the HUD corner. Terrain is always drawn; NAMED landmarks
@@ -52,6 +53,7 @@ export class GameMap {
     }
     // update 36: the desert, its river and the three bridges
     if (this.game.desert) this.game.desert.paint(c, tx, ty, s, mini);
+    if (this.game.skull) this.game.skull.paint(c, tx, ty, s, mini);   // update 81: Skull Valley is drawn from the first day
     if (this.game.city) this.game.city.paint(c, tx, ty, s, mini);   // update 39: the mountain, the castle, the lake
     // the lake with its beach
     for (const l of [{ x: CFG.lake.x, z: CFG.lake.z, r: CFG.lake.r }, ...CFG.lake.lobes]) {
@@ -126,6 +128,7 @@ export class GameMap {
       if (!wooded) continue;
       if (this.game.world.inMountain(x, z)) continue;
       if (this.game.world.desert.inDesert(x, z) || this.game.world.desert.riverDist(x, z) < 20) continue;   // update 36
+      if (CFG.skull && (skullInside(x, z) || skullH(x, z) > 0.3)) continue;   // update 81: no trees on Skull Valley's sand or cliffs
       if (Math.hypot(x - CFG.lake.x, z - CFG.lake.z) < CFG.lake.r + 14) continue;
       if (Math.hypot(x - CFG.ruins.x, z - CFG.ruins.z) < 26) continue;
       if (Math.abs(x - CFG.farm.x) < CFG.farm.hw + 4 && Math.abs(z - CFG.farm.z) < CFG.farm.hd + 4) continue;   // update 29
@@ -205,6 +208,7 @@ export class GameMap {
       c.closePath(); c.fillStyle = "#4a3b28"; c.fill();
     }
     if (this.game.desert) this.game.desert.paintGlyphs(c, tx, ty, s, disc);   // update 36
+    if (this.game.skull) this.game.skull.paintGlyphs(c, tx, ty, s, disc);   // update 81
     if (this.game.portals) this.game.portals.paintGlyphs(c, tx, ty, s, disc);   // update 37
     // update 29: Dirk's farm — house, the fenced pasture and the berry rows
     if (disc.has("farm")) {
