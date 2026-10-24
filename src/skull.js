@@ -11,12 +11,12 @@
 // hundred, one in fifty with the fossil pickaxe); sand mounds are dug with the spade (bones, a Majungasaurus tooth, the
 // same fossil roll).
 import * as THREE from "three";
-import { CFG } from "./config.js?v=82";
-import { STR } from "../strings.js?v=82";
-import { pickWeighted } from "./rng.js?v=82";
-import { Inventory } from "./items.js?v=82";
-import { skullInside, skullH, skullCell, tunnelDist, segDist } from "./skull_shape.js?v=82";
-import { ClipAnimator } from "./skeletal.js?v=82";
+import { CFG } from "./config.js?v=83";
+import { STR } from "../strings.js?v=83";
+import { pickWeighted } from "./rng.js?v=83";
+import { Inventory } from "./items.js?v=83";
+import { skullInside, skullH, skullCell, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=83";
+import { ClipAnimator } from "./skeletal.js?v=83";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const K = () => CFG.skull;
@@ -43,6 +43,7 @@ export class SkullValley {
     this.boneMat = new THREE.MeshStandardMaterial({ color: 0xd9d2bf, roughness: 0.95, side: THREE.DoubleSide });
     this.darkMat = this.w.mat("t_darkcliff", 1, 1, 0x3b3c3e);
     this.buildGround();
+    this.buildReach();
     this.buildTunnels();
     this.buildLandmarks();
     this.buildShelter();
@@ -81,12 +82,21 @@ export class SkullValley {
     }
     this.groundCells = sand.length / 6 + rock.length / 6;
   }
+  // the walkable floor joined to the camp (5 m cells): spawns, chests and targets go only where you can get to
+  buildReach() {
+    const G = 5, B = this.bounds(), S = K(); this.reachG = G; this.reachB = B;
+    const nx = this.reachNX = Math.ceil((B.x1 - B.x0) / G), nz = this.reachNZ = Math.ceil((B.z1 - B.z0) / G);
+    const walk = new Uint8Array(nx * nz); for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const x = B.x0 + (i + 0.5) * G, z = B.z0 + (j + 0.5) * G; if (this.inside(x, z) && skullH(x, z) < 2.5 && this.w.desert.riverDist(x, z) > 14) walk[j * nx + i] = 1; }
+    const seen = this.reach = new Uint8Array(nx * nz); const q = [[Math.floor((S.camp.x - B.x0) / G), Math.floor((S.camp.z - B.z0) / G)]]; seen[q[0][1] * nx + q[0][0]] = 1;
+    while (q.length) { const [i, j] = q.pop(); for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= nz) continue; const k = b * nx + a; if (!walk[k] || seen[k]) continue; seen[k] = 1; q.push([a, b]); } }
+  }
+  reachable(x, z) { if (!this.reach) return true; const i = Math.floor((x - this.reachB.x0) / this.reachG), j = Math.floor((z - this.reachB.z0) / this.reachG); if (i < 0 || j < 0 || i >= this.reachNX || j >= this.reachNZ) return false; return !!this.reach[j * this.reachNX + i]; }
   // a random spot on the open valley floor (the hunters' wander targets and spawns)
   randomFloor(rng) {
     const S = K(), B = this.bounds();
     for (let k = 0; k < 60; k++) {
       const x = B.x0 + rng() * (B.x1 - B.x0), z = B.z0 + rng() * (B.z1 - B.z0);
-      if (!this.inside(x, z) || skullH(x, z) > 0.2 || this.inTent(x, z) || Math.hypot(x - S.camp.x, z - S.camp.z) < 20) continue;
+      if (!this.inside(x, z) || skullH(x, z) > 0.2 || !this.reachable(x, z) || this.inTent(x, z) || Math.hypot(x - S.camp.x, z - S.camp.z) < 20) continue;
       if (Math.abs(x) > CFG.world.square - 12 || Math.abs(z) > CFG.world.square - 12) continue;
       if (S.dens.some((D) => Math.hypot(x - D.x, z - D.z) < S.denR + 4)) continue;
       return [x, z];
@@ -96,7 +106,7 @@ export class SkullValley {
   // ---------------- the tunnels through the cliffs: a roof slab and two bone-rock walls over each cut ----------------
   buildTunnels() {
     const S = K(), w = this.w, scene = this.g.scene;
-    for (const [a, b] of S.tunnels) {
+    for (const [a, b] of skullTunnels()) {
       const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz), yaw = Math.atan2(dx, dz), mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
       const roof = new THREE.Mesh(new THREE.BoxGeometry(S.tunnelHw * 2 + 5, 1.6, L + 6), this.darkMat); roof.position.set(mx, S.tunnelH + 0.8, mz); roof.rotation.y = yaw; scene.add(roof);
       const n = Math.ceil(L / 3);
@@ -110,7 +120,7 @@ export class SkullValley {
   }
   place(id, x, z, yaw, scaleMul = 1) {
     const a = this.g.assets.glb[id]; if (!a) return null;
-    const m = a.model.clone(); m.position.set(x, this.w.groundHeight(x, z, 40), z); m.rotation.y = yaw; if (scaleMul !== 1) m.scale.multiplyScalar(scaleMul); this.g.scene.add(m); return m;
+    const m = a.model.clone(); m.position.set(x, this.w.groundHeight(x, z, 999), z); m.rotation.y = yaw; if (scaleMul !== 1) m.scale.multiplyScalar(scaleMul); this.g.scene.add(m); return m;
   }
   // ---------------- the giant bones ----------------
   buildLandmarks() {
@@ -124,19 +134,67 @@ export class SkullValley {
     const rib = this.place("sv_ribcage", S.ribcage.x, S.ribcage.z, S.ribcage.yaw); this.ribMesh = rib;
     this.place("sv_spine", S.spine.x, S.spine.z, S.spine.yaw);
     this.place("sv_skeleton", S.skeleton.x, S.skeleton.z, S.skeleton.yaw);
-    // smaller bones strewn about: the skeleton and the ribcage again, small and half sunk
-    for (let i = 0; i < 10; i++) { const [x, z] = this.spot(); const m = this.place(i % 2 ? "sv_ribcage" : "sv_skeleton", x, z, this.rng() * Math.PI * 2, 0.12 + this.rng() * 0.1); if (m) m.position.y -= 0.6; }
+    this.bones = []; this.rocks = [];
+    this.buildBones();
+    this.buildRocks();
+  }
+  // ---------------- the bone field: giants on the rock and in the sand, smaller pieces between ----------------
+  boneSpot(minGap, list, tries = 60, onRock = null) {
+    const S = K(), B = this.bounds(), T = skullTunnels();
+    for (let k = 0; k < tries; k++) {
+      const x = B.x0 + this.rng() * (B.x1 - B.x0), z = B.z0 + this.rng() * (B.z1 - B.z0);
+      if (!this.inside(x, z)) continue;
+      const h = skullH(x, z); if (onRock === true && h < 3) continue; if (onRock === false && h > 0.3) continue;
+      if (S.flats.some(([fx, fz, r]) => Math.hypot(x - fx, z - fz) < r + 6)) continue;
+      if (T.some(([a, b]) => segDist(x, z, a[0], a[1], b[0], b[1]) < S.tunnelHw + 10)) continue;
+      if (this.w.desert.riverDist(x, z) < 26 || Math.abs(x) > CFG.world.square - 30 || Math.abs(z) > CFG.world.square - 30) continue;
+      if (list.some((o) => Math.hypot(o.x - x, o.z - z) < minGap)) continue;
+      return [x, z, h];
+    }
+    return null;
+  }
+  buildBones() {
+    const S = K(), N = S.bones, kinds = [["sv_skull", 0.3, [0.3, 0.75]], ["sv_ribcage", 0.25, [0.5, 1.3]], ["sv_spine", 0.2, [0.5, 1.4]], ["sv_skeleton", 0.25, [0.6, 1.6]]];
+    const pick = () => { let r = this.rng(), acc = 0; for (const k of kinds) { acc += k[1]; if (r <= acc) return k; } return kinds[3]; };
+    const put = (kind, mul, gap, sinkMax) => {
+      const H = CFG.modelScale[kind[0]] * mul; let sp = null;
+      for (let t = 0; t < 12 && !sp; t++) {   // level enough for its size: no bone hanging off a cliff
+        const c = this.boneSpot(gap, this.bones, 80); if (!c) return;
+        const gh = (dx, dz) => this.w.groundHeight(c[0] + dx, c[1] + dz, 999), r = H * 0.5, hs = [gh(0, 0), gh(r, 0), gh(-r, 0), gh(0, r), gh(0, -r)];
+        if (Math.max(...hs) - Math.min(...hs) < H * 0.35) sp = c;
+      }
+      if (!sp) return;
+      const [x, z] = sp, yaw = this.rng() * Math.PI * 2, m = this.place(kind[0], x, z, yaw, mul); if (!m) return;
+      m.position.y = this.w.groundHeight(x, z, 999) - this.rng() * sinkMax - H * 0.06;
+      m.rotation.x = (this.rng() - 0.5) * 0.18; m.rotation.z = (this.rng() - 0.5) * 0.18;
+      this.bones.push({ x, z, kind: kind[0], h: H, y: m.position.y });
+      if (kind[0] === "sv_skull" && H > 4) this.w.addTree(x, z, H * 0.45, "bone");   // a skull is solid; ribs you walk between
+    };
+    for (let i = 0; i < N.giant; i++) { const k = pick(); put(k, k[2][0] + this.rng() * (k[2][1] - k[2][0]), 30, 1.6); }
+    for (let i = 0; i < N.medium; i++) { const k = pick(); put(k, (k[2][0] + this.rng() * (k[2][1] - k[2][0])) * 0.22, 9, 0.5); }
+  }
+  // ---------------- the boulders ----------------
+  buildRocks() {
+    const S = K(), b = this.g.assets.glb.boulder; if (!b) return;
+    for (let i = 0; i < S.bones.rocks; i++) {
+      const sp = this.boneSpot(5, this.rocks, 40); if (!sp) continue;
+      const [x, z] = sp, mul = 0.5 + this.rng() * this.rng() * 2.8, m = b.model.clone();
+      m.traverse((o) => { if (o.isMesh) o.material = this.darkMat; }); m.scale.multiplyScalar(mul); m.rotation.y = this.rng() * 6.28; m.rotation.z = (this.rng() - 0.5) * 0.3;
+      m.position.set(x, this.w.groundHeight(x, z, 999) - 0.25 * mul, z); this.g.scene.add(m);
+      this.rocks.push({ x, z, r: 0.9 * mul }); if (mul > 0.9) this.w.addTree(x, z, 0.85 * mul);
+    }
   }
   // a random sand spot on the valley floor, clear of the cliffs, the landmarks and the camp
   spot(minLand = 26) {
     const S = K(), B = this.bounds();
     for (let k = 0; k < 400; k++) {
       const x = B.x0 + this.rng() * (B.x1 - B.x0), z = B.z0 + this.rng() * (B.z1 - B.z0);
-      if (!this.inside(x, z) || skullH(x, z) > 0.2 || tunnelDist(x, z) < 8) continue;
+      if (!this.inside(x, z) || skullH(x, z) > 0.2 || !this.reachable(x, z) || tunnelDist(x, z) < 8) continue;
       if (Math.hypot(x - S.camp.x, z - S.camp.z) < 24) continue;
       if (Math.hypot(x - S.skullCave.x, z - S.skullCave.z) < S.skullCave.clearR) continue;
       if ([S.ribcage, S.spine, S.skeleton].some((L) => Math.hypot(x - L.x, z - L.z) < minLand)) continue;
       if (S.dens.some((D) => Math.hypot(x - D.x, z - D.z) < 34)) continue;
+      if (this.bones && this.bones.some((o) => Math.hypot(o.x - x, o.z - z) < o.h * 0.6 + 2)) continue;
       if (this.w.desert.riverDist(x, z) < 26 || Math.abs(x) > CFG.world.square - 20 || Math.abs(z) > CFG.world.square - 20) continue;
       return [x, z];
     }
@@ -273,7 +331,7 @@ export class SkullValley {
   }
   buildStones() {
     const S = K();
-    for (const [a, b] of S.tunnels) for (let i = 0; i < 4; i++) { const t = 0.15 + 0.7 * this.rng(), side = this.rng() < 0.5 ? -1 : 1; const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; const x = a[0] + dx * t - dz / L * side * (S.tunnelHw - 1.1), z = a[1] + dz * t + dx / L * side * (S.tunnelHw - 1.1); this.addStone(x, z, 0); }
+    for (const [a, b] of skullTunnels()) for (let i = 0; i < 4; i++) { const t = 0.15 + 0.7 * this.rng(), side = this.rng() < 0.5 ? -1 : 1; const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; const x = a[0] + dx * t - dz / L * side * (S.tunnelHw - 1.1), z = a[1] + dz * t + dx / L * side * (S.tunnelHw - 1.1); this.addStone(x, z, 0); }
     for (let i = 0; i < S.stoneCount; i++) { const [x, z] = this.spot(18); this.addStone(x, z, this.w.groundHeight(x, z, 40)); }
   }
   buildDigs() {
@@ -434,6 +492,8 @@ export class SkullValley {
     // Hendrik turns to you when you are near
     if (this.hendrik) { const H = this.hendrik, d = Math.hypot(p.pos.x - H.x, p.pos.z - H.z); const want = d < 6 ? Math.atan2(p.pos.x - H.x, p.pos.z - H.z) : H.yaw0; let dy = want - H.body.rotation.y; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; H.body.rotation.y += dy * Math.min(1, dt * 4); if (H.anim) H.anim.drive("idle", 0, 1, dt); }
     if (this.campLight) this.campLight.intensity = 0.5 + 1.6 * (g.world.nightK || 0);
+    // the valley is seen further than the forest: the fog stands off while you are inside (a preset change is adopted as the new base)
+    { const w = g.world; if (this.fogApplied === undefined || w.fogMult !== this.fogApplied) this.fogBase = w.fogMult; const want = this.inside(p.pos.x, p.pos.z) ? this.fogBase * K2.fogMult : this.fogBase; if (w.fogMult !== want) { w.fogMult = want; w.updateEnv && w.updateEnv(0); } this.fogApplied = want; }
     // the dens: the unfed keeper stands and growls when you walk in
     for (const d of this.dens) { if (!d.theri || d.theri.dead) continue; const inDen = Math.hypot(p.pos.x - d.x, p.pos.z - d.z) < K2.denR; d.growlT -= dt; if (inDen && !this.denFed(d) && d.theri.state !== "chase" && d.growlT <= 0) { d.growlT = 9; g.ui.toast(STR.skull.theriGrowl); g.audio.sGrowl(); } }
     // the night: Majungasaurus calls echo through the valley
@@ -443,14 +503,40 @@ export class SkullValley {
 
   // ---------------- the map ----------------
   paint(c, tx, ty, s, mini) {
-    const S = K(), P = S.poly;
-    c.save(); c.beginPath(); P.forEach(([x, z], i) => i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z))); c.closePath();
-    c.fillStyle = mini ? "rgba(214,208,194,.8)" : "#d8d2c3"; c.fill();
-    c.strokeStyle = mini ? "rgba(50,50,54,.9)" : "#3a3a3e"; c.lineWidth = Math.max(2, S.edgeRidge.w * 0.8 * s); c.lineJoin = "round";
-    c.beginPath(); for (let i = 0; i <= S.edgeN; i++) { const [x, z] = P[i]; i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z)); } c.stroke();
-    c.lineWidth = Math.max(1.5, S.ridgeW * 0.7 * s); for (const line of S.ridges) { c.beginPath(); line.forEach(([x, z], i) => i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z))); c.stroke(); }
-    if (!mini) { c.strokeStyle = "rgba(90,86,76,.5)"; c.lineWidth = 1; for (let k = 0; k < 60; k++) { const [x, z] = [S.poly[6][0] - 40 - ((k * 173) % 980), S.poly[6][1] - 20 - ((k * 97) % 1000)]; if (!this.inside(x, z) || skullH(x, z) > 0.2) continue; c.beginPath(); c.moveTo(tx(x - 5), ty(z)); c.lineTo(tx(x + 5), ty(z)); c.moveTo(tx(x), ty(z - 3)); c.lineTo(tx(x), ty(z + 3)); c.stroke(); } }
+    const S = K(), P = S.poly, B = this.bounds();
+    c.save(); c.beginPath(); P.forEach(([x, z], i) => i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z))); c.closePath(); c.clip();
+    c.fillStyle = mini ? "rgba(222,216,202,.85)" : "#ded8c8"; c.fillRect(tx(B.x0) - 2, ty(B.z0) - 2, (B.x1 - B.x0) * s + 4, (B.z1 - B.z0) * s + 4);
+    // the rock: every cell with cliff under it, grey, darker the higher; then hatch strokes on the slopes
+    const G = mini ? 16 : 10;
+    for (let z = B.z0; z < B.z1; z += G) for (let x = B.x0; x < B.x1; x += G) {
+      const h = skullH(x + G / 2, z + G / 2); if (h < 1.5) continue;
+      const k = Math.min(1, h / 36); c.fillStyle = "rgb(" + Math.round(120 - 50 * k) + "," + Math.round(122 - 50 * k) + "," + Math.round(118 - 46 * k) + ")";
+      c.fillRect(tx(x), ty(z), G * s + 0.6, G * s + 0.6);
+    }
+    if (!mini) {
+      let seed = 99; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+      c.strokeStyle = "#2f312d"; c.lineWidth = 1;
+      for (let k = 0; k < 900; k++) { const x = B.x0 + rnd() * (B.x1 - B.x0), z = B.z0 + rnd() * (B.z1 - B.z0); const h = skullH(x, z); if (h < 6 || !this.inside(x, z)) continue; const px = tx(x), py = ty(z), l = 2 + rnd() * 3 + h * 0.06; c.beginPath(); c.moveTo(px - l, py + l * 0.55); c.lineTo(px, py - l * 0.65); c.lineTo(px + l, py + l * 0.55); c.stroke(); }
+      c.fillStyle = "rgba(120,110,92,.45)";
+      for (let k = 0; k < 500; k++) { const x = B.x0 + rnd() * (B.x1 - B.x0), z = B.z0 + rnd() * (B.z1 - B.z0); if (!this.inside(x, z) || skullH(x, z) > 0.5) continue; c.fillRect(tx(x), ty(z), 1.2, 1.2); }
+      // the tunnels: dark gaps through the rock
+      c.strokeStyle = "#1c1d1b"; c.lineWidth = Math.max(1.5, S.tunnelHw * 2 * s); c.lineCap = "butt";
+      for (const [a, b] of skullTunnels()) { c.beginPath(); c.moveTo(tx(a[0]), ty(a[1])); c.lineTo(tx(b[0]), ty(b[1])); c.stroke(); }
+      // the bones: pale glyphs, the giants drawn, the small ones as flecks
+      for (const o of this.bones || []) {
+        const px = tx(o.x), py = ty(o.z), r = Math.max(1.2, o.h * 0.5 * s);
+        c.fillStyle = "#f2ede0"; c.strokeStyle = "#5a5448"; c.lineWidth = 0.8;
+        if (o.h < 5) { c.beginPath(); c.arc(px, py, 1.1, 0, 6.28); c.fill(); continue; }
+        if (o.kind === "sv_skull") { c.beginPath(); c.arc(px, py, r, 0, 6.28); c.fill(); c.stroke(); c.fillStyle = "#3a3430"; c.beginPath(); c.arc(px - r * 0.35, py - r * 0.15, r * 0.22, 0, 6.28); c.arc(px + r * 0.35, py - r * 0.15, r * 0.22, 0, 6.28); c.fill(); }
+        else if (o.kind === "sv_ribcage") { c.strokeStyle = "#f2ede0"; c.lineWidth = 1.4; for (let i = -1; i <= 1; i++) { c.beginPath(); c.arc(px + i * r * 0.7, py, r * 0.8, Math.PI, 0); c.stroke(); } }
+        else if (o.kind === "sv_spine") { for (let i = -2; i <= 2; i++) { c.beginPath(); c.arc(px + i * r * 0.55, py + i * r * 0.2, r * 0.26, 0, 6.28); c.fill(); } }
+        else { c.beginPath(); c.ellipse(px, py, r * 1.1, r * 0.4, 0.6, 0, 6.28); c.fill(); c.stroke(); }
+      }
+    }
     c.restore();
+    // the cliff line along the red line
+    c.strokeStyle = mini ? "rgba(40,42,40,.9)" : "#2c2e2b"; c.lineWidth = Math.max(1.5, 3 * s); c.lineJoin = "round";
+    c.beginPath(); for (let i = 0; i <= S.edgeN; i++) { const [x, z] = P[i]; i ? c.lineTo(tx(x), ty(z)) : c.moveTo(tx(x), ty(z)); } c.stroke();
   }
   paintGlyphs(c, tx, ty, s, disc) {
     const S = K(), bone = "#efe9da", ink = "#3a3430";

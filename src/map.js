@@ -1,6 +1,6 @@
-import { CFG, ASSET_V } from "./config.js?v=82";
-import { skullInside, skullH } from "./skull_shape.js?v=82";   // update 81
-import { STR } from "../strings.js?v=82";
+import { CFG, ASSET_V } from "./config.js?v=83";
+import { skullInside, skullH } from "./skull_shape.js?v=83";   // update 81
+import { STR } from "../strings.js?v=83";
 
 // Top-down expedition map: the full parchment map (pause menu) and the small
 // living minimap in the HUD corner. Terrain is always drawn; NAMED landmarks

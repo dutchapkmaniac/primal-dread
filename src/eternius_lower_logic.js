@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=82";
-import { STR } from "../strings.js?v=82";
-import { E, D2R, cityWorld } from "./eternius_frame.js?v=82";
+import { CFG } from "./config.js?v=83";
+import { STR } from "../strings.js?v=83";
+import { E, D2R, cityWorld } from "./eternius_frame.js?v=83";
 
 // ============================================================================
 // update 50: FLOOR -1's rules — where the floor is, what is rock, the water you can drink, its people, the boat

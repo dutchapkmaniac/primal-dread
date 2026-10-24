@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=82";
+export const ASSET_V = "?v=83";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -854,10 +854,17 @@ export const CFG = {
   // edge, edgeN segments of it carry the cliff ridge; the rest follows the river). World z grows south.
   skull: {
     poly: [[82, 868], [215, 1012], [420, 800], [800, 592], [1100, 382], [1345, 200], [1345, 1345], [302, 1345], [262, 1240], [197, 1120], [104, 975]],
-    edgeN: 5, edgeStart: 42, edgeRidge: { h: 15, w: 26 },
+    edgeN: 5, edgeStart: 42, edgeRidge: { h: 26, w: 44 }, edgeWall: { h: 42, w: 80 },   // the cliff along the red line; the mountain wall along the map's edge
     ridges: [[[470, 1240], [640, 1180], [760, 1090]], [[980, 1180], [1120, 1030], [1210, 880]], [[560, 760], [690, 700], [840, 690]], [[1000, 520], [1180, 560], [1290, 660]], [[520, 980], [600, 900]]],
-    ridgeH: 11, ridgeW: 20,
-    tunnels: [[[640, 1215], [640, 1145]], [[1085, 1055], [1155, 1005]], [[690, 735], [690, 665]], [[1180, 595], [1180, 525]]],
+    ridgeH: 24, ridgeW: 36,
+    // the rocky hills between the ridges (seeded in skull_shape.js), the biggest bored through with tunnels
+    hillSeed: 48151, hillCount: 78, hillTries: 6000, hillR: [22, 52], hillH: [12, 34], hillTunnels: 0, hillGap: 0.78,
+    // level ground: the camp, the three dens, the great skull, the bridge landing
+    flats: [[300, 1110, 30], [960, 1250, 34], [1200, 480, 34], [640, 860, 34], [900, 960, 70], [215, 1120, 40], [760, 980, 26], [1050, 820, 26], [600, 1170, 26], [1230, 1200, 26]],   // + the four herds' grazing grounds
+    // the bones: giant pieces on the rock and in the sand, smaller ones between, and the boulders
+    bones: { giant: 44, medium: 110, rocks: 220 }, fogMult: 1.9,   // the valley is seen further than the forest
+    tunnels: [[[640, 1215], [640, 1145]], [[1085, 1055], [1155, 1005]], [[690, 735], [690, 665]], [[1180, 595], [1180, 525]],
+      [[682, 1101], [718, 1149]], [[1139, 940], [1191, 970]], [[763, 660], [767, 730]], [[1255, 588], [1215, 632]]],   // eight bores through the ridges
     tunnelHw: 4, tunnelH: 6.5,
     floorColor: 0xe9e4d6,
     skullCave: { x: 900, z: 960, yaw: -0.6, clearR: 70, climbR: 22 },
