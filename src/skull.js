@@ -11,14 +11,14 @@
 // hundred, one in fifty with the fossil pickaxe); sand mounds are dug with the spade (bones, a Majungasaurus tooth, the
 // same fossil roll).
 import * as THREE from "three";
-import { CFG } from "./config.js?v=86";
-import { STR } from "../strings.js?v=86";
-import { pickWeighted } from "./rng.js?v=86";
-import { iconUrl } from "./items.js?v=86";
-import { Inventory } from "./items.js?v=86";
-import { skullInside, skullH, skullCell, skullNode, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=86";
-import { ClipAnimator } from "./skeletal.js?v=86";
-import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=86";   /* update 85 */
+import { CFG } from "./config.js?v=87";
+import { STR } from "../strings.js?v=87";
+import { pickWeighted } from "./rng.js?v=87";
+import { iconUrl } from "./items.js?v=87";
+import { Inventory } from "./items.js?v=87";
+import { skullInside, skullH, skullCell, skullNode, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=87";
+import { ClipAnimator } from "./skeletal.js?v=87";
+import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=87";   /* update 85 */
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const K = () => CFG.skull;
@@ -214,6 +214,9 @@ export class SkullValley {
   }
   buildShelter() {
     const S = K(), E = S.eye, scene = this.g.scene, w = this.w;
+    // update 87: a DUNGEON, not a bone tube - dark rock floors, walls and roof, stone treads on the climbs, warm lamps; the room
+    // behind the eye is inside the skull and looks out through the opened socket (the user: no plateau, everything inside)
+    this.dunMat = w.mat("t_darkcliff", 1, 1, 0x6a6460); this.dunMat.side = THREE.DoubleSide;
     const P = E.path.map(([fx, fy, fz]) => this.shelterLocal(fx, fy, fz));
     this.eyePos = P[P.length - 1].clone(); this.mouthPos = P[0].clone();
     // the floors: ribbons along the path (the last stretch is too narrow for a hunter), with bone walls beside them
@@ -223,23 +226,23 @@ export class SkullValley {
       const dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz) || 1, nx = -dz / L, nz = dx / L;
       const g = new THREE.BufferGeometry(); const v = [a.x + nx * hw, a.y, a.z + nz * hw, a.x - nx * hw, a.y, a.z - nz * hw, b.x + nx * hw, b.y, b.z + nz * hw, b.x - nx * hw, b.y, b.z - nz * hw];
       g.setAttribute("position", new THREE.Float32BufferAttribute(v, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, L / 3, 1, L / 3], 2)); g.setIndex([0, 2, 1, 1, 2, 3]); g.computeVertexNormals();
-      scene.add(new THREE.Mesh(g, this.boneMat));
+      scene.add(new THREE.Mesh(g, this.dunMat));
       for (const side of [-1, 1]) {   // walls: a strip from the floor up 4 m
         const wg = new THREE.BufferGeometry(); const ox = nx * (hw + 0.2) * side, oz = nz * (hw + 0.2) * side;
         wg.setAttribute("position", new THREE.Float32BufferAttribute([a.x + ox, a.y - 0.2, a.z + oz, a.x + ox, a.y + 4, a.z + oz, b.x + ox, b.y - 0.2, b.z + oz, b.x + ox, b.y + 4, b.z + oz], 3));
-        wg.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 0, 1, L / 4, 0, L / 4, 1], 2)); wg.setIndex([0, 1, 2, 1, 3, 2]); wg.computeVertexNormals(); scene.add(new THREE.Mesh(wg, this.boneMat));
+        wg.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 0, 1, L / 4, 0, L / 4, 1], 2)); wg.setIndex([0, 1, 2, 1, 3, 2]); wg.computeVertexNormals(); scene.add(new THREE.Mesh(wg, this.dunMat));
       }
       { const rg = new THREE.BufferGeometry(); const hh = 3.6;   // the roof
         rg.setAttribute("position", new THREE.Float32BufferAttribute([a.x + nx * (hw + 0.3), a.y + hh, a.z + nz * (hw + 0.3), a.x - nx * (hw + 0.3), a.y + hh, a.z - nz * (hw + 0.3), b.x + nx * (hw + 0.3), b.y + hh, b.z + nz * (hw + 0.3), b.x - nx * (hw + 0.3), b.y + hh, b.z - nz * (hw + 0.3)], 3));
-        rg.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, L / 3, 1, L / 3], 2)); rg.setIndex([0, 1, 2, 1, 3, 2]); rg.computeVertexNormals(); scene.add(new THREE.Mesh(rg, this.boneMat)); }
-      for (let t = 2.5; t < L - 1; t += 4) {   // rib rings
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(hw + 0.45, 0.16, 6, 16, Math.PI), this.boneMat);
-        ring.position.set(a.x + dx * (t / L), a.y + (b.y - a.y) * (t / L) + 0.1, a.z + dz * (t / L)); ring.rotation.y = Math.atan2(dx, dz); scene.add(ring);
+        rg.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, L / 3, 1, L / 3], 2)); rg.setIndex([0, 1, 2, 1, 3, 2]); rg.computeVertexNormals(); scene.add(new THREE.Mesh(rg, this.dunMat)); }
+      if (Math.abs(b.y - a.y) / L > 0.12) for (let t = 0.6; t < L - 0.4; t += 0.9) {   // stone treads on the climbs (the ramp underneath is what you walk)
+        const tread = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 0.2, 0.22, 0.9), this.dunMat);
+        tread.position.set(a.x + dx * (t / L), a.y + (b.y - a.y) * (t / L) + 0.02, a.z + dz * (t / L)); tread.rotation.y = Math.atan2(dx, dz); tread.rotation.x = -Math.atan2(b.y - a.y, L); scene.add(tread);
       }
-      const l = new THREE.PointLight(0xe0c890, 1.6, 12, 1.8); l.position.set((a.x + b.x) / 2, (a.y + b.y) / 2 + 2.2, (a.z + b.z) / 2); scene.add(l);
+      for (const t of [0.3, 0.75]) { const l = new THREE.PointLight(0xffa050, 3.6, 16, 1.6); l.position.set(a.x + dx * t, a.y + (b.y - a.y) * t + 2.4, a.z + dz * t); scene.add(l); }   /* update 87: two warm lamps a stretch, the climb is not black */
     }
     // the platform at the eye: a bone disc, the bedroll, a chest, a fire, the drawings on the wall
-    const e = this.eyePos; const disc = new THREE.Mesh(new THREE.CylinderGeometry(E.platR, E.platR + 0.6, 0.5, 18), this.boneMat); disc.position.set(e.x, e.y - 0.25, e.z); scene.add(disc);
+    const e = this.eyePos; const disc = new THREE.Mesh(new THREE.CylinderGeometry(E.platR, E.platR, 0.3, 18), this.dunMat); disc.position.set(e.x, e.y - 0.15, e.z); scene.add(disc);
     this.floors.push({ disc: true, x: e.x, z: e.z, y: e.y, r: E.platR });
     const yaw = S.skullCave.yaw;
     const bed = this.g.assets.glb.bedroll; if (bed) { const m = bed.model.clone(); const [bx, bz] = this.rot(-1.6, -1.2, yaw); m.position.set(e.x + bx, e.y + 0.02, e.z + bz); m.rotation.y = yaw + 0.3; scene.add(m); w.beds.push({ x: e.x + bx, z: e.z + bz, y: e.y + 0.05, label: "eye" }); }
@@ -257,7 +260,7 @@ export class SkullValley {
       const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
       const [wx, wz] = this.rot(0, -E.platR + 0.4, yaw); const wall = new THREE.Mesh(new THREE.PlaneGeometry(5, 2.5), new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 1, side: THREE.DoubleSide }));
       wall.position.set(e.x + wx, e.y + 1.9, e.z + wz); wall.rotation.y = yaw; scene.add(wall);
-      const back = new THREE.Mesh(new THREE.PlaneGeometry(6.5, 4.2), this.boneMat); back.position.set(e.x + wx * 1.06, e.y + 2.0, e.z + wz * 1.06); back.rotation.y = yaw; scene.add(back); }
+      const back = new THREE.Mesh(new THREE.PlaneGeometry(6.5, 4.2), this.dunMat); back.position.set(e.x + wx * 1.06, e.y + 2.0, e.z + wz * 1.06); back.rotation.y = yaw; scene.add(back); }
     // the fossil veins along the way: three stones that always give a vein
     for (let i = 1; i < Math.min(4, P.length - 1); i++) { const a = P[i], b = P[i + 1]; const t = 0.5, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t, y = a.y + (b.y - a.y) * t; const dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz) || 1; const ox = -dz / L * (E.hw - 0.5), oz = dx / L * (E.hw - 0.5); this.addStone(x + ox, z + oz, y, true); }
   }

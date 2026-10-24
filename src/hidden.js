@@ -18,8 +18,8 @@
 // Mystic apples at night. The explorer sells a map for four plants: read once, the hidden area shows on the world map.
 // The lag: the 3,773 lanterns were 28,000-triangle meshes, never culled - now 1,500 triangles each in 64 m cells.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=86";
-import { STR } from "../strings.js?v=86";
+import { CFG } from "./config.js?v=87";
+import { STR } from "../strings.js?v=87";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const D2R = Math.PI / 180;
