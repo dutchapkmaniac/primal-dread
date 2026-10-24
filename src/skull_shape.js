@@ -2,7 +2,7 @@
 // (who may cross the line), map.js and skull.js (the valley itself). Nothing here imports the world, so nothing cycles.
 // The valley is a wasteland of rock: the cliff ridge along the user's red line, a mountain wall along the map's edge,
 // the drawn ridges, and a seeded field of rocky hills between them, with tunnels bored through the biggest.
-import { CFG } from "./config.js?v=89";
+import { CFG } from "./config.js?v=90";
 
 // update 85: the first 60 m of the Bone Mentor's tunnel lie in the wall's rising foot. Where the rock's surface would cut
 // through the tube (lower than its roof) it is pushed a metre under the tube's floor instead - inside the skull mouth that

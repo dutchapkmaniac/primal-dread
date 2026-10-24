@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=89";
+export const ASSET_V = "?v=90";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -878,7 +878,7 @@ export const CFG = {
     ribHall: { x: 450, z: 900, yaw: 1.8, cages: 2, w: 36, poolR: [44, 26], shafts: 9 },   /* update 89: the drowned ribs between the camp and the Great Skull */
     // the way to the eye-socket shelter, as fractions of the skull's box (x across, y up, z along its length): the mouth,
     // up through the bone, to the eye. The last three stretches are the narrow ones no hunter fits through.
-    eye: { path: [[0, 0.03, 0.46], [0, 0.07, 0.28], [-0.03, 0.17, 0.08], [-0.08, 0.3, -0.04], [-0.12, 0.4, 0.0], [-0.15, 0.44, 0.1], [-0.15, 0.44, 0.18], [-0.15, 0.44, 0.26]], hw: 3.2, narrowHw: 1.4, platR: 5.5 }   /* update 87: in through the mouth, a dungeon climb inside the rock, the room BEHIND the opened left eye socket (fx -0.15, fy 0.47, fz 0.2) */   /* update 86: through the mouth of the skull rock, up to its LEFT eye socket (measured on the scan: fx -0.15, fy 0.52, socket floor fz 0.22) */,   // no stretch steeper than ~25 degrees: you can walk it
+    eye: { path: [[0, 0.03, 0.46], [0, 0.07, 0.28], [-0.03, 0.17, 0.08], [-0.08, 0.3, -0.04], [-0.12, 0.4, 0.0], [-0.15, 0.45, 0.1], [-0.15, 0.46, 0.2], [-0.15, 0.465, 0.31]], hw: 3.2, narrowHw: 1.4, platR: 2.6 }   /* update 90: the socket itself is the shelter - the scan's own recess floor, a small door at its back, nothing built that shows from outside */   /* update 87: in through the mouth, a dungeon climb inside the rock, the room BEHIND the opened left eye socket (fx -0.15, fy 0.47, fz 0.2) */   /* update 86: through the mouth of the skull rock, up to its LEFT eye socket (measured on the scan: fx -0.15, fy 0.52, socket floor fz 0.22) */,   // no stretch steeper than ~25 degrees: you can walk it
     ribcage: { x: 560, z: 1080, yaw: 0.9 }, spine: { x: 1120, z: 740, yaw: 0.4 }, skeleton: { x: 800, z: 1230, yaw: 2.4 },
     camp: { x: 300, z: 1110, yaw: 2.2, r: 9 },
     dens: [{ x: 960, z: 1250, yaw: 2.6 }, { x: 1200, z: 480, yaw: -2.2 }, { x: 640, z: 860, yaw: 0.8 }], denScale: 0.3, denR: 14, denSafeR: 12,

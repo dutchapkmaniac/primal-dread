@@ -11,14 +11,14 @@
 // hundred, one in fifty with the fossil pickaxe); sand mounds are dug with the spade (bones, a Majungasaurus tooth, the
 // same fossil roll).
 import * as THREE from "three";
-import { CFG } from "./config.js?v=89";
-import { STR } from "../strings.js?v=89";
-import { pickWeighted } from "./rng.js?v=89";
-import { iconUrl } from "./items.js?v=89";
-import { Inventory } from "./items.js?v=89";
-import { skullInside, skullH, skullCell, skullNode, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=89";
-import { ClipAnimator } from "./skeletal.js?v=89";
-import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=89";   /* update 85 */
+import { CFG } from "./config.js?v=90";
+import { STR } from "../strings.js?v=90";
+import { pickWeighted } from "./rng.js?v=90";
+import { iconUrl } from "./items.js?v=90";
+import { Inventory } from "./items.js?v=90";
+import { skullInside, skullH, skullCell, skullNode, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=90";
+import { ClipAnimator } from "./skeletal.js?v=90";
+import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=90";   /* update 85 */
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const K = () => CFG.skull;
@@ -267,11 +267,11 @@ export class SkullValley {
       for (const t of [0.3, 0.75]) { const l = new THREE.PointLight(0xffa050, 3.6, 16, 1.6); l.position.set(a.x + dx * t, a.y + (b.y - a.y) * t + 2.4, a.z + dz * t); scene.add(l); }   /* update 87: two warm lamps a stretch, the climb is not black */
     }
     // the platform at the eye: a bone disc, the bedroll, a chest, a fire, the drawings on the wall
-    const e = this.eyePos; const disc = new THREE.Mesh(new THREE.CylinderGeometry(E.platR, E.platR, 0.3, 18), this.dunMat); disc.position.set(e.x, e.y - 0.15, e.z); scene.add(disc);
+    const e = this.eyePos; const disc = new THREE.Mesh(new THREE.CylinderGeometry(E.platR, E.platR, 0.3, 18), this.dunMat); disc.position.set(e.x, e.y - 0.15, e.z); disc.visible = false;   /* update 90: you stand on the socket's own floor; this only carries you */ scene.add(disc);
     this.floors.push({ disc: true, x: e.x, z: e.z, y: e.y, r: E.platR });
     const yaw = S.skullCave.yaw;
-    const bed = this.g.assets.glb.bedroll; if (bed) { const m = bed.model.clone(); const [bx, bz] = this.rot(-1.6, -1.2, yaw); m.position.set(e.x + bx, e.y + 0.02, e.z + bz); m.rotation.y = yaw + 0.3; scene.add(m); w.beds.push({ x: e.x + bx, z: e.z + bz, y: e.y + 0.05, label: "eye" }); }
-    const ch = this.g.assets.glb.storagechest; if (ch) { const m = ch.model.clone(); const [cx, cz] = this.rot(1.8, -1.4, yaw); m.position.set(e.x + cx, e.y + 0.02, e.z + cz); m.rotation.y = yaw + Math.PI; m.scale.multiplyScalar(0.75); scene.add(m); this.eyeChest = { x: e.x + cx, z: e.z + cz, y: e.y }; }
+    const bed = this.g.assets.glb.bedroll; if (bed) { const m = bed.model.clone(); const [bx, bz] = this.rot(-1.6, -1.2, yaw); m.position.set(e.x + bx, e.y - 0.22, e.z + bz); m.rotation.y = yaw + 0.3; scene.add(m); w.beds.push({ x: e.x + bx, z: e.z + bz, y: e.y + 0.05, label: "eye" }); }   /* update 90: into the scan's floor */
+    const ch = this.g.assets.glb.storagechest; if (ch) { const m = ch.model.clone(); const [cx, cz] = this.rot(1.8, -1.4, yaw); m.position.set(e.x + cx, e.y - 0.22, e.z + cz); m.rotation.y = yaw + Math.PI; m.scale.multiplyScalar(0.75); scene.add(m); this.eyeChest = { x: e.x + cx, z: e.z + cz, y: e.y }; }
     { const [fx, fz] = this.rot(0.6, 1.2, yaw); this.addFire(e.x + fx, e.z + fz, e.y); }
     // the drawings: a canvas on the inner wall - new, as if drawn days ago, by nobody
     { const cv = document.createElement("canvas"); cv.width = 512; cv.height = 256; const c = cv.getContext("2d"); c.fillStyle = "rgba(0,0,0,0)"; c.clearRect(0, 0, 512, 256);

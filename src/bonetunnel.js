@@ -7,11 +7,11 @@
 // mouth; lose him there or behind the arches and the lanterns go back to orange. Past him: the amber mine and the great
 // chest, once a day. Giant garlic bread lies at the mouth (he likes it).
 import * as THREE from "three";
-import { CFG } from "./config.js?v=89";
-import { STR } from "../strings.js?v=89";
-import { pickWeighted } from "./rng.js?v=89";
-import { ClipAnimator } from "./skeletal.js?v=89";
-import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=89";   /* update 85: a living driver for rest-pose Meshy rigs */
+import { CFG } from "./config.js?v=90";
+import { STR } from "../strings.js?v=90";
+import { pickWeighted } from "./rng.js?v=90";
+import { ClipAnimator } from "./skeletal.js?v=90";
+import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=90";   /* update 85: a living driver for rest-pose Meshy rigs */
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 const BLACK = new THREE.Color(0x000000);
 
