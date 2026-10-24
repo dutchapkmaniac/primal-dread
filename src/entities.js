@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { CFG } from "./config.js?v=84";
-import { inFarm, inPasture } from "./farm.js?v=84";
-import { STR } from "../strings.js?v=84";
-import { icons } from "./items.js?v=84";
-import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=84";
+import { CFG } from "./config.js?v=85";
+import { inFarm, inPasture } from "./farm.js?v=85";
+import { STR } from "../strings.js?v=85";
+import { icons } from "./items.js?v=85";
+import { ClipAnimator, riggedCreature, driveCreature } from "./skeletal.js?v=85";
 
 // Creatures. Rigged GLBs (T-Rex, werewolf, chicken) play real walk/run clips;
 // the pig gets a procedural quadruped gait. The T-Rex cannot be killed.
@@ -16,7 +16,7 @@ function normalizeYaw(a) {
 }
 
 // update 80: the beasts the safe rooms keep out (Elisia alone walks where she likes)
-import { skullInside } from "./skull_shape.js?v=84";   // update 81
+import { skullInside } from "./skull_shape.js?v=85";   // update 81
 const HOSTILE = new Set(["werewolf", "trex", "mother", "spino", "spinobaby", "trike", "remotus", "altai", "croc", "meganeura", "alio", "pachy", "theri"]);
 export class Creature {
   constructor(type, asset, x, z, ctx, opts = {}) {
@@ -148,6 +148,7 @@ export class Creature {
       if (valleyBeast && !skullInside(x, z) && skullInside(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
       if (this.type === "trex" && !this.majunga && !this.chain && skullInside(x, z) && !skullInside(this.pos.x, this.pos.z)) return { x: this.pos.x, z: this.pos.z };
       if (HOSTILE.has(this.type) && w.skullZone && (w.skullZone.inTent(x, z) || w.skullZone.inNarrow(x, z))) return { x: this.pos.x, z: this.pos.z };
+      if (HOSTILE.has(this.type) && w.boneTunnel && w.boneTunnel.inside(x, z, 3) && !w.boneTunnel.inside(this.pos.x, this.pos.z, 3)) return { x: this.pos.x, z: this.pos.z };   // update 82: the tunnel is the Mentor's
     }
     if (this.type === "trex" && !this.chain && w.inMountain(x, z) && !w.inMountain(this.pos.x, this.pos.z) && (this.imperator || this.state !== "chase")) return { x: this.pos.x, z: this.pos.z };
     // update 42: the werewolves never set foot in Eternius — the mountain, the castle, the bridge
@@ -539,7 +540,7 @@ export class Creature {
       if (this.state !== "eat") { this.state = "chase"; this.lostT = 0; }
       return;
     }
-    if (this.type !== "trex") { this.hit(S.dmg * (game.spearMult || 1), game, "spear"); return; }   // update 39: the Eternial spear cuts deeper
+    if (this.type !== "trex") { this.hit(S.dmg * (game.spearMult || 1), game, game.spearKind || "spear"); return; }   // update 82: a bone spear counts as one   // update 39: the Eternial spear cuts deeper
     // update 36: the T-Rex cannot be killed by the player any more. The spear
     // snaps off its hide like it does on the mother's — and it KNOWS you now.
     game.audio.sHit();

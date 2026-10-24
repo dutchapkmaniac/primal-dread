@@ -16,12 +16,12 @@
 // and the map painting. The two Alioramus live in entities.js and only ask
 // this module where the desert is.
 import * as THREE from "three";
-import { CFG } from "./config.js?v=84";
-import { cityFlatten, cityLakeDip } from "./eternius.js?v=84";   // update 39
-import { STR } from "../strings.js?v=84";
+import { CFG } from "./config.js?v=85";
+import { cityFlatten, cityLakeDip } from "./eternius.js?v=85";   // update 39
+import { STR } from "../strings.js?v=85";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { ClipAnimator } from "./skeletal.js?v=84";
+import { ClipAnimator } from "./skeletal.js?v=85";
 
 const D = () => CFG.desert;
 
@@ -347,7 +347,7 @@ export class Desert {
       g.position.set(b.x, 0, b.z);
       g.rotation.y = Math.atan2(b.nx, b.nz);   // the deck's long axis runs across the river
       scene.add(g);
-      this.bridgeMeshes.push(g);
+      this.bridgeMeshes.push(g); if (b.bone) this.boneBridge = g;   // update 82
     }
     // --- the oasis: a small pool and one palm
     {

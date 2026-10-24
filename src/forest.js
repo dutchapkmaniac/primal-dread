@@ -1,12 +1,12 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=84";
-import { STR } from "../strings.js?v=84";
-import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=84";
+import { CFG } from "./config.js?v=85";
+import { STR } from "../strings.js?v=85";
+import { riggedHumanoid, driveHumanoid } from "./humanoid.js?v=85";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { Creature, ItemDrop } from "./entities.js?v=84";
-import { hiddenLakeR } from "./hidden.js?v=84";
-import { riverProfileY } from "./desert.js?v=84";   // update 80   // update 79: the hidden lake is a bowl in the hills
-import { iconUrl } from "./items.js?v=84";
+import { Creature, ItemDrop } from "./entities.js?v=85";
+import { hiddenLakeR } from "./hidden.js?v=85";
+import { riverProfileY } from "./desert.js?v=85";   // update 80   // update 79: the hidden lake is a bowl in the hills
+import { iconUrl } from "./items.js?v=85";
 
 // ============================================================================
 // update 69 (prompt37, update 1): the forest dressed up. Mild hills (makeHills, used by World.groundHeight and the forest
@@ -239,6 +239,7 @@ export class Forest {
     if (plain && g.player.inv.has("holy_water")) btns.push(["witchHoly", STR.volcano.witchHoly]);
     if (plain && g.player.inv.has("unholy_water")) btns.push(["witchUnholy", STR.volcano.witchUnholy]);
     if (g.player.inv.has("monial_staff_raw")) btns.push(["witchStaff", STR.hidden.enchantStaff]);   // update 75
+    if (g.player.inv.has("amber_spear")) btns.push(["witchAmber", STR.enchantAmber]);   // update 82
     if (g.player.inv.has("infial_belladonna")) btns.push(["witchConv", STR.hidden.convertBtn]);
     btns.push(["witchWater", S.askWater]);   // update 78: her magic fills every empty vial, free
     const s = g.npcPanel(S.witchName, lines, btns);
@@ -249,6 +250,7 @@ export class Forest {
       const eb = s.querySelector("#" + bid); if (!eb) continue;
       eb.addEventListener("click", () => { const inv = g.player.inv; if (!inv.has("silver_dagger_plain") || !inv.has(water)) return; inv.removeOne("silver_dagger_plain"); inv.removeOne(water); if (!inv.add(out, 1)) g.spawnDrop(out, 1, this.witchWorld.x, this.witchWorld.z, this.hutY + 0.3); g.audio.sPickup(); g.ui.renderHotbar(inv); g.ui.closeScreen(); g.resume(); g.ui.toast(msg); });
     }
+    { const ab = s.querySelector("#witchAmber"); if (ab) ab.addEventListener("click", () => { const inv = g.player.inv; if (!inv.has("amber_spear")) return; inv.removeOne("amber_spear"); if (!inv.add("amber_spear_ench", 1)) g.spawnDrop("amber_spear_ench", 1, g.player.pos.x, g.player.pos.z, g.player.pos.y); g.ui.renderHotbar(inv); g.audio.sPickup(); g.ui.toast(STR.amberEnchanted); g.ui.closeScreen(); g.resume(); }); }   // update 82
     const b = s.querySelector("#witchGive"); if (!b) return;
     b.addEventListener("click", () => {
       if (!has && !g.player.inv.has(want)) { g.ui.toast(S.witchNoItem.replace("%i", name)); g.audio.sDeny(); return; }

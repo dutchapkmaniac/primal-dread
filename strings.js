@@ -333,6 +333,14 @@ export const STR = {
     fossil_pickaxe: { name: "Fossil pickaxe", desc: "Mines twice as fast, everywhere. Finds a fossil one time in fifty" },
     collector_box: { name: "Collector's box", desc: "Hendrik's box: ten slots, one for each fossil. Hold it and press F" },
     spade:        { name: "Spade", desc: "Digs the sand mounds of Skull Valley. Hold F on one" },
+    // update 82: the Bone Mentor's tunnel
+    amber:        { name: "Amber", desc: "A gem of fossil resin from the Bone Mentor's mine. An amulet, a lantern, a spear's heart" },
+    bone_spear:   { name: "Bone spear", desc: "A spear of fossil bone with a tooth for a blade. Half again a wooden spear's bite; a dome-head feels it" },
+    amber_spear:  { name: "Amber spear", desc: "A bone spear with amber set in it. The witch or the mage can enchant it" },
+    amber_spear_ench: { name: "Enchanted amber spear", desc: "Thrown, it returns to your hand. It glows like a torch. The bite is the bone spear's" },
+    amber_lantern: { name: "Amber lantern", desc: "Hold it: more light than a torch, further into the dark, and it never goes out" },
+    grey_cloak:   { name: "Grey cloak", desc: "Carry it: in the dark you see as a dinosaur does, in orange - and the hunters barely see you" },
+    garlic_bread: { name: "Giant garlic bread", desc: "+40% food. The Bone Mentor's favourite" },
     fossil_dickinsonia: { name: "Dickinsonia fossil", desc: "A ribbed oval, older than anything with a mouth. One of Hendrik's ten" },
     fossil_trilobite: { name: "Trilobite fossil", desc: "Three-lobed, armoured, curled in stone. One of Hendrik's ten" },
     fossil_anomalocaris: { name: "Anomalocaris fossil", desc: "The first great hunter: two grasping arms and a ring of a mouth. One of Hendrik's ten" },
@@ -544,6 +552,7 @@ export const STR = {
     portal_blue: "Blue Portal", portal_white: "White Portal",
     eternius: "Eternius City",   // update 39
     skullvalley: "Skull Valley", hendrik: "Hendrik's Camp", skullcave: "The Great Skull", eyeshelter: "Eye-Socket Shelter",   // update 81
+    bonetunnel: "The Bone Mentor's Tunnel",   // update 82
   },
   // update 81 (prompt 40): SKULL VALLEY
   skull: {
@@ -556,6 +565,12 @@ export const STR = {
       "\"Someone lives in the big skull. I've seen the fire. I have never seen them.\"",
     ],
     veinsHave: "You carry %n fossil veins.",
+    partnerLines: [
+      "Hendrik turns a bone over and over. \"Mara came out here with me. Eleven years ago. One morning her bedroll was empty and her boots were still by the fire. I have dug up half this valley since. Nothing.\"",
+      "\"If you ever find out what happened to her, you tell me. Whatever it is.\"",
+    ],
+    partnerKnown: "\"Mara... chained? In a tunnel? Alive?\" He sits down hard on the stool. \"Then I am not done here. Not nearly.\"",
+    askPartner: "Ask about his partner",
     askDinos: "Ask about the animals", askFossils: "Ask about the fossils",
     dinoLines: [
       "\"MAJUNGASAURUS. The valley's hunter - there are no T-Rexes past the river, this one took their place. Same bite, same temper. But it has a horn on its brow, and one charge in three it leads with that: the horn throws you off your feet and you lie stunned for two seconds. It needs two or three to turn and come back. That is your window. Use it.\"",
@@ -589,6 +604,29 @@ export const STR = {
     whistled: "The whistle's call echoes off the cliffs - far ahead of you.", whistleOutside: "Only the valley's cliffs carry the whistle. Nothing happens here.", whistleWait: "Catch your breath: %n s",
     amuletSaved: "The AMBER AMULET burns against your chest. You are alive - barely. RUN.", amuletReady: "The amulet cools. It will hold once more.",
     valleyEnter: "SKULL VALLEY. The bones here belong to nothing that lives.",
+  },
+  // update 82: the Bone Mentor's tunnel
+  bone: {
+    talk: "Talk to %n", askHow: "Ask how they got here", minePrompt: "Mine the amber (hold F)", mining: "Mining\u2026 %n%", amberGot: "Amber \u00d7%n",
+    openChest: "Open the great chest", chestDone: "The great chest is empty until tomorrow", chestGot: "The great chest: %a, %b, and three giant garlic breads",
+    seen: "The Bone Mentor STOPS. His head turns to you. The lanterns go green.", lost: "The lanterns fade back to orange. He turns away.",
+    rattle: "Bones rattle - he is winding up a throw", cracks: "The ground CRACKS under you - step off it!", held: "Skeleton hands hold your legs!", dodged: "The hands close on empty sand.",
+    grab: "He reaches for you", slam: "SLAMMED into the ground", speared: "A bone spear takes you", wall: "A wall of bone rises across the way!",
+    prisonerRaises: "%n raises a fist", prisonerHits: "%n strikes you down",
+    prisonerNames: ["Oren", "Tessa", "Mara", "Brann"],
+    prisonerLines: [
+      ["\"Don't... don't come closer when I'm like that. I can't stop it. I never could.\"", "\"I was a tanner. I think. The hands remember things the head doesn't.\""],
+      ["\"Quiet, quiet. He hears nothing, but he SEES. Stay in the dark, little one.\"", "\"I had a daughter. I think I had a daughter. Why can't I see her face?\""],
+      ["\"There was a camp. A tent with an orange roof and a man who laughed at his own jokes. I woke up here, and I was this.\"", "\"He pours something in us. Every night. We grow. We forget.\""],
+      ["\"Eat something before you go past him. You won't get another chance in there.\"", "\"The chains are bone. Everything here is bone. Even us, soon.\""],
+    ],
+    partnerLine: "She looks at your face for a long time. \"The man in the tent. Does he still wear that hat?\"",
+    howLines: [
+      "\"I don't remember. I remember a light in the valley at night, and walking toward it. Then this. Then him.\"",
+      "\"We were travellers. He takes travellers. He does not kill us - he CHANGES us. We are his experiments, and we do not remember what we were.\"",
+      "\"Hendrik. His name is Hendrik. Tell him Mara is here. Tell him not to come.\"",
+      "\"I followed the lanterns. Never follow the lanterns.\"",
+    ],
   },
   // update 39: Eternius City
   et: {
@@ -708,6 +746,8 @@ export const STR = {
   discovered: "Discovered",
   huntImperator: "T-IMPERATOR",
   huntMajunga: "MAJUNGASAURUS",   // update 81
+  enchantAmber: "Enchant the amber spear", amberEnchanted: "The amber wakes. The spear is yours now - it will always come back.",
+  hintAmberSpear: "throw it - it comes back to your hand", hintCloak: "carried, the night turns orange and the hunters lose you", hintLantern: "hold it - it never goes out",
   dizzyLabel: "DIZZY",
   elisiaFeeds: "She feeds. RUN.",
   imperatorNear: "Something bigger than a T-Rex is out there.",

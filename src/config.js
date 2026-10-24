@@ -3,7 +3,7 @@
 // desaturated mossy greens, cold grey stone, weak overcast light,
 // near-black moonless night, faded safety-orange accents.
 // bumped every update so returning players never load stale cached assets
-export const ASSET_V = "?v=84";
+export const ASSET_V = "?v=85";
 
 const DEG = Math.PI / 180;   // update 30: model yaws are written in degrees
 
@@ -281,7 +281,10 @@ export const CFG = {
     { id: "arrow", count: 10, cost: { knife: 2, branch: 2, feather: 3 }, scroll: "arrows" },
     { id: "silver_arrow", count: 10, cost: { silver_dust: 1, knife: 2, branch: 2, feather: 3 }, scroll: "silver_arrows" },
     { id: "bowl", cost: { branch: 2 }, needs: "knife" },
-    { id: "spade", cost: { knife: 1, branch: 1, rope: 1 } },   // update 81: a blade lashed flat to a branch   // update 29: two branches whittled into a bowl (the knife stays)
+    { id: "spade", cost: { knife: 1, branch: 1, rope: 1 } },   // update 81: a blade lashed flat to a branch
+    { id: "amber_amulet", cost: { amber: 1, rope: 1 } },   // update 82: amber from the Bone Mentor's mine
+    { id: "amber_lantern", cost: { amber: 1, silver_bar: 1 } },
+    { id: "amber_spear", cost: { bone_spear: 1, amber: 1 } },   // update 29: two branches whittled into a bowl (the knife stays)
     { id: "trex_dagger", cost: { trex_tooth: 1, branch: 1 } },   // update 38: a tooth lashed to a branch
     { id: "imp_dagger", cost: { imp_tooth: 1, branch: 1 } },
     { id: "wooden_staff", cost: { branch: 4 }, needs: "knife" },   // update 75: the Monial staff's three parts
@@ -406,6 +409,7 @@ export const CFG = {
     // update 29: Dirk's farm
     cooked_beef:   { hu: 20 },           // update 30: cooked from raw_beef at a furnace or campfire
     cooked_pachy:  { hu: 24, hp: 6 },    // update 81: the dome-head's meat, cooked
+    garlic_bread:  { hu: 40 },           // update 82: the Bone Mentor's giant garlic bread
     blueberries:   { hu: 5 },            // a snack on their own — five of them crown a bowl of yogurt
     bowl_yogurt_blueberries: { hu: 20, hp: 20, special: "appleEnergy", returns: "bowl" }, // the bowl comes back
   },
@@ -629,7 +633,7 @@ export const CFG = {
   modelScale: { et_door: 4.0, et_fence: 1.8, et_collar: 1.0, et_vaultdoor: 6.0, et_censer: 1.4, et_bench: 2.4, et_altar: 13.5,   // update 43: fences a third taller, the giants' bench, the altar   // update 42 (Higgsfield text-to-3D)
     et_bed: 2.0, et_lamppost: 4.6, et_torchbearer: 5.2, et_chainpost: 3.6, et_ceilinglamp: 1.8, et_throne: 4.2, et_gate: 10,   // update 40
     etdagger3d: 0.95, etsword3d: 1.6, etspear3d: 2.6,   // update 40: the generated weapons (upright scans; turned to lie along -x in buildEternialWeapons)
-    trex: 5.4, trexgreen: 5.4, werewolf: 1.9, majunga: 5.4, theri: 7.0, pachy: 2.6, hendrik: 1.75, sv_tent: 4.2, sv_chest: 1.0, sv_skull: 28, sv_ribcage: 24, sv_spine: 9, sv_skeleton: 12, /* update 81: Skull Valley */ pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
+    trex: 5.4, trexgreen: 5.4, werewolf: 1.9, majunga: 5.4, theri: 7.0, pachy: 2.6, hendrik: 1.75, sv_tent: 4.2, sv_chest: 1.0, sv_skull: 28, sv_ribcage: 24, sv_ribcage_lo: 24, sv_skullmouth: 34, sv_spine: 9, sv_skeleton: 12, bonementor: 6.0, prisoner_m1: 5.5, prisoner_m2: 5.4, prisoner_f1: 6.3, prisoner_f2: 5.1, sv_mouthcave: 16, sv_skullcliff: 34, sv_bonearch: 18, sv_amberlantern: 0.5, sv_bonespear: 2.4, sv_garlic: 1.6, /* update 81: Skull Valley */ pig: 0.85, chicken: 0.42, tree: 13, appletree: 6.5, chest: 0.75, statue: 2.7,
     bedroll: 0.45, hutbed: 0.95, kitchen: 1.5, bill: 1.75, storagechest: 0.8, boulder: 1.9,
     door: 2.05, table: 0.9, chair: 1.05, lantern: 0.5, croc: 0.72, dinoegg: 1.15,
     metaldoor: 2.3, beaconlamp: 2.4,
@@ -677,6 +681,7 @@ export const CFG = {
     door: 0, table: 0, chair: 0, lantern: 0, croc: 0, dinoegg: 0,
     spino: Math.PI,    // the image_to_3d rebuild came out tail-first
     majunga: Math.PI, theri: Math.PI, pachy: Math.PI, hendrik: 0, sv_tent: 0, sv_chest: 0, sv_skull: 0, sv_ribcage: 0, sv_spine: 0, sv_skeleton: 0,   // update 81
+    bonementor: 0, prisoner_m1: 0, prisoner_m2: 0, prisoner_f1: 0, prisoner_f2: 0, sv_mouthcave: 0, sv_skullcliff: 0, sv_ribcage_lo: 0, sv_skullmouth: 0, sv_bonearch: 0, sv_amberlantern: 0, sv_bonespear: 0, sv_garlic: 0,   // update 82
     goat: Math.PI,     // same flip, same cure
     trike: Math.PI,    // image_to_3d flips them all
     cow: 0, dog: 0, dirk: 0,    // update 29 (sam_3_3d lifts keep the photo's facing)
@@ -716,6 +721,7 @@ export const CFG = {
     hf_dagger: { s: 0.48, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] },   // update 75
     hf_evildagger: { s: 0.48, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] }, hf_holydagger: { s: 0.48, pos: [0.30, -0.30, -0.62], rot: [0.12, -0.3, 0] },   // update 79: the evil dagger as its icon
     hf_spear:  { s: 1.7, pos: [0.30, -0.26, -0.72], rot: [0.35, -1.75, 0.25] },   // update 79: the bound spear, wood and iron
+    sv_bonespear: { s: 1.8, pos: [0.30, -0.26, -0.72], rot: [0.35, -1.75, 0.25] }, sv_amberlantern: { s: 0.34, pos: [-0.32, -0.30, -0.6], rot: [0.05, 0.3, 0] },   // update 82
     hf_staff:  { s: 1.5, pos: [0.36, -0.62, -0.72], rot: [0.08, -0.2, 0.12] },
     machete3d: { s: 0.85, pos: [0.32, -0.32, -0.72], rot: [0.12, -0.3, 0] },
     torch3d:   { s: 0.68, pos: [-0.3, -0.30, -0.55], rot: [0.28, 0, 0] },
@@ -803,7 +809,7 @@ export const CFG = {
         sells: ["hammer", "rope", "torch", "tinderbox", "bandage", "needle", "thread", "arrow", "leather_gloves"],   // update 63: the knife, the axe and the bowl moved to the resource stall   // update 40: no climbing anchor
         buys: { knife: 3, hammer: 4, axe: 10, rope: 1, torch: 1, tinderbox: 2, bandage: 1, needle: 1, thread: 1, arrow: 1, pestle: 4, spear: 6, bowl: 1, crossbow: 40 } },
       { id: "rare", name: "Sethra's rarities", kind: "female", r: 44, th: 18, color: 0x3a2a6a, wares: 0xc9a227, blurb: "rareBlurb", lines: "rareLines", rare: true, sells: [],
-        buys: { emerald: 30, golden_apple: 100, silver_dagger: 100, silver_dagger_plain: 40, holy_water: 250, unholy_water: 250, trex_dagger: 25, imp_dagger: 500, fossil: 750, fossil_dickinsonia: 750, fossil_trilobite: 750, fossil_anomalocaris: 750, fossil_eurypterid: 750, fossil_dunkleosteus: 750, fossil_ammonite: 750, fossil_eoraptor: 750, fossil_archaeopteryx: 750, fossil_velociraptor: 750, fossil_megalodon: 750, pachy_skull: 400, majunga_tooth: 20, gold_statuette: 2500, trex_tooth: 15, imp_tooth: 60, unholy_tiara: 300, silver_bar: 40, croc_skin: 20, wolf_fur: 8, goat_horn: 6, wolf_tooth: 6 } },
+        buys: { emerald: 30, golden_apple: 100, silver_dagger: 100, silver_dagger_plain: 40, holy_water: 250, unholy_water: 250, trex_dagger: 25, imp_dagger: 500, fossil: 750, fossil_dickinsonia: 750, fossil_trilobite: 750, fossil_anomalocaris: 750, fossil_eurypterid: 750, fossil_dunkleosteus: 750, fossil_ammonite: 750, fossil_eoraptor: 750, fossil_archaeopteryx: 750, fossil_velociraptor: 750, fossil_megalodon: 750, pachy_skull: 400, majunga_tooth: 20, amber: 120, gold_statuette: 2500, trex_tooth: 15, imp_tooth: 60, unholy_tiara: 300, silver_bar: 40, croc_skin: 20, wolf_fur: 8, goat_horn: 6, wolf_tooth: 6 } },
       { id: "smith", name: "Ankhu the smith", kind: "male", r: 44, th: 52, color: 0x6a2a1a, wares: 0xd9ad2e, blurb: "smithBlurb", lines: "smithLines",
         sells: ["et_dagger", "et_sword", "et_spear"], buys: { et_dagger: 75, et_sword: 250, et_spear: 175 } },   // update 40: dearer
       // update 63: the fishing stall (five fish of each kind a day; bait and the rod always) and the resource stall (wood, the axe, the bowl, the knife)
@@ -860,12 +866,13 @@ export const CFG = {
     // the rocky hills between the ridges (seeded in skull_shape.js), the biggest bored through with tunnels
     hillSeed: 48151, hillCount: 78, hillTries: 6000, hillR: [22, 52], hillH: [12, 34], hillTunnels: 0, hillGap: 0.78,
     // level ground: the camp, the three dens, the great skull, the bridge landing
-    flats: [[300, 1110, 30], [960, 1250, 34], [1200, 480, 34], [640, 860, 34], [900, 960, 70], [215, 1120, 40], [760, 980, 26], [1050, 820, 26], [600, 1170, 26], [1230, 1200, 26]],   // + the four herds' grazing grounds
+    flats: [[300, 1110, 30], [970, 1236, 16], [1186, 491, 16], [649, 870, 16], [900, 960, 70], [215, 1120, 40], [640, 1252, 24], [690, 772, 24], [1139, 905, 24], [763, 625, 24], [1262, 760, 26]],
+    fixedHills: [[950, 1266, 34, 22, 2.6], [1215, 465, 34, 22, -2.2], [629, 847, 34, 22, 0.8]],   // the hills the three dens are carved into (behind each mouth)   // + the herds' grazing grounds, + the Bone Mentor's mouth
     // the bones: giant pieces on the rock and in the sand, smaller ones between, and the boulders
     bones: { giant: 44, medium: 110, rocks: 220 }, fogMult: 1.9,   // the valley is seen further than the forest
     tunnels: [[[640, 1215], [640, 1145]], [[1085, 1055], [1155, 1005]], [[690, 735], [690, 665]], [[1180, 595], [1180, 525]],
       [[682, 1101], [718, 1149]], [[1139, 940], [1191, 970]], [[763, 660], [767, 730]], [[1255, 588], [1215, 632]]],   // eight bores through the ridges
-    tunnelHw: 4, tunnelH: 6.5,
+    tunnelHw: 4, tunnelH: 6.5, tunnelNotch: 9,
     floorColor: 0xe9e4d6,
     skullCave: { x: 900, z: 960, yaw: -0.6, clearR: 70, climbR: 22 },
     // the way to the eye-socket shelter, as fractions of the skull's box (x across, y up, z along its length): the mouth,
@@ -875,7 +882,10 @@ export const CFG = {
     camp: { x: 300, z: 1110, yaw: 2.2, r: 9 },
     dens: [{ x: 960, z: 1250, yaw: 2.6 }, { x: 1200, z: 480, yaw: -2.2 }, { x: 640, z: 860, yaw: 0.8 }], denScale: 0.3, denR: 14, denSafeR: 12,
     chestCount: 14, digCount: 14, stoneCount: 20, majungaCount: 8,
-    pachyHerds: [[760, 980], [1050, 820], [600, 1170], [1230, 1200]], pachyPerHerd: 3,
+    pachyHerds: [[640, 1252], [690, 772], [1139, 905], [763, 625]], pachyPerHerd: 3,   // update 82: the herds graze at the tunnel mouths
+    majungaZone: { x: 1120, z: 740, r: 230 },   // update 82: the hunters keep to the spine ridge and the skull caves, where the veins are
+    denTrees: 4, denModel: "sv_mouthcave",   // update 82: tall dead trees the keeper feeds on; the den is a mouth in the rock
+    veinSpots: [[1060, 700], [1180, 790], [1150, 640], [1245, 740]],   // fossil veins at the spine ridge
     bumpChance: 1 / 3, bumpStun: 2, bumpPush: 9, bumpRecover: [2, 3],
     rattleChance: 0.2, rattleR: 60,
     veinChance: 0.35, fossilChance: 1 / 100, fossilChancePick: 1 / 50, mineTime: 2.4, digTime: 2.6,
@@ -885,12 +895,30 @@ export const CFG = {
     whistleCd: 20, whistleAhead: 30, whistleR: 60,
     howl: [40, 90],
   },
+  // ---- update 82 (prompt 40b): THE BONE MENTOR'S TUNNEL ----
+  bone: {
+    litK: 0.78,   // the lantern-lit stretch: dim, not black
+    path: [[1262, 760, 0], [1300, 760, -3], [1326, 778, -8], [1331, 830, -14], [1331, 910, -18], [1331, 1010, -18], [1331, 1110, -18], [1331, 1180, -18]],   // 450 m, under the east wall
+    halfW: 7, height: 12, ribEvery: 18, darkLen: 110, lanternEvery: 18, lanternColor: 0xffa040, alertColor: 0x40ff70,
+    prisoners: [{ model: "prisoner_m1", s: 232, side: 1, h: 5.5 }, { model: "prisoner_f2", s: 262, side: -1, h: 5.1 }, { model: "prisoner_f1", s: 292, side: 1, h: 6.3 }, { model: "prisoner_m2", s: 322, side: -1, h: 5.4 }],
+    chainR: 6, prisonerDmg: 45, prisonerCd: 2.2, prisonerTelegraph: 0.7,
+    mentor: { home: 275, walk: 1.5, chase: 4.6, sightR: 60, alertT: 1.4, loseT: 6, spearTel: 0.8, spearCd: 6, spearSpeed: 30, spearDmg: 30, handsTel: 1.2, handsCd: 9, holdT: 3, slamTel: 0.5, slamCd: 4, slamDmg: 55, wallCd: 14, wallT: 6 },
+    amberNodes: 6, amberFrom: 372, amberTo: 428, amberTwoChance: 0.4, mineTime: 2.6, chestS: 442, breadS: 10,
+    // the great chest: two rolls on this table (the useful eighty, the rare twenty), plus three garlic breads
+    loot: [["potion_healing", 6], ["potion_silence", 6], ["potion_predator", 6], ["potion_regen", 6], ["potion_thickskin", 6], ["potion_stamina", 6], ["cooked_trex", 6], ["super_energy_drink", 6], ["bandage", 6], ["silver_arrow", 6], ["potion_nightvision", 5], ["potion_superantidote", 5], ["potion_invis", 5], ["potion_immortal", 4],
+      ["crossbow", 4], ["goggles", 4], ["death_compass", 4], ["bone_spear", 4], ["amber_lantern", 4], ["grey_cloak", 1]],
+    bundles: { silver_arrow: 10, bandage: 2 },
+  },
+  boneSpear: { dmgMult: 1.5 },   // the bone spear: half again the wood spear's bite; enchanted with amber it returns to the hand and glows
+  amberLantern: { intensityMult: 1.7, distMult: 1.6 },
+  greyCloak: { sightMult: 0.3, noiseMult: 0.5 },   // worn at night: hunters barely see you, and only loud noise close by gives you away
+
   majunga: { height: 5.4 },
   pachy: {
     height: 2.6, speed: 2.2, chaseSpeed: 7.5, hp: 150, sightR: 24, loseDist: 45, loseTime: 4, homeR: 26,
     ram: { dmg: 25, knock: 9, dizzy: 3, cd: 3.5, chargeSpeed: 9, hitR: 2.6, flankD: 12 },
     blockStand: 5.5, blockR: 18,
-    weapons: ["et_dagger", "et_sword", "et_spear", "silver_dagger"],
+    weapons: ["et_dagger", "et_sword", "et_spear", "silver_dagger", "bone_spear", "amber_spear", "amber_spear_ench"],   // update 82: the bone spear bites too
     drops: [["raw_pachy", 2]], skullChance: 1 / 256, respawn: 420, fleeR: 0, fleeSpeed: 0,
   },
   theri: {

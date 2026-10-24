@@ -1,6 +1,6 @@
-import { CFG, ASSET_V } from "./config.js?v=84";
-import { skullInside, skullH } from "./skull_shape.js?v=84";   // update 81
-import { STR } from "../strings.js?v=84";
+import { CFG, ASSET_V } from "./config.js?v=85";
+import { skullInside, skullH } from "./skull_shape.js?v=85";   // update 81
+import { STR } from "../strings.js?v=85";
 
 // Top-down expedition map: the full parchment map (pause menu) and the small
 // living minimap in the HUD corner. Terrain is always drawn; NAMED landmarks
@@ -209,6 +209,7 @@ export class GameMap {
     }
     if (this.game.desert) this.game.desert.paintGlyphs(c, tx, ty, s, disc);   // update 36
     if (this.game.skull) this.game.skull.paintGlyphs(c, tx, ty, s, disc);   // update 81
+    if (this.game.bone) this.game.bone.paintGlyphs(c, tx, ty, s, disc);   // update 82
     if (this.game.portals) this.game.portals.paintGlyphs(c, tx, ty, s, disc);   // update 37
     // update 29: Dirk's farm — house, the fenced pasture and the berry rows
     if (disc.has("farm")) {
@@ -253,7 +254,7 @@ export class GameMap {
         c.strokeStyle = "rgba(214,198,158,.75)";
         c.lineWidth = 3;
         const label = STR.locations[loc.id] || loc.id;
-        const ly = loc.id === "portal_white" ? y + 20 : y - 9;   // update 38: the cellar portal's name sits below, clear of the temple's
+        const ly = loc.id === "portal_white" || loc.labelBelow ? y + 20 : y - 9;   // update 82: the eye shelter's name sits under the skull's   // update 38: the cellar portal's name sits below, clear of the temple's
         c.strokeText(label, x, ly);
         c.fillText(label, x, ly);
       }

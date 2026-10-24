@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=84";   // update 40: the grass has a hole under the castle lake
+import { lakeOutline, cityWorld as etWorld } from "./eternius_frame.js?v=85";   // update 40: the grass has a hole under the castle lake
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CFG } from "./config.js?v=84";
-import { Desert } from "./desert.js?v=84";   // update 36
-import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=84";
+import { CFG } from "./config.js?v=85";
+import { Desert } from "./desert.js?v=85";   // update 36
+import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=85";
 
 // World geometry, colliders, zones and day/night environment.
 // North = -Z. Three-floor roman ruin at the origin; a winding sandy path
@@ -11,9 +11,9 @@ import { buildFarm, farmCands, farmSurface, inFarm } from "./farm.js?v=84";
 
 const V = { x: 0, z: 0 };
 
-import { makeHills } from "./forest.js?v=84";
-import { pointInPoly, hiddenPathDist } from "./hidden.js?v=84";   // update 75   // update 69: the forest's mild hills
-import { skullInside, skullH, skullCell } from "./skull_shape.js?v=84";   // update 81: Skull Valley's floor and cliffs
+import { makeHills } from "./forest.js?v=85";
+import { pointInPoly, hiddenPathDist } from "./hidden.js?v=85";   // update 75   // update 69: the forest's mild hills
+import { skullInside, skullH, skullCell, skullGround } from "./skull_shape.js?v=85";   // update 81: Skull Valley's floor and cliffs
 
 export class World {
   constructor(scene, assets, rng) {
@@ -205,7 +205,7 @@ export class World {
     if (this.hiddenFloor) { const hf = this.hiddenFloor(x, z, y); if (hf !== null && hf !== undefined) cands.push(hf); }   // update 75: the bridge over the hidden lake
     if (this.city) { const cm = this.city.mountainH(x, z); if (cm !== 0) cands.push(cm); }   // update 39: the city's mountain (update 70: its 0 outside is no floor either)
     this.desert.groundCand(x, z, cands);   // update 36: dunes, the oasis, the bridge decks
-    { const sh = skullH(x, z); if (sh > 0) cands.push(sh); if (this.skullFloor) { const sf = this.skullFloor(x, z, y); if (sf !== null && sf !== undefined) cands.push(sf); } }   // update 81: the valley's cliffs, the way up to the eye
+    { if (skullCell(Math.floor(x / this.hill.G), Math.floor(z / this.hill.G), this.hill.G)) { const sg = skullGround(x, z, this.hill.G, this.hill.at); if (sg > 0.02) cands.push(sg); } if (this.skullFloor) { const sf = this.skullFloor(x, z, y); if (sf !== null && sf !== undefined) cands.push(sf); } if (this.boneFloor) { const bf = this.boneFloor(x, z, y); if (bf !== null && bf !== undefined) return bf; } }   // update 81: the valley's cliffs, the way up to the eye; update 82: the Bone Mentor's tunnel; update 85: the tunnel's floor OVERRIDES the plain above it (as a candidate the plain's 0 won and held you at the roof)
     // the treetop perch (update 27): while climbing, the crown holds you
     if (this.climbSpot && Math.abs(x - this.climbSpot.x) < 1.3
         && Math.abs(z - this.climbSpot.z) < 1.3 && y > this.climbSpot.y - 2) {

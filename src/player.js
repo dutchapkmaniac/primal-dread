@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { CFG } from "./config.js?v=84";
-import { STR } from "../strings.js?v=84";
-import { Inventory } from "./items.js?v=84";
+import { CFG } from "./config.js?v=85";
+import { STR } from "../strings.js?v=85";
+import { Inventory } from "./items.js?v=85";
 
 export class Player {
   constructor(camera, ctx) {
@@ -94,6 +94,7 @@ export class Player {
     this.etSword3dVm = this.mountHeld("etsword3d");
     this.etSpear3dVm = this.mountHeld("etspear3d");
     this.spear3dVm = this.mountHeld("hf_spear");   // update 79: the bound spear as wood and iron
+    this.boneSpearVm = this.mountHeld("sv_bonespear"); this.lanternVm = this.mountHeld("sv_amberlantern");   // update 82
     this.evilDaggerVm = this.mountHeld("hf_evildagger");   // update 79: the evil dagger as its icon
     this.crossbowVm = this.mountHeld("crossbow3d"); // the crossbow (update 27)
     // update 35: the T-Rex dagger — a curved tooth for a blade, brass guard, leather grip
@@ -302,15 +303,19 @@ export class Player {
           || (weapon === "et_dagger" && this.etDagger3dVm) || (weapon === "et_sword" && this.etSword3dVm) || this.knifeVm
         : sel && sel.id === "spear" ? (this.spear3dVm || this.spearVm)
         : sel && sel.id === "et_spear" ? (this.etSpear3dVm || this.spearVm)
+        : sel && (sel.id === "bone_spear" || sel.id === "amber_spear" || sel.id === "amber_spear_ench") ? (this.boneSpearVm || this.spear3dVm || this.spearVm)   // update 82
         : sel && sel.id === "crossbow" ? this.crossbowVm : null;
-    for (const vm of [this.knifeVm, this.knife3dVm, this.machete3dVm, this.axe3dVm, this.dagger3dVm, this.trexDaggerVm, this.trexDagger3dVm, this.impDagger3dVm, this.etDagger3dVm, this.etSword3dVm, this.etSpear3dVm, this.spearVm, this.crossbowVm, this.monialDaggerVm, this.spear3dVm, this.evilDaggerVm, this.holyDaggerVm]) {
+    for (const vm of [this.boneSpearVm, this.knifeVm, this.knife3dVm, this.machete3dVm, this.axe3dVm, this.dagger3dVm, this.trexDaggerVm, this.trexDagger3dVm, this.impDagger3dVm, this.etDagger3dVm, this.etSword3dVm, this.etSpear3dVm, this.spearVm, this.crossbowVm, this.monialDaggerVm, this.spear3dVm, this.evilDaggerVm, this.holyDaggerVm]) {
       if (vm) vm.visible = vm === showVm;
     }
     if (this.eggVm) this.eggVm.visible = !!game.carriedEgg;
     if (this.torchVm) this.torchVm.visible = !!(sel && sel.id === "lit_torch") && !game.carriedEgg;
     if (this.staffVm) this.staffVm.visible = !!(sel && (sel.id === "monial_staff" || sel.id === "monial_staff_raw")) && !game.carriedEgg;   // update 75: the staff in hand
     if (this.stickVm) this.stickVm.visible = !!(sel && sel.id === "wooden_staff") && !game.carriedEgg;   // update 79: the wooden staff
-    if (this.torchLight) this.torchLight.intensity = this.torchVm && this.torchVm.visible ? CFG.torch.intensity : 0;
+    // update 82: the amber lantern shares the torch's light, brighter and further; the enchanted amber spear glows like a torch
+    const lantern = !!(sel && sel.id === "amber_lantern") && !game.carriedEgg, glowSpear = !!(sel && sel.id === "amber_spear_ench");
+    if (this.lanternVm) this.lanternVm.visible = lantern;
+    if (this.torchLight) { const on = this.torchVm && this.torchVm.visible; this.torchLight.intensity = lantern ? CFG.torch.intensity * CFG.amberLantern.intensityMult : glowSpear ? CFG.torch.intensity * 0.9 : on ? CFG.torch.intensity : 0; this.torchLight.distance = lantern ? CFG.torch.dist * CFG.amberLantern.distMult : CFG.torch.dist; this.torchLight.color.setHex(lantern || glowSpear ? 0xffb050 : 0xe8a050); }
     if (showVm) {
       const base = showVm.userData.base;
       if (this.swingT > 0) {
@@ -347,16 +352,16 @@ export class Player {
     if (sel && (sel.id === "arrow" || sel.id === "silver_arrow")
         && this.inv.slots.some((s) => s && s.id === "crossbow")) return;
     // update 79: a spear STABS on a click; held for a moment it is THROWN (main.js watches the hold)
-    if (sel && (sel.id === "spear" || sel.id === "et_spear") && mode === "throw") {
+    if (sel && (sel.id === "spear" || sel.id === "et_spear" || sel.id === "bone_spear" || sel.id === "amber_spear" || sel.id === "amber_spear_ench") && mode === "throw") {   // update 82
       this.atkT = CFG.spear.cooldown;
       this.swingT = 0.28;
       game.throwSpear(this);
       return;
     }
-    const weapon = sel && (sel.id === "spear" || sel.id === "et_spear" || sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "silver_dagger_plain" || sel.id === "evil_dagger" || sel.id === "monial_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
+    const weapon = sel && (sel.id === "spear" || sel.id === "et_spear" || sel.id === "bone_spear" || sel.id === "amber_spear" || sel.id === "amber_spear_ench" || sel.id === "knife" || sel.id === "silver_dagger" || sel.id === "silver_dagger_plain" || sel.id === "evil_dagger" || sel.id === "monial_dagger" || sel.id === "trex_dagger" || sel.id === "imp_dagger" || sel.id === "et_dagger" || sel.id === "et_sword" || sel.id === "machete" || sel.id === "axe") ? sel.id : null;
     // an ITEM in hand gets used; an EMPTY hand throws a punch
     if (!weapon && sel) return this.useSelected(game);
-    const K = weapon ? CFG.player[weapon] : CFG.player.fists;
+    const K = weapon ? (CFG.player[weapon] || CFG.player.spear) : CFG.player.fists;   // update 82: the bone spears stab like the spear
     this.atkT = K.cooldown;
     if (game.hidden && game.hidden.swing(weapon)) return;   // update 75: a blow landed on Kaldur
     game.loudAct();   // update 36
@@ -441,6 +446,7 @@ export class Player {
     if (id === "monial_map") { game.hidden.readMap(); return; }   // update 77
     if (id === "pestle") { game.potions.crush(); return; }   // update 73: herbs, shells and horns; the silver dagger inside
     if (id === "bone_whistle") { if (game.skull) game.skull.blowWhistle(); return; }   // update 81
+    if (id === "amber" || id === "grey_cloak" || id === "amber_lantern") { game.ui.toast(`${STR.items[id].name}: ${STR.items[id].desc}`); game.audio.sDeny(); return; }   // update 82
     if (id === "collector_box") { if (game.skull) game.skull.openBox(); return; }
     if (id === "spade" || id === "fossil_pickaxe" || id === "fossil_vein" || id === "bone" || id === "majunga_tooth" || id === "pachy_skull" || id === "amber_amulet" || id.startsWith("fossil_")) { game.ui.toast(`${STR.items[id].name}: ${STR.items[id].desc}`); game.audio.sDeny(); return; }
     if (id === "death_compass") {

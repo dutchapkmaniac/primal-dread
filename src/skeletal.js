@@ -126,6 +126,11 @@ PLANS.spino = {
 };
 PLANS.spinobaby = PLANS.trex;
 PLANS.pachy = PLANS.trex;   // update 81: the dome-head walks like a small theropod
+PLANS.theri = {   // update 82: the Therizinosaurus stands upright - short legs under the body, the head high in front, a stub tail
+  legs: [[-0.18, 0.5], [0.18, 0.5]], legR: 0.3, hipFrac: 0.42, autoLegs: true,
+  head: { zFrac: 0.6, yFrac: 0.72 }, tail: { zFrac: 0.2 }, knee: 0.22, ankle: 0.09,
+  gait: { freq: 1.5, legAmp: 0.4, neckAmp: 0.05, tailAmp: 0.1, lift: 0.06, kneeAmp: 0.35 },
+};
 // update 39: the Imperator — a T-Rex whose small arms (shrunk in the mesh) stay pinned to the body:
 // the box in front of the chest is fenced off from both the neck and the legs
 PLANS.imperator = { ...PLANS.trex, armFence: { y0: 0.14, y1: 0.7, z0: 0.6, z1: 1.0 } };   // update 80: the fence reaches the claws' tips, so the hands stay on the body instead of stretching toward the legs

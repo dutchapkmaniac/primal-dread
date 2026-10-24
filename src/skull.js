@@ -11,12 +11,14 @@
 // hundred, one in fifty with the fossil pickaxe); sand mounds are dug with the spade (bones, a Majungasaurus tooth, the
 // same fossil roll).
 import * as THREE from "three";
-import { CFG } from "./config.js?v=84";
-import { STR } from "../strings.js?v=84";
-import { pickWeighted } from "./rng.js?v=84";
-import { Inventory } from "./items.js?v=84";
-import { skullInside, skullH, skullCell, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=84";
-import { ClipAnimator } from "./skeletal.js?v=84";
+import { CFG } from "./config.js?v=85";
+import { STR } from "../strings.js?v=85";
+import { pickWeighted } from "./rng.js?v=85";
+import { iconUrl } from "./items.js?v=85";
+import { Inventory } from "./items.js?v=85";
+import { skullInside, skullH, skullCell, skullNode, skullTunnels, skullHills, tunnelDist, segDist } from "./skull_shape.js?v=85";
+import { ClipAnimator } from "./skeletal.js?v=85";
+import { meshyRig, driveMeshy, restOnly } from "./meshyrig.js?v=85";   /* update 85 */
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 
 const K = () => CFG.skull;
@@ -41,7 +43,7 @@ export class SkullValley {
     this.mining = null; this.digging = null;
     let seed = 7331; this.rng = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
     this.boneMat = new THREE.MeshStandardMaterial({ color: 0xd9d2bf, roughness: 0.95, side: THREE.DoubleSide });
-    this.darkMat = this.w.mat("t_darkcliff", 1, 1, 0x3b3c3e);
+    this.darkMat = this.w.mat("t_darkcliff", 1, 1, 0x3b3c3e); if (this.darkMat.normalScale) this.darkMat.normalScale.set(0.28, 0.28);
     this.buildGround();
     this.buildReach();
     this.buildTunnels();
@@ -66,7 +68,7 @@ export class SkullValley {
     const B = this.bounds(), x0 = Math.max(n0, Math.floor((B.x0 - 60) / G)), x1 = Math.min(n1, Math.ceil((B.x1 + 60) / G)), z0 = Math.max(n0, Math.floor((B.z0 - 60) / G)), z1 = Math.min(n1, Math.ceil((B.z1 + 60) / G));
     const NX = x1 - x0 + 1, NZ = z1 - z0 + 1;
     const pos = new Float32Array(NX * NZ * 3), uv = new Float32Array(NX * NZ * 2), hs = new Float32Array(NX * NZ);
-    for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) { const k = j * NX + i, ix = x0 + i, iz = z0 + j, x = ix * G, z = iz * G, sh = skullH(x, z), hh = hill.at(ix, iz), h = sh > 0 ? Math.max(sh, hh) : hh; pos[k * 3] = x; pos[k * 3 + 1] = h; pos[k * 3 + 2] = z; uv[k * 2] = x / 7; uv[k * 2 + 1] = -z / 7; hs[k] = sh; }
+    for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) { const k = j * NX + i, ix = x0 + i, iz = z0 + j, x = ix * G, z = iz * G, sh = skullH(x, z), h = skullNode(ix, iz, G, hill.at); pos[k * 3] = x; pos[k * 3 + 1] = h; pos[k * 3 + 2] = z; uv[k * 2] = x / 14; uv[k * 2 + 1] = -z / 14; hs[k] = sh; }
     const sand = [], rock = [];
     for (let j = 0; j < NZ - 1; j++) for (let i = 0; i < NX - 1; i++) {
       if (!skullCell(x0 + i, z0 + j, G)) continue;
@@ -92,10 +94,10 @@ export class SkullValley {
   }
   reachable(x, z) { if (!this.reach) return true; const i = Math.floor((x - this.reachB.x0) / this.reachG), j = Math.floor((z - this.reachB.z0) / this.reachG); if (i < 0 || j < 0 || i >= this.reachNX || j >= this.reachNZ) return false; return !!this.reach[j * this.reachNX + i]; }
   // a random spot on the open valley floor (the hunters' wander targets and spawns)
-  randomFloor(rng) {
+  randomFloor(rng, zone = null) {   // update 82: zone {x, z, r} - the hunters are born round the spine ridge
     const S = K(), B = this.bounds();
     for (let k = 0; k < 60; k++) {
-      const x = B.x0 + rng() * (B.x1 - B.x0), z = B.z0 + rng() * (B.z1 - B.z0);
+      const x = zone ? zone.x + (rng() * 2 - 1) * zone.r : B.x0 + rng() * (B.x1 - B.x0), z = zone ? zone.z + (rng() * 2 - 1) * zone.r : B.z0 + rng() * (B.z1 - B.z0);
       if (!this.inside(x, z) || skullH(x, z) > 0.2 || !this.reachable(x, z) || this.inTent(x, z) || Math.hypot(x - S.camp.x, z - S.camp.z) < 20) continue;
       if (Math.abs(x) > CFG.world.square - 12 || Math.abs(z) > CFG.world.square - 12) continue;
       if (S.dens.some((D) => Math.hypot(x - D.x, z - D.z) < S.denR + 4)) continue;
@@ -108,10 +110,14 @@ export class SkullValley {
     const S = K(), w = this.w, scene = this.g.scene;
     for (const [a, b] of skullTunnels()) {
       const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz), yaw = Math.atan2(dx, dz), mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(S.tunnelHw * 2 + 5, 1.6, L + 6), this.darkMat); roof.position.set(mx, S.tunnelH + 0.8, mz); roof.rotation.y = yaw; scene.add(roof);
+      const rockL = w.mat("t_darkcliff", L / 9, 1, 0x3b3c3e); if (rockL.normalScale) rockL.normalScale.set(0.5, 0.5);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(S.tunnelHw * 2 + 2 * S.tunnelNotch, 4, L - 4), rockL); roof.position.set(mx, S.tunnelH + 2, mz); roof.rotation.y = yaw; scene.add(roof);
+      // update 82: the arch of bone at both mouths (the scan), the rings of the dead thing's spine
+      const arch = this.g.assets.glb.sv_bonearch;
+      if (arch) { const bb = new THREE.Box3().setFromObject(arch.model), sz = bb.getSize(new THREE.Vector3()), mul = (S.tunnelHw * 2 + 8) / sz.x; for (const [ex, ez, dir] of [[a[0], a[1], -1], [b[0], b[1], 1]]) { const m = arch.model.clone(); m.scale.multiplyScalar(mul); m.position.set(ex + dx / L * dir * 1.5, this.w.groundHeight(ex, ez, 999) - 0.3, ez + dz / L * dir * 1.5); m.rotation.y = yaw + (dir < 0 ? Math.PI : 0); scene.add(m); } }
       const n = Math.ceil(L / 3);
       for (const side of [-1, 1]) {
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(1.2, S.tunnelH + 0.2, L + 6), this.darkMat);
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(1.2, S.tunnelH + 0.2, L + 6), rockL);
         const [ox, oz] = this.rot(side * (S.tunnelHw + 0.6), 0, yaw); wall.position.set(mx + ox, S.tunnelH / 2, mz + oz); wall.rotation.y = yaw; scene.add(wall);
         for (let i = 0; i <= n; i++) { const t = i / n, px = a[0] + dx * t + ox, pz = a[1] + dz * t + oz; w.addBox(px - 0.8, px + 0.8, 0, S.tunnelH, pz - 0.8, pz + 0.8); }
       }
@@ -126,7 +132,7 @@ export class SkullValley {
   buildLandmarks() {
     const S = K();
     this.skullMesh = this.place("sv_skull", S.skullCave.x, S.skullCave.z, S.skullCave.yaw);
-    if (this.skullMesh) { let tex = null; this.skullMesh.traverse((o) => { if (!tex && o.isMesh && o.material && o.material.map) tex = o.material.map; }); if (tex) { const t2 = tex.clone(); t2.wrapS = t2.wrapT = THREE.RepeatWrapping; t2.repeat.set(0.6, 0.6); t2.needsUpdate = true; this.boneMat.map = t2; this.boneMat.color.set(0xffffff); this.boneMat.needsUpdate = true; } }
+    if (this.skullMesh) { let tex = null; this.skullMesh.traverse((o) => { if (!tex && o.isMesh && o.material && o.material.map) tex = o.material.map; }); if (tex) { const t2 = tex.clone(); t2.wrapS = t2.wrapT = THREE.RepeatWrapping; t2.repeat.set(0.6, 0.6); t2.needsUpdate = true; this.boneMat.map = t2; this.boneMat.color.set(0xffffff); this.boneMat.needsUpdate = true; const bg = this.w.desert && this.w.desert.boneBridge; if (bg) bg.traverse((o) => { if (o.isMesh) o.material = this.boneMat; }); } }   // update 82: the bone bridge is bone too
     if (this.skullMesh) {   // its LOCAL box (the fractions of the way to the eye are in the skull's own frame): measured unturned, then turned back
       const m = this.skullMesh, yaw = m.rotation.y; m.rotation.y = 0; m.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(m); m.rotation.y = yaw; m.updateMatrixWorld(true);
       this.skullBox = bb; this.skullSize = bb.getSize(new THREE.Vector3());
@@ -285,7 +291,7 @@ export class SkullValley {
     if (tent) { tent.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(tent); this.tentBox = bb; }
     // inside: two sleeping bags, the chest; outside: the table with his tools, a stool, the fire, a lantern pole
     const bagMat = new THREE.MeshStandardMaterial({ color: 0x4e5a3a, roughness: 1 });
-    for (const side of [-1, 1]) { const [bx, bz] = this.rot(side * 1.3, -1.2, C.yaw); const bag = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.26, 2.0), bagMat); bag.position.set(C.x + bx, gy + 0.13, C.z + bz); bag.rotation.y = C.yaw; scene.add(bag); const pil = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.18, 0.4), new THREE.MeshStandardMaterial({ color: 0xbdb49a, roughness: 1 })); const [px, pz] = this.rot(side * 1.3, -2.0, C.yaw); pil.position.set(C.x + px, gy + 0.3, C.z + pz); pil.rotation.y = C.yaw; scene.add(pil); w.beds.push({ x: C.x + bx, z: C.z + bz, y: gy + 0.1, label: "hendrik" }); }
+    for (const side of [-1, 1]) { const [bx, bz] = this.rot(side * 1.3, -1.2, C.yaw); const br = A.bedroll; if (br) { const m = br.model.clone(); m.position.set(C.x + bx, gy + 0.02, C.z + bz); m.rotation.y = C.yaw; m.scale.multiplyScalar(1.15); scene.add(m); } else { const bag = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.26, 2.0), bagMat); bag.position.set(C.x + bx, gy + 0.13, C.z + bz); bag.rotation.y = C.yaw; scene.add(bag); } w.beds.push({ x: C.x + bx, z: C.z + bz, y: gy + 0.1, label: "hendrik" }); }   // update 82: real bedrolls
     if (A.storagechest) { const m = A.storagechest.model.clone(); const [cx, cz] = this.rot(0, -2.6, C.yaw); m.position.set(C.x + cx, gy + 0.02, C.z + cz); m.rotation.y = C.yaw + Math.PI; m.scale.multiplyScalar(0.8); scene.add(m); this.campChest = { x: C.x + cx, z: C.z + cz, y: gy }; }
     const [fx, fz] = this.rot(-2.6, 7.0, C.yaw); this.addFire(C.x + fx, C.z + fz, gy);   // the fire stands clear of Hendrik, so his prompt is his own
     { const [tx, tz] = this.rot(4.4, 4.2, C.yaw); const wood = w.mat("t_woodplank", 2, 1, 0x7a6448); const top = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.08, 1.0), wood); top.position.set(C.x + tx, gy + 0.78, C.z + tz); top.rotation.y = C.yaw + 0.4; scene.add(top);
@@ -299,22 +305,29 @@ export class SkullValley {
       const lan = this.g.assets.glb.lantern; if (lan) { const m = lan.model.clone(); m.position.set(C.x + lx + 0.25, gy + 2.2, C.z + lz); m.scale.multiplyScalar(0.8); scene.add(m); } const l = new THREE.PointLight(0xffc070, 1.8, 14, 1.8); l.position.set(C.x + lx + 0.25, gy + 2.1, C.z + lz); scene.add(l); this.campLight = l; }
     // Hendrik himself, by the table, turning to you when you come close
     const H = A.hendrik;
-    if (H) { const rigged = H.anims && H.anims.length; const body = rigged ? skeletonClone(H.model) : H.model.clone(); const [hx, hz] = this.rot(3.0, 2.8, C.yaw); body.position.set(C.x + hx, gy, C.z + hz); body.rotation.y = C.yaw + Math.PI * 0.7; scene.add(body); this.hendrik = { body, anim: rigged ? new ClipAnimator(body, H.anims) : null, yaw0: C.yaw + Math.PI * 0.7, x: C.x + hx, z: C.z + hz }; if (this.hendrik.anim) this.hendrik.anim.drive("idle", 0, 1, 0.016); w.addTree(C.x + hx, C.z + hz, 0.45, "npc"); }
+    if (H) { const rigged = H.anims && H.anims.length; const body = rigged ? skeletonClone(H.model) : H.model.clone(); const [hx, hz] = this.rot(5.2, 3.4, C.yaw); body.position.set(C.x + hx, gy, C.z + hz); body.rotation.y = C.yaw + Math.PI * 0.7; scene.add(body); this.hendrik = { body, anim: rigged && !restOnly(H.anims) ? new ClipAnimator(body, H.anims) : null, yaw0: C.yaw + Math.PI * 0.7, x: C.x + hx, z: C.z + hz }; if (rigged && restOnly(H.anims)) meshyRig(body, 1); if (this.hendrik.anim) this.hendrik.anim.drive("idle", 0, 1, 0.016); w.addTree(C.x + hx, C.z + hz, 0.45, "npc"); }
     // the valley's name and his camp are found by standing here
-    for (const [id, x, z, r] of [["skullvalley", (this.bounds().x0 + this.bounds().x1) / 2, (this.bounds().z0 + this.bounds().z1) / 2, 150], ["hendrik", C.x, C.z, 16], ["skullcave", S.skullCave.x, S.skullCave.z, S.skullCave.clearR], ["eyeshelter", this.eyePos ? this.eyePos.x : S.skullCave.x, this.eyePos ? this.eyePos.z : S.skullCave.z, 7]]) if (!CFG.locations.some((l) => l.id === id)) CFG.locations.push({ id, x, z, r });
+    for (const [id, x, z, r] of [["skullvalley", (this.bounds().x0 + this.bounds().x1) / 2, (this.bounds().z0 + this.bounds().z1) / 2, 150], ["hendrik", C.x, C.z, 16], ["skullcave", S.skullCave.x, S.skullCave.z, S.skullCave.clearR], ["eyeshelter", this.eyePos ? this.eyePos.x : S.skullCave.x, this.eyePos ? this.eyePos.z : S.skullCave.z, 7]]) if (!CFG.locations.some((l) => l.id === id)) CFG.locations.push({ id, x, z, r, labelBelow: id === "eyeshelter" });
   }
   inTent(x, z) { const C = K().camp; return Math.hypot(x - C.x, z - C.z) < C.r; }
   // ---------------- the Therizinosaurus dens: a small skull cave, the gift chest in its mouth ----------------
   buildDens() {
     const S = K();
     for (const D of S.dens) {
-      const cave = this.place("sv_skull", D.x, D.z, D.yaw, S.denScale);
-      const L = (this.skullSize ? this.skullSize.z : 55) * S.denScale;   // the small skull's length; its snout is local +z
-      const [cx, cz] = this.rot(0, L * 0.3, D.yaw);    // the chest between the teeth
-      const [ax, az] = this.rot(0, L * 0.95, D.yaw);   // the den itself: the sand in front of the open mouth, where the keeper stands
+      // update 82: the den is a MOUTH in the rock (the carved-cave scan), teeth hanging over a dark cave; the chest sits
+      // in the mouth and the keeper stands on the sand before it. (The small skull stays only if the scan is missing.)
+      const useCave = !!this.g.assets.glb[S.denModel];
+      const cave = useCave ? this.place(S.denModel, D.x, D.z, D.yaw, 1) : this.place("sv_skull", D.x, D.z, D.yaw, S.denScale);
+      let L = (this.skullSize ? this.skullSize.z : 55) * S.denScale;
+      if (useCave && cave) { cave.updateMatrixWorld(true); const yaw = cave.rotation.y; cave.rotation.y = 0; cave.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(cave); cave.rotation.y = yaw; cave.updateMatrixWorld(true); L = bb.max.z - bb.min.z; cave.position.y -= 0.6; }
+      const [cx, cz] = this.rot(0, L * (useCave ? 0.34 : 0.3), D.yaw);    // the chest in the mouth
+      const [ax, az] = this.rot(0, L * (useCave ? 0.8 : 0.95), D.yaw);    // the den itself: the sand in front of the open mouth
       const chest = this.place("sv_chest", D.x + cx, D.z + cz, D.yaw + Math.PI, 0.9);
       this.dens.push({ x: D.x + ax, z: D.z + az, sx: D.x, sz: D.z, yaw: D.yaw, cave, chest, cx: D.x + cx, cz: D.z + cz, fedDay: -1, giftDay: -99, taken: false, growlT: 0, theri: null });
-      this.w.addTree(D.x, D.z, L * 0.22, "den");   // the skull's rock base is solid
+      this.w.addTree(D.x, D.z, L * 0.22, "den");   // the rock is solid
+      // the keeper's trees: tall dead trees round the den, where it feeds
+      const dt = this.g.assets.glb.deadtree;
+      if (dt) for (let k = 0; k < S.denTrees; k++) { const a = D.yaw + Math.PI * 0.55 + (k / S.denTrees) * Math.PI * 0.9, r = L * 0.9 + 4 + this.rng() * 6; const x = D.x + ax * 0 + Math.sin(a) * r + ax, z = D.z + Math.cos(a) * r + az; const m = dt.model.clone(); m.scale.multiplyScalar(1.6 + this.rng() * 0.8); m.rotation.y = this.rng() * 6.28; m.position.set(x, this.w.groundHeight(x, z, 999) - 0.2, z); this.g.scene.add(m); this.w.addTree(x, z, 0.5); }
     }
   }
   den(i) { return this.dens[i]; }
@@ -333,6 +346,7 @@ export class SkullValley {
     const S = K();
     for (const [a, b] of skullTunnels()) for (let i = 0; i < 4; i++) { const t = 0.15 + 0.7 * this.rng(), side = this.rng() < 0.5 ? -1 : 1; const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; const x = a[0] + dx * t - dz / L * side * (S.tunnelHw - 1.1), z = a[1] + dz * t + dx / L * side * (S.tunnelHw - 1.1); this.addStone(x, z, 0); }
     for (let i = 0; i < S.stoneCount; i++) { const [x, z] = this.spot(18); this.addStone(x, z, this.w.groundHeight(x, z, 40)); }
+    for (const [vx, vz] of S.veinSpots || []) this.addStone(vx, vz, this.w.groundHeight(vx, vz, 999), true);   // update 82: the fossil veins lie round the spine ridge, in the hunters' ground
   }
   buildDigs() {
     const S = K(), mat = this.w.mat("t_bonesand", 1, 1, 0xcfc8ba);
@@ -425,15 +439,16 @@ export class SkullValley {
     if (page === "dinos" || page === "fossils") { const s = g.npcPanel(S.name, page === "dinos" ? S.dinoLines : S.fossilLines); g.backToMain(s, () => this.openHendrik()); return; }
     if (this.pickDay !== g.dayNum) { this.pickDay = g.dayNum; this.pickSold = 0; }
     const veins = inv.count("fossil_vein"), full = this.boxFill.every(Boolean), hasBox = inv.has("collector_box") || this.storage.has("collector_box") || g.storage.has("collector_box") || this.eyeStorage.has("collector_box");
-    const lines = [S.lines[Math.floor(g.rng() * S.lines.length)], S.veinsHave.replace("%n", veins)];
-    const btns = [["hkCoffee", STR.billCoffee.replace("Bill", "Hendrik")], ["hkDinos", S.askDinos], ["hkFossils", S.askFossils]];
+    const lines = [g.rng() < 0.3 ? S.partnerLines[0] : S.lines[Math.floor(g.rng() * S.lines.length)], S.veinsHave.replace("%n", veins)];   // update 82: he misses her
+    if (page === "partner") { const s2 = g.npcPanel(S.name, g.bonePartnerKnown ? [S.partnerLines[0], S.partnerKnown] : S.partnerLines); g.backToMain(s2, () => this.openHendrik()); return; }   // update 82
+    const btns = [["hkCoffee", STR.billCoffee.replace("Bill", "Hendrik")], ["hkDinos", S.askDinos], ["hkFossils", S.askFossils], ["hkPartner", S.askPartner]];
     btns.push(["hkPick", S.buyPick.replace("%n", K2.pickTradeVeins).replace("%m", K2.pickPerDay - this.pickSold)]);
     btns.push(["hkSpade", S.buySpade.replace("%n", K2.spadeVeins)]);
     if (!hasBox) btns.push(["hkBox", S.getBox]);
     if (full && inv.has("collector_box")) btns.push(["hkReward", S.claimReward]);
     const s = g.npcPanel(S.name, lines, btns);
     const on = (id, fn) => { const b = s.querySelector("#" + id); if (b) b.addEventListener("click", fn); };
-    on("hkDinos", () => this.openHendrik("dinos")); on("hkFossils", () => this.openHendrik("fossils"));
+    on("hkDinos", () => this.openHendrik("dinos")); on("hkFossils", () => this.openHendrik("fossils")); on("hkPartner", () => this.openHendrik("partner"));
     on("hkCoffee", () => { if (this.hendrikCoffeeDay === g.dayNum) { g.ui.toast(S.coffeeUsed); g.audio.sDeny(); return; } this.hendrikCoffeeDay = g.dayNum; g.coffeeT = CFG.coffee.regenTime; g.ui.closeScreen(); g.resume(); g.ui.toast(S.coffee); g.audio.sDrink(); });
     on("hkPick", () => { if (this.pickSold >= K2.pickPerDay) { g.ui.toast(S.pickOut); g.audio.sDeny(); return; } if (veins < K2.pickTradeVeins) { g.ui.toast(S.needVeins.replace("%n", K2.pickTradeVeins)); g.audio.sDeny(); return; } inv.remove("fossil_vein", K2.pickTradeVeins); if (!inv.add("pickaxe", 1)) g.spawnDrop("pickaxe", 1, p.pos.x, p.pos.z, p.pos.y); this.pickSold++; g.ui.renderHotbar(inv); g.ui.closeScreen(); g.resume(); g.ui.toast(S.pickBought); g.audio.sChest(); });
     on("hkSpade", () => { if (veins < K2.spadeVeins) { g.ui.toast(S.needVeins.replace("%n", K2.spadeVeins)); g.audio.sDeny(); return; } inv.remove("fossil_vein", K2.spadeVeins); if (!inv.add("spade", 1)) g.spawnDrop("spade", 1, p.pos.x, p.pos.z, p.pos.y); g.ui.renderHotbar(inv); g.ui.closeScreen(); g.resume(); g.ui.toast(S.spadeBought); g.audio.sChest(); });
@@ -449,7 +464,7 @@ export class SkullValley {
   // the collector's box: its ten slots, and the fossils in your pack that fit an empty one
   openBox() {
     const g = this.g, p = g.player, S = STR.skull;
-    const lines = FOSSILS.map((id, i) => `${this.boxFill[i] ? "&#10004;" : "&#9675;"} ${STR.items[id].name}`);
+    const lines = FOSSILS.map((id, i) => { const u = iconUrl(id); return `<span style="display:inline-flex;align-items:center;gap:10px;opacity:${this.boxFill[i] ? 1 : 0.45}"><img src="${u}" alt="" style="width:40px;height:40px;${this.boxFill[i] ? "" : "filter:grayscale(1) brightness(.5)"}">${this.boxFill[i] ? "&#10004;" : "&#9675;"} ${STR.items[id].name}</span>`; });   // update 82: the fossils as their icons, dark until placed
     lines.push(`<i>${S.boxCount.replace("%n", this.boxFill.filter(Boolean).length)}</i>`);
     const can = FOSSILS.filter((id, i) => !this.boxFill[i] && p.inv.has(id));
     const s = g.npcPanel(S.boxTitle, lines, can.map((id) => ["bx_" + id, S.putIn.replace("%i", STR.items[id].name)]));
@@ -493,7 +508,7 @@ export class SkullValley {
     // the fires flicker
     for (const f of this.fires) { const k = 0.85 + 0.15 * Math.sin(this.t * 9 + f.x) * Math.cos(this.t * 13); f.light.intensity = 3.2 * k; for (const fl of f.flames) { fl.scale.y = 0.9 + 0.2 * Math.sin(this.t * 11 + f.z); fl.lookAt(g.camera.position.x, fl.position.y + f.y, g.camera.position.z); } }
     // Hendrik turns to you when you are near
-    if (this.hendrik) { const H = this.hendrik, d = Math.hypot(p.pos.x - H.x, p.pos.z - H.z); const want = d < 6 ? Math.atan2(p.pos.x - H.x, p.pos.z - H.z) : H.yaw0; let dy = want - H.body.rotation.y; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; H.body.rotation.y += dy * Math.min(1, dt * 4); if (H.anim) H.anim.drive("idle", 0, 1, dt); }
+    if (this.hendrik) { const H = this.hendrik, d = Math.hypot(p.pos.x - H.x, p.pos.z - H.z); const want = d < 6 ? Math.atan2(p.pos.x - H.x, p.pos.z - H.z) : H.yaw0; let dy = want - H.body.rotation.y; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; H.body.rotation.y += dy * Math.min(1, dt * 4); if (H.anim) H.anim.drive("idle", 0, 1, dt); if (H.body.userData.mrig && d < 120) { let ht = want - H.body.rotation.y; while (ht > Math.PI) ht -= Math.PI * 2; while (ht < -Math.PI) ht += Math.PI * 2; driveMeshy(H.body, dt, { state: "idle", h: 1.75, headTurn: d < 6 ? ht : null, style: "busy" }); } }
     if (this.campLight) this.campLight.intensity = 0.5 + 1.6 * (g.world.nightK || 0);
     // the valley is seen further than the forest: the fog stands off while you are inside (a preset change is adopted as the new base)
     { const w = g.world; if (this.fogApplied === undefined || w.fogMult !== this.fogApplied) this.fogBase = w.fogMult; const want = this.inside(p.pos.x, p.pos.z) ? this.fogBase * K2.fogMult : this.fogBase; if (w.fogMult !== want) { w.fogMult = want; w.updateEnv && w.updateEnv(0); } this.fogApplied = want; }

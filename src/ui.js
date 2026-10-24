@@ -1,6 +1,6 @@
-import { STR } from "../strings.js?v=84";
-import { CFG } from "./config.js?v=84";
-import { iconUrl } from "./items.js?v=84";
+import { STR } from "../strings.js?v=85";
+import { CFG } from "./config.js?v=85";
+import { iconUrl } from "./items.js?v=85";
 
 const $ = (s) => document.querySelector(s);
 
@@ -367,10 +367,10 @@ export class UI {
   }
   nightVig(k) { $("#nightvig").style.opacity = k; }
   // night vision: the green phosphor wash + a brightness lift on the render
-  nvgOverlay(on) {
+  nvgOverlay(on, tint = "green") {   // update 82: the grey cloak's night is orange, a dinosaur's eyes
     const el = $("#nvg");
-    if (el) el.style.opacity = on ? 1 : 0;
-    $("#c").style.filter = on ? "brightness(1.35) contrast(1.06) saturate(0.55)" : "";
+    if (el) { el.style.opacity = on ? 1 : 0; el.style.background = tint === "amber" ? "radial-gradient(ellipse at center,rgba(255,170,60,.18) 0%,rgba(200,110,30,.24) 62%,rgba(30,12,2,.72) 100%)" : ""; }
+    $("#c").style.filter = on ? (tint === "amber" ? "brightness(1.3) contrast(1.05) sepia(.35) saturate(1.1)" : "brightness(1.35) contrast(1.06) saturate(0.55)") : "";
   }
   // update 29: a status pill under the goal line (Duco helping, crate count)
   setHelper(text) {

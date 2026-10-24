@@ -1,27 +1,28 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { CFG, ASSET_V } from "./config.js?v=84";
-import { STR } from "../strings.js?v=84";
+import { CFG, ASSET_V } from "./config.js?v=85";
+import { STR } from "../strings.js?v=85";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mulberry32, pickWeighted } from "./rng.js?v=84";
-import { loadIcons, iconUrl, Inventory } from "./items.js?v=84";
-import { Forest } from "./forest.js?v=84";   // update 69
-import { Potions } from "./potions.js?v=84";   // update 73
-import { Volcano } from "./volcano.js?v=84";   // update 74
-import { HiddenForest } from "./hidden.js?v=84";
-import { SkullValley } from "./skull.js?v=84";   // update 81   // update 75
-import { ClipAnimator } from "./skeletal.js?v=84";
-import { AudioMan } from "./audio.js?v=84";
-import { UI } from "./ui.js?v=84";
-import { World } from "./world.js?v=84";
-import { Player } from "./player.js?v=84";
-import { Creature, ItemDrop } from "./entities.js?v=84";
-import { GameMap } from "./map.js?v=84";
-import { FarmGame } from "./farmgame.js?v=84";
-import { ElisiaSystem } from "./elisia.js?v=84";   // update 35
-import { DesertSystem } from "./desert.js?v=84";
-import { PortalSystem } from "./portals.js?v=84";
-import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=84";   // update 39   // update 37: the five portals   // update 36
+import { mulberry32, pickWeighted } from "./rng.js?v=85";
+import { loadIcons, iconUrl, Inventory } from "./items.js?v=85";
+import { Forest } from "./forest.js?v=85";   // update 69
+import { Potions } from "./potions.js?v=85";   // update 73
+import { Volcano } from "./volcano.js?v=85";   // update 74
+import { HiddenForest } from "./hidden.js?v=85";
+import { SkullValley } from "./skull.js?v=85";   // update 81
+import { BoneTunnel } from "./bonetunnel.js?v=85";   // update 82   // update 75
+import { ClipAnimator } from "./skeletal.js?v=85";
+import { AudioMan } from "./audio.js?v=85";
+import { UI } from "./ui.js?v=85";
+import { World } from "./world.js?v=85";
+import { Player } from "./player.js?v=85";
+import { Creature, ItemDrop } from "./entities.js?v=85";
+import { GameMap } from "./map.js?v=85";
+import { FarmGame } from "./farmgame.js?v=85";
+import { ElisiaSystem } from "./elisia.js?v=85";   // update 35
+import { DesertSystem } from "./desert.js?v=85";
+import { PortalSystem } from "./portals.js?v=85";
+import { EterniusCity, buildEternialWeapons } from "./eternius.js?v=85";   // update 39   // update 37: the five portals   // update 36
 
 const TEX_IDS = ["t_grass", "t_forestfloor", "t_sandpath", "t_romanstone", "t_intfloor", "t_woodplank", "t_darkwood", "t_bark",
   "t_lhwhite", "t_lhred", "t_beach", "t_water", "t_container", "t_metalfloor", "t_trapdoor", "t_campdirt", "t_cobble", "t_ruinbrick", "t_rock",
@@ -69,6 +70,7 @@ const verbFor = (label) => {
 };
 
 const GLB_IDS = ["majunga", "theri", "pachy", "hendrik", "sv_tent", "sv_chest", "sv_skull", "sv_ribcage", "sv_spine", "sv_skeleton",   // update 81: Skull Valley
+  "bonementor", "prisoner_m1", "prisoner_m2", "prisoner_f1", "prisoner_f2", "sv_mouthcave", "sv_skullcliff", "sv_bonearch", "sv_amberlantern", "sv_bonespear", "sv_garlic", "sv_ribcage_lo", "sv_skullmouth",   // update 82: the Bone Mentor's tunnel; update 85: the lo-poly ribs, the skull mouth
   "trex", "trexgreen", "et_door", "et_fence", "et_collar", "et_vaultdoor", "et_censer", "et_bench", "et_altar", "werewolf", "pig", "chicken", "tree", "appletree", "chest", "statue",
   "bedroll", "hutbed", "kitchen", "bill", "storagechest", "boulder",
   "door", "table", "chair", "lantern", "croc", "dinoegg", "metaldoor", "beaconlamp",
@@ -386,7 +388,8 @@ class Game {
     this.potions = new Potions(this);   // update 73: herblore and potions (after the forest and the desert exist)
     this.volcano = new Volcano(this);   // update 74: the crater, ember leaf, the silver mine, the furnace, the evil dagger
     this.hidden = new HiddenForest(this);   // update 75: the hidden forest
-    this.skull = new SkullValley(this);     // update 81: Skull Valley (its ground, bones, tunnels, camp, dens and chests)   // update 69: hills are the world's; the rest of the forest's new life lives here
+    this.skull = new SkullValley(this);     // update 81: Skull Valley (its ground, bones, tunnels, camp, dens and chests)
+    this.bone = new BoneTunnel(this);       // update 82: the Bone Mentor's tunnel under the east wall   // update 69: hills are the world's; the rest of the forest's new life lives here
     this.world.city = this.city;            // update 39: the city's floors, walls and mountain join the world's ground
     this.portals.build();                   // update 37: the portals stand once the ground exists
     this.world.fogMult = presetFx.fog;      // preset draw distance, from boot
@@ -443,7 +446,7 @@ class Game {
     // dome-heads, one Therizinosaurus per den
     if (this.skull) {
       const K = CFG.skull;
-      if (this.assets.glb.majunga) for (let i = 0; i < K.majungaCount; i++) { const [x, z] = this.skull.randomFloor(this.rng); this.creatures.push(new Creature("trex", this.assets.glb.majunga, x, z, ctx, { majunga: true })); }
+      if (this.assets.glb.majunga) for (let i = 0; i < K.majungaCount; i++) { const [x, z] = this.skull.randomFloor(this.rng, K.majungaZone); this.creatures.push(new Creature("trex", this.assets.glb.majunga, x, z, ctx, { majunga: true })); /* update 82: round the spine ridge */ }
       if (this.assets.glb.pachy) K.pachyHerds.forEach((home, h) => { for (let i = 0; i < K.pachyPerHerd; i++) { const a = this.rng() * Math.PI * 2, dd = 3 + this.rng() * 8; this.creatures.push(new Creature("pachy", this.assets.glb.pachy, home[0] + Math.cos(a) * dd, home[1] + Math.sin(a) * dd, ctx, { herd: h + 1, idx: i, home })); } });
       if (this.assets.glb.theri) this.skull.dens.forEach((den) => { const c = new Creature("theri", this.assets.glb.theri, den.x + 2, den.z + 2, ctx, { den }); den.theri = c; this.creatures.push(c); });
     }
@@ -638,6 +641,7 @@ class Game {
       if (slot.id === "super_energy_drink") return `${useKey} ${STR.hintDrink} — ${name}`;
       if (slot.id === "wolf_bag") return `${useKey} ${STR.hintWolfBag}`;
       if (slot.id === "goggles") return `${name}: ${STR.hintGoggles}`;
+      if (slot.id === "amber_spear_ench") return `${name}: ${STR.hintAmberSpear}`; if (slot.id === "grey_cloak") return `${name}: ${STR.hintCloak}`; if (slot.id === "amber_lantern") return `${name}: ${STR.hintLantern}`;   // update 82
       if (slot.id === "needle" || slot.id === "thread") return `${name}: ${STR.hintSewing}`;
       if (slot.id === "climbing_anchor") return `${name}: ${STR.hintAnchor}`;
       if (slot.id === "silver_bar") return `${name}: ${STR.hintSilverBar}`;
@@ -1188,6 +1192,9 @@ class Game {
     if (this.volcano) this.volcano.update(dt);   // update 74
     if (this.hidden) this.hidden.update(dt);   // update 75
     if (this.skull) this.skull.update(dt);   // update 81
+    if (this.bone) this.bone.update(dt);   // update 82
+    // update 82: the grey cloak - carried at night, the hunters barely see you and only loud noise close by gives you away
+    { const k = this.world.nightK || 0, p = this.player; this.cloakNight = k > 0.2 && p.inv.has("grey_cloak"); if (this.cloakNight) { p.sightMult *= CFG.greyCloak.sightMult; p.noiseMult *= CFG.greyCloak.noiseMult; } }
     if (this.dizzyT > 0) { this.dizzyT -= dt; this.ui.setDizzy(this.dizzyT); if (this.dizzyT <= 0 && this.drunkT <= 0) this.ui.setDrunk(0); }   // update 81
     this.updateExpansion(dt);
     // update 80: creatures far from you (160 m) tick every other frame with a doubled step - the same motion, half the work
@@ -1250,16 +1257,18 @@ class Game {
     // NIGHT VISION: goggles in hand turn the dark into green daylight —
     // the world lights up, the fog pulls back, the screen washes green
     const sel = this.player.inv.selected();
-    const nvg = !!(((sel && sel.id === "goggles") || (this.potions && this.potions.fx.nightvision > 0)) && k > 0.2);   // update 73: the night vision potion
+    const cloakSee = !!(this.player.inv.has("grey_cloak") && k > 0.2);   // update 82: the grey cloak sees the night in orange
+    const nvg = !!(((sel && sel.id === "goggles") || (this.potions && this.potions.fx.nightvision > 0)) && k > 0.2) || cloakSee;   // update 73: the night vision potion
     // the dungeon keeps its OWN hour: crystal dusk — darker than day,
     // never as black as the night outside
     const inDun = this.world.inDungeon(this.player.pos.x, this.player.pos.z);
     // update 42: inside the mountain the night is the cavern's own — warm, a little dimmer (CFG.env.cave)
     const inMt = !!(this.city && this.city.inMountain(this.player.pos.x, this.player.pos.z, this.player.pos.y));
-    this.world.updateEnv(nvg ? 0.08 : inDun ? 0.55 : inMt ? k * 0.8 : k, inMt && !nvg);
+    const boneK = this.bone ? this.bone.envK(this.player, k) : null;   // update 82: the tunnel is black, then lantern-dim
+    this.world.updateEnv(nvg ? 0.08 : boneK !== null ? boneK : inDun ? 0.55 : inMt ? k * 0.8 : k, (inMt || boneK !== null) && !nvg);
     if (this.elisia) this.elisia.applyMist(dt);   // update 35: her mist sits on top of the day's fog
-    this.ui.nightVig(nvg ? 0 : (inDun ? 0.55 : inMt ? k * 0.4 : k) * 0.7);
-    this.ui.nvgOverlay(nvg);
+    this.ui.nightVig(nvg ? 0 : (boneK !== null ? boneK : inDun ? 0.55 : inMt ? k * 0.4 : k) * 0.7);
+    this.ui.nvgOverlay(nvg, cloakSee && !((sel && sel.id === "goggles") || (this.potions && this.potions.fx.nightvision > 0)) ? "amber" : "green");
     // the soundscape follows the light — crickets fade in WITH the dusk
     this.audio.nightMix(k);
 
@@ -1401,12 +1410,13 @@ class Game {
   }
   throwSpear(player) {
     const sel = player.inv.selected();
-    if (!sel || (sel.id !== "spear" && sel.id !== "et_spear")) return;   // update 39: the Eternial spear too
+    if (!sel || (sel.id !== "spear" && sel.id !== "et_spear" && sel.id !== "bone_spear" && sel.id !== "amber_spear" && sel.id !== "amber_spear_ench")) return;   // update 39: the Eternial spear too; update 82: the bone spears
     const kind = sel.id;
     player.inv.consumeSelected();
     this.ui.renderHotbar(player.inv);
     let mesh = this.buildSpearMesh();
     if (kind === "et_spear" && this.assets.glb.etspear3d) { mesh = new THREE.Group(); const m = this.assets.glb.etspear3d.model.clone(); m.rotation.y = Math.PI / 2; m.scale.setScalar(0.75); mesh.add(m); }
+    else if ((kind === "bone_spear" || kind === "amber_spear" || kind === "amber_spear_ench") && this.assets.glb.sv_bonespear) { mesh = new THREE.Group(); const m = this.assets.glb.sv_bonespear.model.clone(); const bb = new THREE.Box3().setFromObject(m), sz = bb.getSize(new THREE.Vector3()); const L = Math.max(sz.x, sz.y, sz.z); m.scale.multiplyScalar(1.9 / L); if (sz.x >= sz.y && sz.x >= sz.z) m.rotation.y = Math.PI / 2; else if (sz.y >= sz.z) m.rotation.x = Math.PI / 2; const c = new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()); m.position.sub(c); mesh.add(m); if (kind === "amber_spear_ench") { const l = new THREE.PointLight(0xffb050, 1.6, 9, 2); mesh.add(l); } }   // update 82
     else if (kind === "spear" && this.assets.glb.hf_spear) {   // update 79: the wood-and-iron spear flies as itself, point first (its longest side along +z)
       mesh = new THREE.Group(); const m = this.assets.glb.hf_spear.model.clone(); const bb = new THREE.Box3().setFromObject(m), sz = bb.getSize(new THREE.Vector3()); m.scale.multiplyScalar(1.7 / Math.max(sz.x, sz.y, sz.z)); const bb2 = new THREE.Box3().setFromObject(m); m.position.sub(bb2.getCenter(new THREE.Vector3())); m.rotation.y = Math.PI / 2; mesh.add(m); }
     const dir = new THREE.Vector3();
@@ -1417,6 +1427,9 @@ class Game {
     this.spears.push({ mesh, vel: dir.multiplyScalar(CFG.spear.throwSpeed), t: 0, kind });
     this.audio.noise(0.12, 1600, 0.25, "highpass"); // the whoosh
   }
+  // update 82: the enchanted amber spear comes back to the hand instead of lying where it fell
+  returnSpear(sp) { const p = this.player; if (!p.inv.add("amber_spear_ench", 1)) this.spawnDrop("amber_spear_ench", 1, p.pos.x, p.pos.z, p.pos.y); else { this.ui.renderHotbar(p.inv); this.ui.toast(STR.items.amber_spear_ench.name + ": " + STR.hintAmberSpear); this.audio.blip(880, 0.15, "sine", 0.25, 200); } }
+  spearsReturned() { return true; }
   updateSpears(dt) {
     if (!this.spears.length) return;
     const S = CFG.spear;
@@ -1451,13 +1464,16 @@ class Game {
         } else {
           this.scene.remove(sp.mesh);
           // it clatters off lesser prey and can be picked back up
-          if (struck.type !== "mother" && struck.type !== "spino" && struck.type !== "spinobaby") {
+          if (sp.kind === "amber_spear_ench") this.returnSpear(sp);   // update 82: the enchanted spear flies back to the hand
+          else if (struck.type !== "mother" && struck.type !== "spino" && struck.type !== "spinobaby") {
             this.spawnDrop(sp.kind || "spear", 1, P.x, P.z, this.world.groundHeight(P.x, P.z, 0));
           }
         }
-        this.spearMult = sp.kind === "et_spear" ? CFG.etSpear.dmgMult : 1;   // update 39
+        this.spearMult = sp.kind === "et_spear" ? CFG.etSpear.dmgMult : (sp.kind === "bone_spear" || sp.kind === "amber_spear" || sp.kind === "amber_spear_ench") ? CFG.boneSpear.dmgMult : 1;   // update 39; update 82
+        this.spearKind = sp.kind;
         struck.spearHit(this, head);
-        this.spearMult = 1;
+        this.spearMult = 1; this.spearKind = null;
+        if (sp.kind === "amber_spear_ench" && !this.spearsReturned(sp)) { /* it flew back */ }
         this.spears.splice(i, 1);
         continue;
       }
@@ -1476,7 +1492,8 @@ class Game {
       }
       if (stop || sp.t > 8) {
         this.scene.remove(sp.mesh);
-        this.spawnDrop(sp.kind || "spear", 1, P.x, P.z, this.world.groundHeight(P.x, P.z, 0));
+        if (sp.kind === "amber_spear_ench") this.returnSpear(sp);   // update 82
+        else this.spawnDrop(sp.kind || "spear", 1, P.x, P.z, this.world.groundHeight(P.x, P.z, 0));
         this.emitNoise(P.x, P.z, 25); // the clatter carries — hunters come to look
         this.spears.splice(i, 1);
       }
@@ -2718,6 +2735,7 @@ class Game {
     if (this.volcano) this.volcano.interact(consider, p);   // update 74: ember leaf, the ores, the furnace, the wolves
     if (this.hidden) this.hidden.interact(consider, p);   // update 75: the Monial, the night's pickings, the beds
     if (this.skull) this.skull.interact(consider, p);   // update 81: Hendrik, the dens, the stones, the mounds, the climb
+    if (this.bone) this.bone.interact(consider, p);   // update 82: the prisoners, the amber, the great chest
     this.ui.prompt(this.cooking ? STR.cooking : best ? best.label : this.compassLine());
     // touch devices mirror the prompt as a circular ONE-word button
     // (OPEN / SLEEP / COOK / TALK...) — visible only while in reach
@@ -3152,6 +3170,7 @@ class Game {
     cullEnt(this.hansBody); cullEnt(this.emilyBody); cullEnt(this.timoBody);
     cullEnt(this.jabbBody); cullEnt(this.billBody);
     if (this.skull) this.skull.cull(cullEnt);   // update 81
+    if (this.bone) this.bone.cull(cullEnt);   // update 82
     this.farm.cull(cullEnt);
   }
 
